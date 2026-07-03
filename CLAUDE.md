@@ -24,9 +24,9 @@ Personal task tracking: Notion 프로젝트 진행 DB (`29241e61-65c0-801f-9529-
 
 ## TODO
 
-- [ ] GitHub에 claude-config 레포 생성 (`~/prv/claude-config/`)
+- [x] GitHub에 claude-config 레포 생성 → `~/.claude` 자체가 repo (https://github.com/jongwoo315/claude-config, private)
 - [ ] DB 접속 정보를 환경변수로 분리 (현재 ~/.zshrc에 평문)
-- [ ] sync test
+- [x] sync test → work mac 양방향 동기화 확인 (2026-07-03)
 
 ## Kimi Delegation Tools (Token Saving)
 
