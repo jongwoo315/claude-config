@@ -14,7 +14,3 @@
 !/command-scripts/
 !/kimi-tools/
 
-# Secrets — never sync
-rules/databases.md
-command-scripts/economy/indexergo-parser/cookies.json
-commands/ops/datadog-dbm-slow-query.md
