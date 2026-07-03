@@ -10,7 +10,7 @@
       "Bash(bq *)"
     ]
   },
-  "model": "claude-fable-5[1m]",
+  "model": "opus",
   "allowedMcpServers": [
     {
       "serverName": "context7"
@@ -79,7 +79,7 @@
         ]
       },
       {
-        "matcher": "AskUserQuestion",
+        "matcher": "AskUserQuestion|ExitPlanMode",
         "hooks": [
           {
             "type": "command",
