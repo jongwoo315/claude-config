@@ -261,18 +261,18 @@
       "last_seen": "2026-07-02"
     },
     "few-shot": {
-      "shown": 2,
+      "shown": 3,
       "correct": 0,
       "wrong": 0,
-      "half": 1,
-      "last_seen": "2026-06-09"
+      "half": 2,
+      "last_seen": "2026-07-03"
     },
     "chain-of-thought": {
-      "shown": 2,
+      "shown": 3,
       "correct": 0,
       "wrong": 0,
-      "half": 1,
-      "last_seen": "2026-06-09"
+      "half": 2,
+      "last_seen": "2026-07-03"
     },
     "zero-shot-cot": {
       "shown": 2,

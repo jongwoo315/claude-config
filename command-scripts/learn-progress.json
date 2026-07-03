@@ -462,7 +462,7 @@
   },
   "level": {
     "current_level": 5,
-    "xp": 2290,
+    "xp": 2320,
     "xp_to_next": 0,
     "title": "숙련자",
     "history": [
@@ -1234,7 +1234,7 @@
     ]
   },
   "daily_quests": {
-    "current_streak": 4,
+    "current_streak": 5,
     "longest_streak": 4,
     "today": {
       "date": "2026-07-03",
@@ -1243,7 +1243,7 @@
       "track": "rag",
       "description": "reranking — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
       "xp": 30,
-      "completed": false,
+      "completed": true,
       "source": "daily_quest"
     },
     "quest_log": [
@@ -1568,6 +1568,17 @@
         "date": "2026-07-02",
         "type": "explain",
         "topic": "vector-store",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-07-03",
+        "type": "explain",
+        "topic": "reranking",
         "track": "rag",
         "grade": "🟡 반반",
         "self_rating": "어려움",
