@@ -1,0 +1,55 @@
+# pf-server-django — Production Infrastructure Resources
+# Updated: 2026-02-17
+#
+# 이 파일은 /ops:production-safety-audit 커맨드가 참조하는 인프라 설정입니다.
+# 리소스가 변경되면 이 파일을 업데이트하세요. (README.md 참조)
+
+project: pf-server-django
+path_match: "*/work/pf-server-django*"
+aws_profile: default
+region: ap-northeast-2
+
+resources:
+  redis:
+    - cluster_id: pf-production-redis-001
+      description: "메인 Redis Primary (세션, 캐시, 이벤트 카운터)"
+      role: primary
+      metrics:
+        - EngineCPUUtilization
+        - CPUCreditBalance    # t계열일 때만 의미 있음
+        - CurrConnections
+        - DatabaseMemoryUsagePercentage
+
+    - cluster_id: pf-production-redis-002
+      description: "Redis Replica 1 (standby)"
+      role: replica
+
+    - cluster_id: pf-production-redis-003
+      description: "Redis Replica 2 (standby)"
+      role: replica
+
+  rds:
+    - instance_id: plab3
+      description: "메인 MySQL Primary"
+      role: primary
+      metrics:
+        - CPUUtilization
+        - DatabaseConnections
+        - FreeableMemory
+        - CPUCreditBalance
+
+    - instance_id: plab3-replica
+      description: "MySQL Read Replica (읽기 전용)"
+      role: replica
+      metrics:
+        - CPUUtilization
+        - DatabaseConnections
+
+  elasticbeanstalk:
+    - environment: Prod-env-1
+      application: prod
+      description: "메인 웹 서버 (Gunicorn + Celery)"
+      check:
+        - instance_type
+        - min_instances
+        - health

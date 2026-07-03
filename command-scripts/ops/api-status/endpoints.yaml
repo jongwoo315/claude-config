@@ -1,0 +1,49 @@
+# Static keyword → Datadog resource_name mappings
+# Patterns support wildcards: * matches any suffix
+# These are checked first (Tier 1) before code tracing or dynamic search
+
+mypage:
+  - "get_api/v2/mypage/*"
+  - "post_api/v2/mypage/*"
+  - "put_api/v2/mypage/*"
+  - "patch_api/v2/mypage/*"
+  - "delete_api/v2/mypage/*"
+
+match:
+  - "get_matchs/*"
+  - "post_matchs/*"
+  - "put_matchs/*"
+  - "patch_matchs/*"
+  - "get_api/v2/match/*"
+  - "post_api/v2/match/*"
+
+payment:
+  - "get_order/*"
+  - "post_order/*"
+  - "put_order/*"
+
+stadium:
+  - "get_stadium-groups/*"
+  - "post_stadium-groups/*"
+  - "get_api/v2/stadium/*"
+
+team:
+  - "get_teams/*"
+  - "post_teams/*"
+  - "get_api/v2/team/*"
+
+cash:
+  - "get_cash/*"
+  - "post_cash/*"
+
+league:
+  - "get_league/*"
+  - "post_league/*"
+
+coupon:
+  - "get_coupon/*"
+  - "post_coupon/*"
+
+admin:
+  - "get_e-to-play/*"
+  - "post_e-to-play/*"

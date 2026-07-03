@@ -1,0 +1,33 @@
+# AWS Resource Analyzer — Global Thresholds
+# Updated: 2026-02-24
+
+ec2-asg:
+  cpu_avg_warning: 55
+  cpu_avg_critical: 80
+  scaling_events_per_day_warning: 5
+
+rds:
+  cpu_avg_warning: 60
+  cpu_avg_critical: 90
+  connections_warning_pct: 70    # max_connections 대비 %
+  freeable_memory_warning_mb: 500
+
+elasticache:
+  cpu_avg_warning: 40
+  cpu_avg_critical: 80
+  connections_warning: 5000
+  credit_balance_critical_pct: 30  # t계열만
+
+elasticbeanstalk:
+  health_warning:
+    - Yellow
+    - Warning
+  health_critical:
+    - Red
+    - Degraded
+
+# Analyze 모드 판정
+analyze:
+  headroom_safe_pct: 5       # 임계값 대비 이 이상 여유 → LOW RISK
+  headroom_warning_pct: 0    # 0~5% 여유 → MEDIUM RISK
+                             # 초과 → HIGH RISK

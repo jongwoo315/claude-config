@@ -1,0 +1,20 @@
+# Ignore everything by default
+/*
+.DS_Store
+
+# Whitelist: sync targets only
+!/.gitignore
+!/CLAUDE.md
+!/settings.json
+!/RTK.md
+!/rules/
+!/hooks/
+!/skills/
+!/commands/
+!/command-scripts/
+!/kimi-tools/
+
+# Secrets — never sync
+rules/databases.md
+command-scripts/economy/indexergo-parser/cookies.json
+commands/ops/datadog-dbm-slow-query.md

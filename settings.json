@@ -1,0 +1,243 @@
+{
+  "env": {
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(bq *)"
+    ]
+  },
+  "model": "claude-fable-5[1m]",
+  "allowedMcpServers": [
+    {
+      "serverName": "context7"
+    },
+    {
+      "serverName": "morphllm-fast-apply"
+    },
+    {
+      "serverName": "sequential-thinking"
+    },
+    {
+      "serverName": "serena"
+    },
+    {
+      "serverName": "tavily"
+    },
+    {
+      "serverName": "playwright"
+    },
+    {
+      "serverName": "datadog"
+    },
+    {
+      "serverName": "code-review-graph"
+    }
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/kimi-read-check.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '\\brm\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"rm command detected — confirm deletion?\"}}'; exit 0; fi",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE 'mysql.*(-P\\s*13035|:13035|rds-prod[^-]).*-D\\s*plab'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Direct connection to plab production DB detected — confirm?\"}}'; exit 0; fi",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qiE '(mysql|psql)' && echo \"$cmd\" | grep -qiE '(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE)\\s'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"CUD SQL operation detected — confirm execution?\"}}'; exit 0; fi",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh waiting"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/docs-plans-date-fix.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git rev-parse --git-dir > /dev/null 2>&1 && code-review-graph update --skip-flows || exit 0",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh working"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/learning-hook.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "T=$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' '); [ -n \"$T\" ] && [ \"$T\" != \"??\" ] && printf '\\a' > \"/dev/$T\" 2>/dev/null || true",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh idle"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/jw/.claude/hooks/caveman-activate.js\"",
+            "timeout": 5,
+            "statusMessage": "Loading caveman mode..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for t in ask-kimi kimi-write extract-chat; do chmod +x \"$HOME/.claude/kimi-tools/$t\" 2>/dev/null; [ -L \"$HOME/.local/bin/$t\" ] || ln -sf \"$HOME/.claude/kimi-tools/$t\" \"$HOME/.local/bin/$t\"; done",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "code-review-graph status",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/jw/.claude/hooks/caveman-mode-tracker.js\"",
+            "timeout": 5,
+            "statusMessage": "Tracking caveman mode..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh working"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh waiting"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "superpowers@superpowers-marketplace": true,
+    "claude-notifications-go@claude-notifications-go": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "learning-output-style@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "caveman@caveman": true
+  },
+  "extraKnownMarketplaces": {
+    "claudeclaw": {
+      "source": {
+        "source": "github",
+        "repo": "moazbuilds/claudeclaw"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "tui": "default",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark-daltonized",
+  "editorMode": "normal",
+  "agentPushNotifEnabled": true
+}

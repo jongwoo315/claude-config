@@ -1,0 +1,86 @@
+{
+  "chunking-strategy": {
+    "shown": 2,
+    "correct": 1,
+    "wrong": 0,
+    "half": 1,
+    "last_seen": "2026-05-19"
+  },
+  "embedding-basics": {
+    "shown": 2,
+    "correct": 1,
+    "wrong": 0,
+    "half": 1,
+    "last_seen": "2026-05-19"
+  },
+  "vector-store": {
+    "shown": 2,
+    "correct": 1,
+    "wrong": 0,
+    "half": 1,
+    "last_seen": "2026-05-19"
+  },
+  "retrieval": {
+    "shown": 2,
+    "correct": 0,
+    "wrong": 0,
+    "half": 2,
+    "last_seen": "2026-05-20"
+  },
+  "hybrid-search": {
+    "shown": 2,
+    "correct": 2,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": "2026-05-20"
+  },
+  "reranking": {
+    "shown": 2,
+    "correct": 0,
+    "wrong": 0,
+    "half": 2,
+    "last_seen": "2026-05-20"
+  },
+  "multi-query": {
+    "shown": 1,
+    "correct": 1,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": "2026-05-18"
+  },
+  "context-budget": {
+    "shown": 1,
+    "correct": 0,
+    "wrong": 0,
+    "half": 1,
+    "last_seen": "2026-05-18"
+  },
+  "evaluation-ragas": {
+    "shown": 1,
+    "correct": 0,
+    "wrong": 0,
+    "half": 1,
+    "last_seen": "2026-05-18"
+  },
+  "rag-vs-finetuning": {
+    "shown": 1,
+    "correct": 1,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": "2026-05-19"
+  },
+  "hallucination": {
+    "shown": 1,
+    "correct": 1,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": "2026-05-19"
+  },
+  "metadata-filtering": {
+    "shown": 1,
+    "correct": 1,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": "2026-05-19"
+  }
+}
