@@ -1,0 +1,364 @@
+{
+  "rag": {
+    "chunking-strategy": {
+      "shown": 4,
+      "correct": 3,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-05-31"
+    },
+    "embedding-basics": {
+      "shown": 4,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-05-31"
+    },
+    "vector-store": {
+      "shown": 4,
+      "correct": 1,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-02"
+    },
+    "retrieval": {
+      "shown": 4,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-02"
+    },
+    "hybrid-search": {
+      "shown": 4,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-02"
+    },
+    "reranking": {
+      "shown": 4,
+      "correct": 1,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-04"
+    },
+    "multi-query": {
+      "shown": 4,
+      "correct": 4,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": "2026-06-04"
+    },
+    "context-budget": {
+      "shown": 4,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-04"
+    },
+    "evaluation-ragas": {
+      "shown": 4,
+      "correct": 3,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-04"
+    },
+    "rag-vs-finetuning": {
+      "shown": 4,
+      "correct": 3,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-04"
+    },
+    "hallucination": {
+      "shown": 4,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-04"
+    },
+    "metadata-filtering": {
+      "shown": 4,
+      "correct": 3,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-04"
+    }
+  },
+  "spring": {
+    "spring-di": {
+      "shown": 4,
+      "correct": 0,
+      "wrong": 1,
+      "half": 3,
+      "last_seen": "2026-05-14"
+    },
+    "spring-mvc": {
+      "shown": 3,
+      "correct": 0,
+      "wrong": 1,
+      "half": 2,
+      "last_seen": "2026-05-08"
+    },
+    "spring-validation": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 1,
+      "half": 1,
+      "last_seen": "2026-05-08"
+    },
+    "spring-error-handling": {
+      "shown": 3,
+      "correct": 0,
+      "wrong": 1,
+      "half": 2,
+      "last_seen": "2026-05-13"
+    },
+    "spring-test": {
+      "shown": 6,
+      "correct": 0,
+      "wrong": 3,
+      "half": 3,
+      "last_seen": "2026-05-28"
+    },
+    "jpa-entity": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "jpa-repository": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "jpa-relations": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "jpa-query": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "querydsl": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "jpa-performance": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "spring-security": {
+      "shown": 0,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    }
+  },
+  "spring-data-pipeline": {
+    "batch-chunk": {
+      "shown": 1,
+      "correct": 1,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": "2026-05-21"
+    },
+    "batch-restart": {
+      "shown": 1,
+      "correct": 0,
+      "wrong": 1,
+      "half": 0,
+      "last_seen": "2026-05-21"
+    }
+  },
+  "fastapi": {
+    "fastapi-di": {
+      "shown": 5,
+      "correct": 2,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-22"
+    },
+    "fastapi-schema": {
+      "shown": 5,
+      "correct": 1,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-22"
+    },
+    "fastapi-async": {
+      "shown": 5,
+      "correct": 1,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-23"
+    },
+    "fastapi-auth": {
+      "shown": 5,
+      "correct": 0,
+      "wrong": 1,
+      "half": 4,
+      "last_seen": "2026-06-23"
+    },
+    "fastapi-background": {
+      "shown": 5,
+      "correct": 2,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-24"
+    },
+    "fastapi-middleware": {
+      "shown": 5,
+      "correct": 3,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-22"
+    },
+    "fastapi-lifespan": {
+      "shown": 5,
+      "correct": 0,
+      "wrong": 2,
+      "half": 3,
+      "last_seen": "2026-06-24"
+    },
+    "fastapi-router": {
+      "shown": 5,
+      "correct": 1,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-22"
+    }
+  },
+  "prompt": {
+    "system-prompt": {
+      "shown": 4,
+      "correct": 0,
+      "wrong": 0,
+      "half": 3,
+      "last_seen": "2026-06-24"
+    },
+    "role-prompting": {
+      "shown": 3,
+      "correct": 0,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-07-02"
+    },
+    "few-shot": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-09"
+    },
+    "chain-of-thought": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-09"
+    },
+    "zero-shot-cot": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-16"
+    },
+    "structured-output": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "temperature": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": null
+    },
+    "prompt-injection": {
+      "shown": 2,
+      "correct": 0,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-17"
+    }
+  },
+  "agent": {
+    "react-loop": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-25"
+    },
+    "tool-use": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-25"
+    },
+    "planning": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-29"
+    },
+    "agent-memory": {
+      "shown": 3,
+      "correct": 2,
+      "wrong": 0,
+      "half": 1,
+      "last_seen": "2026-06-29"
+    },
+    "langgraph": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-29"
+    },
+    "multi-agent": {
+      "shown": 3,
+      "correct": 3,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": "2026-06-30"
+    },
+    "agent-failures": {
+      "shown": 3,
+      "correct": 3,
+      "wrong": 0,
+      "half": 0,
+      "last_seen": "2026-06-30"
+    },
+    "reflexion": {
+      "shown": 3,
+      "correct": 1,
+      "wrong": 0,
+      "half": 2,
+      "last_seen": "2026-06-30"
+    }
+  }
+}

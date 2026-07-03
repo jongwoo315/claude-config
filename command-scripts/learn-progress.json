@@ -1,0 +1,1580 @@
+{
+  "start_date": "2026-03-17",
+  "target_companies": [
+    "toss",
+    "kakaobank",
+    "musinsa",
+    "youtube-music"
+  ],
+  "algorithm": {
+    "patterns": {},
+    "daily_log": []
+  },
+  "java_kata": {
+    "topics": {
+      "types": {
+        "last_practiced": {
+          "warm-up": {
+            "date": "2026-04-26",
+            "attempts": 1,
+            "solved": 3,
+            "total": 3
+          },
+          "practice": {
+            "date": "2026-03-18",
+            "attempts": 1,
+            "solved": 2,
+            "total": 2
+          },
+          "challenge": null
+        }
+      },
+      "collections": {
+        "last_practiced": {
+          "warm-up": {
+            "date": "2026-04-28",
+            "attempts": 1,
+            "solved": 3,
+            "total": 3
+          },
+          "practice": {
+            "date": "2026-03-24",
+            "attempts": 1,
+            "solved": 4,
+            "total": 4
+          },
+          "challenge": null
+        }
+      },
+      "stream": {
+        "last_practiced": {
+          "warm-up": {
+            "date": "2026-04-23",
+            "attempts": 1,
+            "solved": 3,
+            "total": 3
+          },
+          "practice": null,
+          "challenge": null
+        }
+      },
+      "generics": {
+        "last_practiced": {
+          "warm-up": {
+            "date": "2026-04-26",
+            "attempts": 1,
+            "solved": 3,
+            "total": 3
+          },
+          "practice": null,
+          "challenge": null
+        }
+      }
+    },
+    "session_log": [
+      {
+        "date": "2026-03-18",
+        "topic": "types",
+        "difficulty": "practice",
+        "problems": [
+          "parsePrice",
+          "explainComparison"
+        ],
+        "solved": 2,
+        "total": 2
+      },
+      {
+        "date": "2026-03-24",
+        "topic": "collections",
+        "difficulty": "practice",
+        "problems": [
+          "countOrders",
+          "topProducts",
+          "isMutable",
+          "safeAdd"
+        ],
+        "solved": 4,
+        "total": 4
+      },
+      {
+        "date": "2026-04-23",
+        "topic": "stream",
+        "difficulty": "warm-up",
+        "problems": [
+          "filterActive",
+          "sumPrices",
+          "topN"
+        ],
+        "solved": 3,
+        "total": 3
+      },
+      {
+        "date": "2026-04-26",
+        "topic": "generics",
+        "difficulty": "warm-up",
+        "problems": [
+          "Box<T>",
+          "swap",
+          "max"
+        ],
+        "solved": 3,
+        "total": 3
+      },
+      {
+        "date": "2026-04-26",
+        "topic": "types",
+        "difficulty": "warm-up",
+        "problems": [
+          "greet",
+          "divide",
+          "varDemo"
+        ],
+        "solved": 3,
+        "total": 3
+      },
+      {
+        "date": "2026-04-28",
+        "topic": "collections",
+        "difficulty": "warm-up",
+        "problems": [
+          "firstAndLast",
+          "countByKey",
+          "uniqueTags"
+        ],
+        "solved": 3,
+        "total": 3
+      }
+    ]
+  },
+  "spring_guide": {
+    "topics": {
+      "spring-di": {
+        "last_practiced": {
+          "date": "2026-05-09",
+          "attempts": 3,
+          "solved": 9,
+          "total": 13
+        }
+      },
+      "spring-mvc": {
+        "last_practiced": {
+          "date": "2026-03-30",
+          "attempts": 1,
+          "solved": 4,
+          "total": 5
+        }
+      },
+      "spring-validation": {
+        "last_practiced": {
+          "date": "2026-03-30",
+          "attempts": 1,
+          "solved": 3,
+          "total": 5
+        }
+      },
+      "spring-error-handling": {
+        "last_practiced": {
+          "date": "2026-04-01",
+          "attempts": 1,
+          "solved": 3,
+          "total": 5
+        }
+      },
+      "spring-test": {
+        "last_practiced": {
+          "date": "2026-04-02",
+          "attempts": 1,
+          "solved": 5,
+          "total": 5
+        }
+      },
+      "jpa-entity": {
+        "last_practiced": {
+          "date": "2026-04-03",
+          "attempts": 1,
+          "solved": 4,
+          "total": 5
+        }
+      },
+      "jpa-repository": {
+        "last_practiced": {
+          "date": "2026-04-06",
+          "attempts": 1,
+          "solved": 5,
+          "total": 5
+        }
+      },
+      "jpa-relations": {
+        "last_practiced": {
+          "date": "2026-04-21",
+          "attempts": 1,
+          "solved": 4,
+          "total": 5
+        }
+      },
+      "jpa-query": {
+        "last_practiced": {
+          "date": "2026-04-24",
+          "attempts": 1,
+          "solved": 1,
+          "total": 4
+        }
+      },
+      "querydsl": {
+        "last_practiced": {
+          "date": "2026-04-25",
+          "attempts": 1,
+          "solved": 2,
+          "total": 3
+        }
+      },
+      "jpa-performance": {
+        "last_practiced": {
+          "date": "2026-04-25",
+          "attempts": 1,
+          "solved": 2,
+          "total": 3
+        }
+      },
+      "spring-security": {
+        "last_practiced": {
+          "date": "2026-04-27",
+          "attempts": 1,
+          "solved": 2,
+          "total": 3
+        }
+      }
+    },
+    "session_log": [
+      {
+        "date": "2026-03-25",
+        "topic": "spring-di",
+        "solved": 4,
+        "total": 5
+      },
+      {
+        "date": "2026-03-30",
+        "topic": "spring-mvc",
+        "solved": 4,
+        "total": 5
+      },
+      {
+        "date": "2026-03-30",
+        "topic": "spring-validation",
+        "solved": 3,
+        "total": 5
+      },
+      {
+        "date": "2026-04-01",
+        "topic": "spring-error-handling",
+        "solved": 3,
+        "total": 5
+      },
+      {
+        "date": "2026-04-02",
+        "topic": "spring-test",
+        "solved": 5,
+        "total": 5
+      },
+      {
+        "date": "2026-04-03",
+        "topic": "jpa-entity",
+        "solved": 4,
+        "total": 5
+      },
+      {
+        "date": "2026-04-06",
+        "topic": "jpa-repository",
+        "solved": 5,
+        "total": 5
+      },
+      {
+        "date": "2026-04-21",
+        "topic": "jpa-relations",
+        "solved": 4,
+        "total": 5
+      },
+      {
+        "date": "2026-04-24",
+        "topic": "jpa-query",
+        "solved": 1,
+        "total": 4
+      },
+      {
+        "date": "2026-04-25",
+        "topic": "querydsl",
+        "solved": 2,
+        "total": 3
+      },
+      {
+        "date": "2026-04-25",
+        "topic": "jpa-performance",
+        "solved": 2,
+        "total": 3
+      },
+      {
+        "date": "2026-04-27",
+        "topic": "spring-security",
+        "solved": 2,
+        "total": 3
+      },
+      {
+        "date": "2026-04-30",
+        "topic": "spring-di",
+        "solved": 3,
+        "total": 5,
+        "note": "심화 세션 — Q2/Q3 놓침"
+      },
+      {
+        "date": "2026-05-09",
+        "topic": "spring-di",
+        "solved": 2,
+        "total": 3,
+        "note": "E02 constructor injection — Q3 부분 오답 (구현체 교체 시 새 Bean 추가 누락)"
+      }
+    ]
+  },
+  "system_design": {
+    "completed_problems": [],
+    "scores": {}
+  },
+  "mock_interview": {
+    "sessions": []
+  },
+  "weekly_reports": [],
+  "skill_tree": {
+    "current_week": 1,
+    "week_start": "2026-04-07",
+    "tracks": {
+      "java-kata": {
+        "current_milestone": "collections",
+        "milestones": [
+          {
+            "id": "types",
+            "goal": "types warm-up + practice + challenge 모두 완료",
+            "status": "completed",
+            "completed_at": "2026-03-18"
+          },
+          {
+            "id": "collections",
+            "goal": "collections 3단계 완료 + stream warm-up",
+            "status": "in_progress",
+            "completed_at": null
+          },
+          {
+            "id": "stream",
+            "goal": "stream practice 완료, 실전 Stream pipeline 3개 작성",
+            "status": "in_progress",
+            "completed_at": null
+          },
+          {
+            "id": "generics",
+            "goal": "generic 타입 구현체 작성 (Pair<K,V>, Result<T>)",
+            "status": "in_progress",
+            "completed_at": null
+          },
+          {
+            "id": "oop",
+            "goal": "디자인 패턴 3개 Java로 구현 (Strategy, Observer, Builder)",
+            "status": "locked",
+            "completed_at": null
+          },
+          {
+            "id": "concurrency",
+            "goal": "멀티스레드 프로듀서-컨슈머 구현, 테스트 통과",
+            "status": "locked",
+            "completed_at": null
+          }
+        ]
+      },
+      "spring-guide": {
+        "current_milestone": "security",
+        "milestones": [
+          {
+            "id": "core-complete",
+            "goal": "DI, MVC, Validation, Error Handling, Test 5개 토픽 완료",
+            "status": "completed",
+            "completed_at": "2026-04-02"
+          },
+          {
+            "id": "jpa-basics",
+            "goal": "JPA Entity + Repository + Relations 완료",
+            "status": "completed",
+            "completed_at": "2026-04-21"
+          },
+          {
+            "id": "jpa-advanced",
+            "goal": "QueryDSL + JPA Performance 완료, N+1 해결 코드 작성",
+            "status": "completed",
+            "completed_at": "2026-04-25"
+          },
+          {
+            "id": "security",
+            "goal": "Spring Security JWT 인증 구현",
+            "status": "in_progress",
+            "completed_at": null
+          },
+          {
+            "id": "production",
+            "goal": "Transaction + Cache + Async + Actuator 완료",
+            "status": "locked",
+            "completed_at": null
+          }
+        ]
+      },
+      "algorithm": {
+        "current_milestone": "tier1-start",
+        "milestones": [
+          {
+            "id": "tier1-half",
+            "goal": "hash-map, two-pointer, sliding-window 각 3문제 풀기",
+            "status": "in_progress",
+            "completed_at": null
+          },
+          {
+            "id": "tier1-complete",
+            "goal": "Tier 1 전체 (6패턴) 완료, 각 패턴 3문제 이상",
+            "status": "locked",
+            "completed_at": null
+          },
+          {
+            "id": "tier2-half",
+            "goal": "DP basic + greedy + backtracking 완료",
+            "status": "locked",
+            "completed_at": null
+          },
+          {
+            "id": "tier2-complete",
+            "goal": "Tier 2 전체 완료, 모의 코테 60분 내 3문제",
+            "status": "locked",
+            "completed_at": null
+          },
+          {
+            "id": "tier3",
+            "goal": "graph-advanced + trie + segment-tree 중 2개 이상",
+            "status": "locked",
+            "completed_at": null
+          }
+        ]
+      }
+    },
+    "weekly_goals": []
+  },
+  "level": {
+    "current_level": 5,
+    "xp": 2290,
+    "xp_to_next": 0,
+    "title": "숙련자",
+    "history": [
+      {
+        "date": "2026-03-18",
+        "xp": 40,
+        "reason": "java-kata types practice 완료 (2/2)"
+      },
+      {
+        "date": "2026-03-24",
+        "xp": 50,
+        "reason": "java-kata collections practice 완료 (4/4)"
+      },
+      {
+        "date": "2026-03-25",
+        "xp": 40,
+        "reason": "spring-guide spring-di 완료 (4/5)"
+      },
+      {
+        "date": "2026-03-30",
+        "xp": 80,
+        "reason": "spring-guide mvc + validation 완료"
+      },
+      {
+        "date": "2026-04-01",
+        "xp": 40,
+        "reason": "spring-guide error-handling 완료 (3/5)"
+      },
+      {
+        "date": "2026-04-02",
+        "xp": 50,
+        "reason": "spring-guide spring-test 완료 (5/5)"
+      },
+      {
+        "date": "2026-04-03",
+        "xp": 40,
+        "reason": "spring-guide jpa-entity 완료 (4/5)"
+      },
+      {
+        "date": "2026-04-06",
+        "xp": 60,
+        "reason": "spring-guide jpa-repository 만점 (5/5) ⭐"
+      },
+      {
+        "date": "2026-04-19",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-di 설명 (🤔 어려움)"
+      },
+      {
+        "date": "2026-04-20",
+        "xp": 30,
+        "reason": "daily quest 완료 — jpa-repository 설명 (🤔 어려움)"
+      },
+      {
+        "date": "2026-04-21",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-validation (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-21",
+        "xp": 40,
+        "reason": "spring-guide jpa-relations 완료 (4/5)"
+      },
+      {
+        "date": "2026-04-21",
+        "xp": 100,
+        "reason": "🎉 jpa-basics 마일스톤 완료!"
+      },
+      {
+        "date": "2026-04-22",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-test (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-23",
+        "xp": 20,
+        "reason": "spaced rep — jpa-entity 복습 (🤔 어려움)"
+      },
+      {
+        "date": "2026-04-23",
+        "xp": 30,
+        "reason": "java-kata stream warm-up 완료 (3/3) ✅"
+      },
+      {
+        "date": "2026-04-24",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-test (🤔 어려움)"
+      },
+      {
+        "date": "2026-04-24",
+        "xp": 20,
+        "reason": "spaced rep — spring-test 복습 (🤔 어려움)"
+      },
+      {
+        "date": "2026-04-24",
+        "xp": 40,
+        "reason": "spring-guide jpa-query 완료 (1/4) — 추가 복습 필요"
+      },
+      {
+        "date": "2026-04-25",
+        "xp": 30,
+        "reason": "daily quest 완료 — jpa-query (😊 기억남)"
+      },
+      {
+        "date": "2026-04-25",
+        "xp": 20,
+        "reason": "spaced rep — jpa-query 복습 (😊 good)"
+      },
+      {
+        "date": "2026-04-25",
+        "xp": 40,
+        "reason": "spring-guide querydsl 완료 (2/3)"
+      },
+      {
+        "date": "2026-04-25",
+        "xp": 40,
+        "reason": "spring-guide jpa-performance 완료 (2/3)"
+      },
+      {
+        "date": "2026-04-25",
+        "xp": 100,
+        "reason": "🎉 jpa-advanced 마일스톤 완료!"
+      },
+      {
+        "date": "2026-04-26",
+        "xp": 30,
+        "reason": "java-kata generics warm-up 완료 (3/3) ✅"
+      },
+      {
+        "date": "2026-04-26",
+        "xp": 30,
+        "reason": "java-kata types warm-up 완료 (3/3) ✅"
+      },
+      {
+        "date": "2026-04-28",
+        "xp": 30,
+        "reason": "java-kata collections warm-up 완료 (3/3) ✅"
+      },
+      {
+        "date": "2026-04-27",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-validation (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-27",
+        "xp": 40,
+        "reason": "spring-guide spring-security 완료 (2/3)"
+      },
+      {
+        "date": "2026-04-28",
+        "xp": 30,
+        "reason": "daily quest 완료 — jpa-entity (🟡 반반)"
+      },
+      {
+        "date": "2026-04-29",
+        "xp": 30,
+        "reason": "daily quest 완료 — spring-security (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-29",
+        "xp": 20,
+        "reason": "spaced rep — spring-di 복습 (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-30",
+        "xp": 20,
+        "reason": "spaced rep — spring-di 복습 (😰 까먹음)"
+      },
+      {
+        "date": "2026-04-30",
+        "xp": 40,
+        "reason": "spring-guide spring-di 심화 세션 (3/5)"
+      },
+      {
+        "date": "2026-05-30",
+        "xp": 20,
+        "reason": "spaced rep — fastapi-middleware 복습 (😊 기억남)"
+      },
+      {
+        "date": "2026-05-31",
+        "xp": 30,
+        "reason": "daily quest 완료 — fastapi-lifespan 설명 (😰 까먹음)"
+      },
+      {
+        "date": "2026-05-31",
+        "xp": 20,
+        "reason": "spaced rep — fastapi-di 복습 (🤔 어려움)"
+      },
+      {
+        "date": "2026-06-11",
+        "xp": 30,
+        "reason": "daily quest 완료 — fastapi-lifespan 설명 (😊 기억남)"
+      },
+      {
+        "date": "2026-06-11",
+        "xp": 20,
+        "reason": "spaced review 완료 — planning (🤔 어려움)"
+      },
+      {
+        "date": "2026-06-12",
+        "xp": 20,
+        "reason": "spaced review 완료 — planning (기억남)"
+      },
+      {
+        "date": "2026-06-12",
+        "xp": 20,
+        "reason": "복습 퀴즈 planning 완료 (✅ 정답)"
+      },
+      {
+        "date": "2026-06-13",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-14",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-14",
+        "xp": 20,
+        "reason": "spaced_review:zero-shot-cot"
+      },
+      {
+        "date": "2026-06-15",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan",
+        "event_key": "2026-06-15:daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-16",
+        "xp": 30,
+        "reason": "2026-06-16:daily_quest:fastapi-lifespan",
+        "event_key": "2026-06-16:daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-16",
+        "xp": 20,
+        "reason": "복습 퀴즈 structured-output 완료 (🟡 반반)"
+      },
+      {
+        "date": "2026-06-17",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-17",
+        "xp": 20,
+        "reason": "복습 퀴즈 zero-shot-cot 완료 (🟡 반반)"
+      },
+      {
+        "date": "2026-06-19",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-22",
+        "xp": 30,
+        "reason": "daily_quest:fastapi-lifespan"
+      },
+      {
+        "date": "2026-06-22",
+        "xp": 20,
+        "reason": "복습 퀴즈 zero-shot-cot 완료 (🟡 반반)"
+      }
+    ]
+  },
+  "spaced_repetition": {
+    "review_queue": [
+      {
+        "topic": "types",
+        "track": "java-kata",
+        "last_reviewed": "2026-04-19",
+        "next_review": "2026-06-08",
+        "interval_days": 50,
+        "ease": 2.5,
+        "reps": 1
+      },
+      {
+        "topic": "collections",
+        "track": "java-kata",
+        "last_reviewed": "2026-04-20",
+        "next_review": "2026-05-25",
+        "interval_days": 35,
+        "ease": 2.5,
+        "reps": 1
+      },
+      {
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-30",
+        "next_review": "2026-05-02",
+        "interval_days": 2,
+        "ease": 2.1,
+        "reps": 0
+      },
+      {
+        "topic": "spring-mvc",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-19",
+        "next_review": "2026-05-14",
+        "interval_days": 25,
+        "ease": 2.5,
+        "reps": 1
+      },
+      {
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-27",
+        "next_review": "2026-04-28",
+        "interval_days": 1,
+        "ease": 1.7,
+        "reps": 0
+      },
+      {
+        "topic": "spring-error-handling",
+        "track": "spring-guide",
+        "last_reviewed": "2026-05-12",
+        "next_review": "2026-05-14",
+        "interval_days": 2,
+        "ease": 2.1,
+        "reps": 2
+      },
+      {
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "last_reviewed": "2026-05-11",
+        "next_review": "2026-05-12",
+        "interval_days": 1,
+        "ease": 1.9000000000000001,
+        "reps": 1
+      },
+      {
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-23",
+        "next_review": "2026-04-24",
+        "interval_days": 1,
+        "ease": 2.3,
+        "reps": 1
+      },
+      {
+        "topic": "jpa-repository",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-20",
+        "next_review": "2026-04-28",
+        "interval_days": 8,
+        "ease": 2.5,
+        "reps": 1
+      },
+      {
+        "topic": "jpa-relations",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-21",
+        "next_review": "2026-04-24",
+        "interval_days": 3,
+        "ease": 2.5,
+        "reps": 0
+      },
+      {
+        "topic": "stream",
+        "track": "java-kata",
+        "last_reviewed": "2026-04-23",
+        "next_review": "2026-04-24",
+        "interval_days": 1,
+        "ease": 2.5,
+        "reps": 0
+      },
+      {
+        "topic": "jpa-query",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-25",
+        "next_review": "2026-04-27",
+        "interval_days": 2,
+        "ease": 2.3,
+        "reps": 1
+      },
+      {
+        "topic": "querydsl",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-25",
+        "next_review": "2026-04-27",
+        "interval_days": 2,
+        "ease": 2.3,
+        "reps": 0
+      },
+      {
+        "topic": "jpa-performance",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-25",
+        "next_review": "2026-04-27",
+        "interval_days": 2,
+        "ease": 2.5,
+        "reps": 0
+      },
+      {
+        "topic": "generics",
+        "track": "java-kata",
+        "last_reviewed": "2026-04-26",
+        "next_review": "2026-04-27",
+        "interval_days": 1,
+        "ease": 2.5,
+        "reps": 0
+      },
+      {
+        "topic": "spring-security",
+        "track": "spring-guide",
+        "last_reviewed": "2026-04-27",
+        "next_review": "2026-04-29",
+        "interval_days": 2,
+        "ease": 2.5,
+        "reps": 0
+      },
+      {
+        "topic": "spring-test",
+        "track": "why-cards",
+        "last_reviewed": "2026-05-11",
+        "next_review": "2026-05-12",
+        "interval_days": 1,
+        "ease": 2.3,
+        "reps": 0
+      },
+      {
+        "topic": "planning",
+        "track": "agent",
+        "last_reviewed": "2026-06-12",
+        "next_review": "2026-06-14",
+        "interval_days": 2,
+        "ease": 2.55,
+        "reps": 1
+      },
+      {
+        "topic": "structured-output",
+        "track": "prompt",
+        "last_reviewed": "2026-06-16",
+        "next_review": "2026-06-18",
+        "interval_days": 2,
+        "ease": 2.3,
+        "reps": 1
+      },
+      {
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "last_reviewed": "2026-06-22",
+        "next_review": "2026-06-25",
+        "interval_days": 3,
+        "ease": 2,
+        "reps": 3
+      },
+      {
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "last_reviewed": "2026-06-22",
+        "next_review": "2026-06-25",
+        "interval_days": 3,
+        "ease": 1.8,
+        "reps": 2
+      }
+    ],
+    "review_log": [
+      {
+        "date": "2026-04-19",
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 17
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "spring-error-handling",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "spring-mvc",
+        "track": "spring-guide",
+        "rating": "good",
+        "new_interval": 25
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-19",
+        "topic": "types",
+        "track": "java-kata",
+        "rating": "good",
+        "new_interval": 50
+      },
+      {
+        "date": "2026-04-20",
+        "topic": "jpa-repository",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 8
+      },
+      {
+        "date": "2026-04-20",
+        "topic": "collections",
+        "track": "java-kata",
+        "rating": "good",
+        "new_interval": 35
+      },
+      {
+        "date": "2026-04-21",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-22",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-22",
+        "topic": "spring-error-handling",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 2
+      },
+      {
+        "date": "2026-04-23",
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-24",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-25",
+        "topic": "jpa-query",
+        "track": "spring-guide",
+        "rating": "good",
+        "new_interval": 2
+      },
+      {
+        "date": "2026-04-27",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-29",
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-30",
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "rating": "forgot",
+        "new_interval": 1
+      },
+      {
+        "date": "2026-04-30",
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "rating": "hard",
+        "new_interval": 2
+      },
+      {
+        "date": "2026-06-10",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "🟡 반반",
+        "self_rating": "기억남",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-11",
+        "topic": "planning",
+        "track": "agent",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-12",
+        "topic": "planning",
+        "track": "agent",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-12",
+        "topic": "planning",
+        "track": "agent",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-14",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-16",
+        "topic": "structured-output",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "기억남",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-17",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest"
+      },
+      {
+        "date": "2026-06-17",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-18",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-19",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest"
+      },
+      {
+        "date": "2026-06-22",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest"
+      },
+      {
+        "date": "2026-06-22",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-24",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "❌ 틀림",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-25",
+        "topic": "reranking",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-06-28",
+        "topic": "structured-output",
+        "track": "prompt",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-07-01",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      },
+      {
+        "date": "2026-07-02",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 20,
+        "source": "spaced_review"
+      }
+    ],
+    "shown_log": [
+      {
+        "date": "2026-07-01",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-02",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-02",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-03",
+        "track": "rag",
+        "topic": "reranking"
+      }
+    ]
+  },
+  "daily_quests": {
+    "current_streak": 4,
+    "longest_streak": 4,
+    "today": {
+      "date": "2026-07-03",
+      "type": "explain",
+      "topic": "reranking",
+      "track": "rag",
+      "description": "reranking — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
+      "xp": 30,
+      "completed": false,
+      "source": "daily_quest"
+    },
+    "quest_log": [
+      {
+        "date": "2026-04-16",
+        "type": "explain",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "completed": false
+      },
+      {
+        "date": "2026-04-19",
+        "type": "explain",
+        "topic": "spring-di",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-20",
+        "type": "explain",
+        "topic": "jpa-repository",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-20",
+        "type": "explain",
+        "topic": "jpa-repository",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-21",
+        "type": "explain",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-21",
+        "type": "explain",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-22",
+        "type": "explain",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-23",
+        "type": "explain",
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "completed": false
+      },
+      {
+        "date": "2026-04-24",
+        "type": "explain",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-24",
+        "type": "explain",
+        "topic": "spring-test",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-25",
+        "type": "explain",
+        "topic": "jpa-query",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-26",
+        "type": "explain",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "completed": false
+      },
+      {
+        "date": "2026-04-27",
+        "type": "explain",
+        "topic": "spring-validation",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-28",
+        "type": "explain",
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-04-29",
+        "type": "explain",
+        "topic": "spring-security",
+        "track": "spring-guide",
+        "completed": true
+      },
+      {
+        "date": "2026-05-12",
+        "type": "explain",
+        "topic": "spring-error-handling",
+        "track": "spring-guide",
+        "description": "@RestControllerAdvice와 @ExceptionHandler의 역할을 설명하고, 처리되지 않은 예외가 발생했을 때 Spring이 어떻게 처리하는지 설명하라",
+        "xp": 30,
+        "completed": false
+      },
+      {
+        "date": "2026-05-13",
+        "type": "explain",
+        "topic": "jpa-entity",
+        "track": "spring-guide",
+        "description": "JPA 엔티티에서 @Id, @GeneratedValue, @Column의 역할을 설명하고, GenerationType.IDENTITY vs SEQUENCE 차이를 설명하라",
+        "xp": 30,
+        "completed": false
+      },
+      {
+        "date": "2026-05-29",
+        "topic": "fastapi-auth",
+        "track": "fastapi",
+        "completed": true
+      },
+      {
+        "date": "2026-05-31",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "completed": true
+      },
+      {
+        "date": "2026-06-01",
+        "topic": "system-prompt",
+        "track": "prompt",
+        "completed": true
+      },
+      {
+        "date": "2026-06-02",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "completed": true
+      },
+      {
+        "date": "2026-06-11",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-13",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-14",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-15",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true,
+        "description": "fastapi lifespan가 왜 필요한지와 어떤 문제를 해결하는지 설명하기"
+      },
+      {
+        "date": "2026-06-16",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "description": "fastapi lifespan가 왜 필요한지와 어떤 문제를 해결하는지 설명하기",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-17",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "description": "fastapi lifespan가 왜 필요한지와 어떤 문제를 해결하는지 설명하기",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-19",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "description": "FastAPI lifespan이 왜 필요한지, startup/shutdown 훅으로 어떤 자원을 안전하게 관리하는지 설명하기",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-22",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true,
+        "description": "FastAPI lifespan이 왜 필요한지, startup/shutdown 단계에서 어떤 자원을 초기화하고 정리하는지 설명하기"
+      },
+      {
+        "date": "2026-06-23",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
+        "grade": "✅ 정답",
+        "self_rating": "완벽",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-24",
+        "type": "explain",
+        "topic": "structured-output",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-25",
+        "type": "explain",
+        "topic": "vector-store",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-26",
+        "type": "explain",
+        "topic": "zero-shot-cot",
+        "track": "prompt",
+        "grade": "🟡 반반",
+        "self_rating": "기억남",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-29",
+        "type": "explain",
+        "topic": "reranking",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-06-30",
+        "type": "explain",
+        "topic": "vector-store",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-07-01",
+        "type": "explain",
+        "topic": "reranking",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-07-02",
+        "type": "explain",
+        "topic": "vector-store",
+        "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      }
+    ]
+  }
+}

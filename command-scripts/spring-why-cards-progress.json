@@ -1,0 +1,86 @@
+{
+  "spring-di": {
+    "shown": 4,
+    "correct": 0,
+    "wrong": 1,
+    "half": 3,
+    "last_seen": "2026-05-14"
+  },
+  "spring-mvc": {
+    "shown": 3,
+    "correct": 0,
+    "wrong": 1,
+    "half": 2,
+    "last_seen": "2026-05-08"
+  },
+  "spring-validation": {
+    "shown": 3,
+    "correct": 1,
+    "wrong": 1,
+    "half": 1,
+    "last_seen": "2026-05-08"
+  },
+  "spring-error-handling": {
+    "shown": 3,
+    "correct": 0,
+    "wrong": 1,
+    "half": 2,
+    "last_seen": "2026-05-13"
+  },
+  "spring-test": {
+    "shown": 5,
+    "correct": 0,
+    "wrong": 3,
+    "half": 2,
+    "last_seen": "2026-05-13"
+  },
+  "jpa-entity": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "jpa-repository": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "jpa-relations": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "jpa-query": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "querydsl": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "jpa-performance": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  },
+  "spring-security": {
+    "shown": 0,
+    "correct": 0,
+    "wrong": 0,
+    "half": 0,
+    "last_seen": null
+  }
+}
