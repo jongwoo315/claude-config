@@ -346,7 +346,20 @@ The plan header embeds the execution method so a fresh worktree session can foll
     ln -s "$REPO_ROOT/venv" <worktree-path>/venv
     [ -f "$REPO_ROOT/.env" ] && ln -s "$REPO_ROOT/.env" <worktree-path>/.env
     ```
-  - **현재 세션은 여기서 멈춤.** 사용자에게 안내 (반드시 `cd` 명령 + 실행 스킬명 포함):
+  - **구현 세션 실행 방식 — AskUserQuestion으로 확인:**
+    > "구현 세션을 어떻게 실행할까요?"
+    > - 수동 새 세션 — 직접 새 터미널을 열어 실행 (대화형 관찰/개입 가능)
+    > - orch 무인 위임 — orch가 세션을 자동 스폰해 무인 실행 (원래 세션 유지, 다른 작업 병행 가능)
+
+    두 방식 모두 worktree 격리 + `--dangerously-skip-permissions` 동일. 차이는 세션을 사람이 여느냐 orch가 자동으로 여느냐뿐. orch 위임은 plan이 촘촘해 구현이 기계적일 때 적합 (탐색적 구현이면 수동 새 세션 권장).
+
+    **`<chosen-skill>` 치환 규칙 (두 방식 공통):** Step 6에서 선택한 실행 방법에 따라:
+    - Option A → `superpowers:subagent-driven-development`
+    - Option B → `superpowers:test-driven-development`
+    - Option C → `superpowers:executing-plans`
+    반드시 실제 스킬명으로 치환할 것. 제네릭 프롬프트("계획을 실행해줘") 금지.
+
+    **방식 1 — 수동 새 세션:** **현재 세션은 여기서 멈춤.** 사용자에게 안내 (반드시 `cd` 명령 + 실행 스킬명 포함):
     > "Worktree가 `<path>`에 생성되었습니다.
     > 새 터미널에서 아래 명령어를 실행하세요:
     > ```bash
@@ -354,12 +367,19 @@ The plan header embeds the execution method so a fresh worktree session can foll
     > ```
     > 그 후 `superpowers:<chosen-skill>로 docs/plans/<plan-file>.md 계획을 실행해줘` 라고 입력하세요.
     > 작업이 완료되면 이 터미널로 돌아와서 '작업 완료' 라고 입력하세요."
-    **`<chosen-skill>` 치환 규칙:** Step 6에서 선택한 실행 방법에 따라:
-    - Option A → `superpowers:subagent-driven-development`
-    - Option B → `superpowers:test-driven-development`
-    - Option C → `superpowers:executing-plans`
-    반드시 실제 스킬명으로 치환할 것. 제네릭 프롬프트("계획을 실행해줘") 금지.
-  - **중요:** 안내 시 `<worktree-absolute-path>`를 실제 절대 경로로 치환할 것. 사용자가 `cd` 없이 claude를 실행하면 메인 레포에서 작업하게 됨.
+    - **중요:** 안내 시 `<worktree-absolute-path>`를 실제 절대 경로로 치환할 것. 사용자가 `cd` 없이 claude를 실행하면 메인 레포에서 작업하게 됨.
+
+    **방식 2 — orch 무인 위임:** dev-workflow가 이미 아는 worktree 경로 + plan 경로 + chosen-skill로 명령을 **자동 조립**해 실행 (사용자 붙여넣기 없음):
+    ```bash
+    orch add <worktree-absolute-path> "superpowers:<chosen-skill>로 docs/plans/<plan-file>.md 계획을 실행하고, 완료되면 모두 커밋해줘. no questions."
+    orch start --max 1   # 데몬 미기동 시에만
+    ```
+    - `<worktree-absolute-path>` / `<plan-file>` / `<chosen-skill>` 모두 실제 값으로 치환 (제네릭 금지).
+    - 실행 후 사용자에게 안내:
+      > "orch에 위임했습니다 (worktree `<path>`). 진행 상태는 `orch ls`로 확인하세요.
+      > `done`이 되면 이 세션에 '작업 완료'라고 입력하세요. 나머지 단계(Review, Commit, PR)는 여기서 진행합니다."
+    - **현재 세션은 여기서 멈춤** (수동 방식과 동일). orch 세션과 대화하지 않음 — 산출물은 worktree 커밋뿐.
+    - **stuck 주의:** 큰 작업이 20분(`ORCH_STUCK_SECS` 기본값) 초과 시 orch가 failed로 오탐. 장시간 예상되면 `ORCH_STUCK_SECS=7200 orch start`로 상향.
   - 같은 세션에서 subagent를 worktree 경로로 보내지 않는다.
 - **Current repo checkout** → `git checkout <branch>`
   - Warn: may affect other sessions on same repo
@@ -616,6 +636,8 @@ Ask: 로컬 서버 확인 여부 → 사용자 확인 후
 Step 8-10: Review → Commit → PR → Worktree cleanup
 ```
 
+**Launch modes:** The "Worktree Session" above can be opened two ways — 수동(새 터미널에 `cd <worktree> && claude --dangerously-skip-permissions` 붙여넣기) 또는 orch 무인 위임(`orch add <worktree> "..."`, 원래 세션 유지·병행 가능). 둘 다 skip-perms + worktree 격리 동일. orch 위임 시 진행은 `orch ls`로 관찰, 산출물은 worktree 커밋뿐 (orch 세션과 직접 대화 안 함).
+
 **Original session resume trigger:** User says "작업 완료" (or similar).
 When resumed, before Step 8, **AskUserQuestion으로 확인:**
 > "로컬 서버를 실행해서 변경사항을 직접 확인하시겠어요?"
@@ -666,8 +688,9 @@ The plan file header (`> **For Claude:** Use superpowers:X ...`) specifies which
 If user selects Worktree in Step 7:
 - Create worktree and announce the path
 - Write execution method to plan file header before copying to worktree
-- Tell user to open new terminal, execute plan, and return when done
-- **Stop the current session.** Do NOT continue with execution in the same session.
+- Launch the implementation session by the chosen mode (수동 새 터미널 or `orch add` 무인 위임) — both isolate in the worktree with skip-perms; orch auto-builds the command from known worktree/plan/skill paths (no manual paste)
+- Tell user to execute plan (or monitor via `orch ls`) and return with "작업 완료" when done
+- **Stop the current session.** Do NOT continue with execution in the same session (orch spawns a separate detached session — not the current one).
 - "현재 레포 checkout"을 선택한 경우에만 같은 세션에서 계속 진행
 
 ### No Step Skipping After Execution
