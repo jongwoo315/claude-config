@@ -27,7 +27,12 @@ spawn_session() {
       $ORCH_TMUX capture-pane -pt "$sess" | grep -qiE 'welcome|>|claude' && break
       sleep 0.5; i=$((i+1))
     done
-    $ORCH_TMUX send-keys -t "$sess" -- "$step0" C-m
+    # send the prompt text, then Enter as a SEPARATE key event — the claude TUI
+    # drops a C-m that arrives in the same send-keys as the text (prompt lands in
+    # the box but never submits). A short beat lets the text render first.
+    $ORCH_TMUX send-keys -t "$sess" -- "$step0"
+    sleep 0.5
+    $ORCH_TMUX send-keys -t "$sess" C-m
   else
     # mock command (tests): single-line send keeps things fast/deterministic.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags $(printf %q "$step0")" C-m
