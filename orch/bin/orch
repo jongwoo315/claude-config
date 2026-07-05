@@ -6,7 +6,7 @@ ORCH_HOME="$HOME/.claude/orch"
 . "$ORCH_HOME/lib/task.sh"
 
 usage() { cat <<'EOF'
-orch add <dir> <prompt>            queue a single task
+orch add [dir] <prompt>            queue a task (dir defaults to cwd)
 orch pipe <dir> <step...>          queue a pipeline task
 orch add --each <dir...> <prompt>  fan-out (one task per dir)
 orch ls                            list tasks
@@ -35,7 +35,10 @@ case "$cmd" in
         id=$(task_create "$d" single "$prompt"); _apply_safe "$id"; echo "$id"
       done
     else
-      dir="$1"; prompt="$2"
+      [ -n "${1:-}" ] || { echo "usage: orch add [dir] <prompt>" >&2; exit 1; }
+      dir="$1"; prompt="${2:-}"
+      # one arg → it's the prompt; target the current directory
+      [ -n "$prompt" ] || { prompt="$dir"; dir="$PWD"; }
       id=$(task_create "$dir" single "$prompt"); _apply_safe "$id"; echo "$id"
     fi ;;
   pipe)
