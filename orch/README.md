@@ -1,6 +1,6 @@
 # orch — tmux Claude orchestrator
 
-An automation layer on top of the [`tmux-claude-session-manager`](https://github.com/) plugin. You queue tasks; `orch` auto-spawns `claude-orch-*` tmux sessions to work them (concurrency-capped), and auto-advances pipeline steps by watching the plugin's `@claude_state`. The plugin's picker (`prefix+u`) is still the manual view of your Claude sessions — orch is the automatic hand that opens and drives them for you.
+An automation layer on top of the [`tmux-claude-session-manager`](https://github.com/craftzdog/tmux-claude-session-manager) plugin. You queue tasks; `orch` auto-spawns `claude-orch-*` tmux sessions to work them (concurrency-capped), and auto-advances pipeline steps by watching the plugin's `@claude_state`. The plugin's picker (`prefix+u`) is still the manual view of your Claude sessions — orch is the automatic hand that opens and drives them for you.
 
 ## Dependency
 
