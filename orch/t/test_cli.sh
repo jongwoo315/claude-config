@@ -15,4 +15,14 @@ assert_eq "$(task_steps_len "$pid")" "3" "pipe stores 3 steps"
 "$ORCH" rm "$id" >/dev/null
 assert_eq "$("$ORCH" ls | grep -c projA)" "0" "rm removes task"
 
+# add with a single arg → prompt targets the current directory
+wd=$(mktemp -d); cd "$wd"
+cid=$("$ORCH" add "prompt only")
+assert_eq "$(task_get "$cid" target)" "$wd" "add without dir targets cwd"
+assert_eq "$(task_step "$cid" 0)" "prompt only" "single arg is the prompt"
+
+# add with no args at all → usage error
+"$ORCH" add >/dev/null 2>&1
+assert_eq "$?" "1" "add with no args exits 1"
+
 finish

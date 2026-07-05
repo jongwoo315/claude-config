@@ -30,6 +30,9 @@ The plugin's Claude Code hooks (which stamp `@claude_state`) **must** be install
 # Single task — one prompt, one session, runs unattended
 orch add ~/prv/myproject "add a healthcheck endpoint and a test"
 
+# dir is optional — one arg targets the current directory
+orch add "add a healthcheck endpoint and a test"
+
 # Pipeline — steps fed one-by-one as each turn finishes
 orch pipe ~/prv/myproject \
   "write failing tests for the parser" \
