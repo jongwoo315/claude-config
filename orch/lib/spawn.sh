@@ -22,27 +22,30 @@ spawn_session() {
   if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
     # real claude: launch, wait for its TUI to be READY, then send + submit.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m
-    # Readiness: wait for claude's actual status/input UI — not just any '>' char,
-    # which matches before claude has rendered and causes the prompt to be sent
-    # into a not-yet-ready input.
+    # Readiness: wait for claude's actual status/input UI to render.
     local i=0
     while [ $i -lt 40 ]; do
       $ORCH_TMUX capture-pane -pt "$sess" \
         | grep -qiE 'for shortcuts|bypass permissions|Model:' && break
       sleep 0.5; i=$((i+1))
     done
-    # Type the prompt, then submit. The claude TUI drops a C-m that arrives too
-    # soon after the paste (prompt lands in the box but never submits, and a
-    # single fixed delay is unreliable across spawn speeds). Resend Enter until
-    # it actually submits — detected by the "esc to interrupt" marker claude
-    # shows while working.
+    # The readiness markers also appear on startup NOTICE screens (usage/model
+    # banners), which keep redrawing and swallow Enter keys sent too early. Let
+    # the layout settle before typing.
+    sleep 1.5
+    # Type the prompt, then submit. Don't trust a fixed delay or the transient
+    # "esc to interrupt" marker: resend Enter until the prompt actually LEAVES
+    # the input box (the input line no longer carries our first token). This is
+    # the only signal that holds across banners, slow spawns, and model tiers.
     $ORCH_TMUX send-keys -t "$sess" -- "$step0"
+    local probe="${step0%% *}"      # first token — cheap unsent fingerprint
     local j=0
-    while [ $j -lt 10 ]; do
-      sleep 0.7
+    while [ $j -lt 30 ]; do
       $ORCH_TMUX send-keys -t "$sess" C-m
-      sleep 0.7
-      $ORCH_TMUX capture-pane -pt "$sess" | grep -qiE 'esc to interrupt' && break
+      sleep 0.8
+      # unsent iff a prompt-marker line ('❯ ' or '> ') still holds our token
+      $ORCH_TMUX capture-pane -pt "$sess" \
+        | grep -F "$probe" | grep -qE '(❯|>) ' || break
       j=$((j+1))
     done
   else
