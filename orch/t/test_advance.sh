@@ -4,6 +4,9 @@ export ORCH_QUEUE="$(mktemp -d)/queue"; mkdir -p "$ORCH_QUEUE"
 export ORCH_CLAUDE_CMD="cat"; export ORCH_MAX=1
 export ORCH_IDLE_DEBOUNCE=0        # no wall-clock wait in tests
 . "$ORCH_ROOT/lib/task.sh"; . "$ORCH_ROOT/lib/state.sh"; . "$ORCH_ROOT/daemon.sh"
+# This test drives state with fake small @claude_state_at values (1, 2); pin
+# orch_now to the same fake timeline so the stuck watch (Task 7) doesn't fire.
+orch_now() { echo 100; }
 
 id=$(task_create /tmp/p pipeline "s1" "s2")
 orch_tick                          # dispatch -> running, cursor 0, await=working

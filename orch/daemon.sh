@@ -5,6 +5,7 @@
 : "${ORCH_TICK:=3}"
 # Debounce: require idle to have persisted >= ORCH_IDLE_DEBOUNCE seconds.
 : "${ORCH_IDLE_DEBOUNCE:=5}"
+: "${ORCH_STUCK_SECS:=1200}"   # 20 min
 . "$ORCH_HOME/lib/task.sh"
 . "$ORCH_HOME/lib/state.sh"
 . "$ORCH_HOME/lib/spawn.sh"
@@ -71,7 +72,33 @@ orch_dispatch() {
   done
 }
 
-orch_tick() { orch_advance; orch_dispatch; }
+orch_notify() {   # override-able; default tmux message + bell
+  $ORCH_TMUX display-message "orch: $1" 2>/dev/null || true
+  printf '\a' 2>/dev/null || true
+}
+
+orch_watch_failures() {
+  local id sess state now at
+  now=$(orch_now)
+  for id in $(task_list_by_status running); do
+    sess=$(task_get "$id" session)
+    if ! $ORCH_TMUX has-session -t "$sess" 2>/dev/null; then
+      task_set "$id" status failed
+      orch_notify "task $id session died"
+      continue
+    fi
+    state=$(st_get_state "$sess")
+    if [ "$state" = "working" ]; then
+      at=$(st_get_state_at "$sess"); at=${at:-$now}
+      if [ $((now - at)) -ge "$ORCH_STUCK_SECS" ]; then
+        task_set "$id" status failed
+        orch_notify "task $id stuck ${ORCH_STUCK_SECS}s"
+      fi
+    fi
+  done
+}
+
+orch_tick() { orch_watch_failures; orch_advance; orch_dispatch; }
 
 orch_loop() {
   while true; do orch_tick; sleep "$ORCH_TICK"; done
