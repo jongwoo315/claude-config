@@ -26,7 +26,7 @@ orch_advance() {
 
     # await == idle: looking for a debounced idle to count as step-complete
     [ "$state" = "idle" ] || continue
-    if [ "${ORCH_IDLE_DEBOUNCE:-5}" -gt 0 ]; then
+    if [ "$ORCH_IDLE_DEBOUNCE" -gt 0 ]; then
       local now at; now=$(orch_now); at=$(st_get_state_at "$sess"); at=${at:-$now}
       [ $((now - at)) -ge "$ORCH_IDLE_DEBOUNCE" ] || continue
     fi
@@ -39,13 +39,20 @@ orch_advance() {
     else
       task_set_num "$id" cursor "$cur"
       st_set "$sess" @orch_await working
+      # CAVEAT: we self-stamp @claude_state=working here (spawn.sh does the same on
+      # launch). Because that stamp is not hook-sourced, the working->idle guard's
+      # real protection against premature advance is the DEBOUNCE, not the working
+      # observation. The common case stays safe because a genuine hook-sourced
+      # working reset of @claude_state_at is what the debounce measures against.
       st_set "$sess" @claude_state working
-      $ORCH_TMUX send-keys -t "$sess" "$(task_step "$id" "$cur")" C-m
+      # -- ends option parsing so a step starting with '-' isn't read as a tmux flag
+      $ORCH_TMUX send-keys -t "$sess" -- "$(task_step "$id" "$cur")" C-m
     fi
   done
 }
 
-# Wall-clock now, injectable for tests (Date.now is fine in bash; tests set stamps).
+# Wall-clock now; overridable by tests (t/test_debounce.sh redefines it to a fixed
+# FAKE_NOW so the debounce delta can be exercised deterministically).
 orch_now() { date +%s; }
 
 orch_dispatch() {
