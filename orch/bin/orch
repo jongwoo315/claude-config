@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -u
+ORCH_HOME="$HOME/.claude/orch"
+: "${ORCH_QUEUE:=$ORCH_HOME/queue}"
+. "$ORCH_HOME/lib/task.sh"
+
+usage() { cat <<'EOF'
+orch add <dir> <prompt>            queue a single task
+orch pipe <dir> <step...>          queue a pipeline task
+orch add --each <dir...> <prompt>  fan-out (one task per dir)
+orch ls                            list tasks
+orch rm <id>                       remove a task
+orch start [--max N]               start daemon (default 3)
+orch stop                          stop daemon
+orch logs <id>                     dump the session's pane
+Flags: --safe  (this task asks permission instead of skipping)
+EOF
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  add)
+    dir="$1"; prompt="$2"
+    id=$(task_create "$dir" single "$prompt"); echo "$id" ;;
+  pipe)
+    dir="$1"; shift
+    id=$(task_create "$dir" pipeline "$@"); echo "$id" ;;
+  ls)
+    printf '%-16s %-10s %-9s %-7s %s\n' ID TARGET MODE STEP STATUS
+    for f in "$ORCH_QUEUE"/task-*.json; do
+      [ -e "$f" ] || continue
+      jq -r '"\(.id)\t\(.target|split("/")|last)\t\(.mode)\t\(.cursor+1)/\(.steps|length)\t\(.status)"' "$f" \
+        | while IFS=$'\t' read -r id t m s st; do
+            printf '%-16s %-10s %-9s %-7s %s\n' "$id" "$t" "$m" "$s" "$st"; done
+    done ;;
+  rm)
+    rm -f "$ORCH_QUEUE/task-$1.json" ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "unknown: $cmd" >&2; usage; exit 1 ;;
+esac
