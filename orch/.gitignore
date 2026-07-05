@@ -1,0 +1,3 @@
+queue/task-*.json
+*.pid
+*.log
