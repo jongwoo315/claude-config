@@ -23,6 +23,7 @@ SAFE=false; _args=()
 for a in "$@"; do [ "$a" = "--safe" ] && SAFE=true || _args+=("$a"); done
 set -- "${_args[@]:-}"
 _apply_safe() { [ "$SAFE" = true ] && task_set "$1" skip_perms false; }
+_valid_max() { case "$1" in ''|*[!0-9]*) return 1;; *) [ "$1" -ge 1 ];; esac; }
 case "$cmd" in
   add)
     if [ "${1:-}" = "--each" ]; then
@@ -48,9 +49,17 @@ case "$cmd" in
             printf '%-16s %-10s %-9s %-7s %s\n' "$id" "$t" "$m" "$s" "$st"; done
     done ;;
   rm)
+    [ -n "${1:-}" ] || { echo "usage: orch rm <id>" >&2; exit 1; }
     rm -f "$ORCH_QUEUE/task-$1.json" ;;
   start)
-    max=3; [ "${1:-}" = "--max" ] && max="$2"
+    if [ -f "$ORCH_HOME/daemon.pid" ] && kill -0 "$(cat "$ORCH_HOME/daemon.pid")" 2>/dev/null; then
+      echo "daemon already running (pid $(cat "$ORCH_HOME/daemon.pid"))" >&2; exit 1
+    fi
+    max=3
+    if [ "${1:-}" = "--max" ]; then
+      max="${2:-}"
+      _valid_max "$max" || { echo "invalid --max: '${max}' (need positive integer)" >&2; exit 1; }
+    fi
     ORCH_MAX="$max" nohup bash "$ORCH_HOME/daemon.sh" \
       >>"$ORCH_HOME/daemon.log" 2>&1 &
     echo $! > "$ORCH_HOME/daemon.pid"
@@ -60,6 +69,9 @@ case "$cmd" in
     rm -f "$ORCH_HOME/daemon.pid"; echo "daemon stopped" ;;
   logs)
     sess=$(task_get "$1" session)
+    if [ -z "$sess" ] || [ "$sess" = "null" ]; then
+      echo "task $1 not started yet (no session)" >&2; exit 1
+    fi
     ${ORCH_TMUX:-tmux} capture-pane -pt "$sess" ;;
   ""|-h|--help|help) usage ;;
   *) echo "unknown: $cmd" >&2; usage; exit 1 ;;
