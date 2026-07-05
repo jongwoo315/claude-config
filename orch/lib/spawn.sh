@@ -19,7 +19,18 @@ spawn_session() {
 
   local flags=""
   [ "$skip" = "true" ] && flags="--dangerously-skip-permissions"
-  # send the launch command; real claude reads step0 as its first prompt arg.
-  $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags $(printf %q "$step0")" C-m
+  if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
+    # real claude: launch first, wait for its TUI prompt, then send the step.
+    $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m
+    local i=0
+    while [ $i -lt 30 ]; do
+      $ORCH_TMUX capture-pane -pt "$sess" | grep -qiE 'welcome|>|claude' && break
+      sleep 0.5; i=$((i+1))
+    done
+    $ORCH_TMUX send-keys -t "$sess" -- "$step0" C-m
+  else
+    # mock command (tests): single-line send keeps things fast/deterministic.
+    $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags $(printf %q "$step0")" C-m
+  fi
   printf '%s\n' "$sess"
 }
