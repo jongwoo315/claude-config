@@ -4,16 +4,17 @@
 
 | 디렉토리   | GitHub 계정  | 용도               |
 | ---------- | ------------ | ------------------ |
-| `~/prv/*`  | `jongwoo315` | 개인 프로젝트      |
-| `~/work/*` | `kimwoz`     | myplaycompany 업무 |
-| `~/plab/*` | `kimwoz`     | myplaycompany 업무 |
-| 그 외      | `kimwoz`     | 기본값             |
+| `~/prv/*`   | `jongwoo315` | 개인 프로젝트                       |
+| `~/.claude` | `jongwoo315` | claude-config repo (예외 — "그 외" 아님) |
+| `~/work/*`  | `kimwoz`     | myplaycompany 업무                 |
+| `~/plab/*`  | `kimwoz`     | myplaycompany 업무                 |
+| 그 외       | `kimwoz`     | 기본값                             |
 
 GitHub API 호출, git push, PR 생성/코멘트 등 **모든 GitHub 작업 전에** 현재 계정을 확인하고 필요시 전환:
 
 ```bash
 CURRENT_GH_USER=$(gh api user -q '.login' 2>/dev/null)
-# ~/prv/ → jongwoo315, 그 외 → kimwoz
+# ~/prv/ 또는 ~/.claude → jongwoo315, 그 외 → kimwoz
 ```
 
 **Git commit email 규칙 (새 레포 clone/init 시 필수):**
