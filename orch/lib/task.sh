@@ -12,6 +12,7 @@ task_create() {
   # unique-ish suffix without Date/random: count existing files
   local n; n=$(find "$ORCH_QUEUE" -name 'task-*.json' | wc -l | tr -d ' ')
   id="${slug}-${n}"
+  while [ -e "$(_task_file "$id")" ]; do n=$((n+1)); id="${slug}-${n}"; done
   local steps; steps=$(printf '%s\n' "$@" | jq -R . | jq -s .)
   jq -n --arg id "$id" --arg target "$dir" --arg mode "$mode" \
         --argjson steps "$steps" \
