@@ -18,13 +18,27 @@ EOF
 }
 
 cmd="${1:-}"; shift || true
+# collect --safe anywhere in args; strip it out
+SAFE=false; _args=()
+for a in "$@"; do [ "$a" = "--safe" ] && SAFE=true || _args+=("$a"); done
+set -- "${_args[@]:-}"
+_apply_safe() { [ "$SAFE" = true ] && task_set "$1" skip_perms false; }
 case "$cmd" in
   add)
-    dir="$1"; prompt="$2"
-    id=$(task_create "$dir" single "$prompt"); echo "$id" ;;
+    if [ "${1:-}" = "--each" ]; then
+      shift
+      dirs=(); while [ $# -gt 1 ]; do dirs+=("$1"); shift; done
+      prompt="$1"
+      for d in "${dirs[@]}"; do
+        id=$(task_create "$d" single "$prompt"); _apply_safe "$id"; echo "$id"
+      done
+    else
+      dir="$1"; prompt="$2"
+      id=$(task_create "$dir" single "$prompt"); _apply_safe "$id"; echo "$id"
+    fi ;;
   pipe)
     dir="$1"; shift
-    id=$(task_create "$dir" pipeline "$@"); echo "$id" ;;
+    id=$(task_create "$dir" pipeline "$@"); _apply_safe "$id"; echo "$id" ;;
   ls)
     printf '%-16s %-10s %-9s %-7s %s\n' ID TARGET MODE STEP STATUS
     for f in "$ORCH_QUEUE"/task-*.json; do
@@ -35,6 +49,18 @@ case "$cmd" in
     done ;;
   rm)
     rm -f "$ORCH_QUEUE/task-$1.json" ;;
+  start)
+    max=3; [ "${1:-}" = "--max" ] && max="$2"
+    ORCH_MAX="$max" nohup bash "$ORCH_HOME/daemon.sh" \
+      >>"$ORCH_HOME/daemon.log" 2>&1 &
+    echo $! > "$ORCH_HOME/daemon.pid"
+    echo "daemon started (pid $(cat "$ORCH_HOME/daemon.pid"), max $max)" ;;
+  stop)
+    [ -f "$ORCH_HOME/daemon.pid" ] && kill "$(cat "$ORCH_HOME/daemon.pid")" 2>/dev/null
+    rm -f "$ORCH_HOME/daemon.pid"; echo "daemon stopped" ;;
+  logs)
+    sess=$(task_get "$1" session)
+    ${ORCH_TMUX:-tmux} capture-pane -pt "$sess" ;;
   ""|-h|--help|help) usage ;;
   *) echo "unknown: $cmd" >&2; usage; exit 1 ;;
 esac
