@@ -2,6 +2,7 @@
 set -u
 ORCH_HOME="$HOME/.claude/orch"
 : "${ORCH_QUEUE:=$ORCH_HOME/queue}"
+: "${ORCH_PIDFILE:=$ORCH_HOME/daemon.pid}"
 . "$ORCH_HOME/lib/task.sh"
 
 usage() { cat <<'EOF'
@@ -52,8 +53,8 @@ case "$cmd" in
     [ -n "${1:-}" ] || { echo "usage: orch rm <id>" >&2; exit 1; }
     rm -f "$ORCH_QUEUE/task-$1.json" ;;
   start)
-    if [ -f "$ORCH_HOME/daemon.pid" ] && kill -0 "$(cat "$ORCH_HOME/daemon.pid")" 2>/dev/null; then
-      echo "daemon already running (pid $(cat "$ORCH_HOME/daemon.pid"))" >&2; exit 1
+    if [ -f "$ORCH_PIDFILE" ] && kill -0 "$(cat "$ORCH_PIDFILE")" 2>/dev/null; then
+      echo "daemon already running (pid $(cat "$ORCH_PIDFILE"))" >&2; exit 1
     fi
     max=3
     if [ "${1:-}" = "--max" ]; then
@@ -62,11 +63,11 @@ case "$cmd" in
     fi
     ORCH_MAX="$max" nohup bash "$ORCH_HOME/daemon.sh" \
       >>"$ORCH_HOME/daemon.log" 2>&1 &
-    echo $! > "$ORCH_HOME/daemon.pid"
-    echo "daemon started (pid $(cat "$ORCH_HOME/daemon.pid"), max $max)" ;;
+    echo $! > "$ORCH_PIDFILE"
+    echo "daemon started (pid $(cat "$ORCH_PIDFILE"), max $max)" ;;
   stop)
-    [ -f "$ORCH_HOME/daemon.pid" ] && kill "$(cat "$ORCH_HOME/daemon.pid")" 2>/dev/null
-    rm -f "$ORCH_HOME/daemon.pid"; echo "daemon stopped" ;;
+    [ -f "$ORCH_PIDFILE" ] && kill "$(cat "$ORCH_PIDFILE")" 2>/dev/null
+    rm -f "$ORCH_PIDFILE"; echo "daemon stopped" ;;
   logs)
     sess=$(task_get "$1" session)
     if [ -z "$sess" ] || [ "$sess" = "null" ]; then
