@@ -1,8 +1,6 @@
 {
   "env": {
-    "DISABLE_AUTOUPDATER": "1",
-    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+    "DISABLE_AUTOUPDATER": "1"
   },
   "includeCoAuthoredBy": false,
   "permissions": {
@@ -10,7 +8,7 @@
       "Bash(bq *)"
     ]
   },
-  "model": "opus",
+  "model": "sonnet",
   "allowedMcpServers": [
     {
       "serverName": "context7"
