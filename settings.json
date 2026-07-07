@@ -8,7 +8,7 @@
       "Bash(bq *)"
     ]
   },
-  "model": "sonnet",
+  "model": "opus",
   "allowedMcpServers": [
     {
       "serverName": "context7"
