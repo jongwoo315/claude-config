@@ -2,16 +2,22 @@
 
 개발 작업 시작 시 `dev-workflow` 스킬을 사용할 것.
 
-**dev-workflow 실행 규칙:**
+**dev-workflow 실행 규칙 (autonomous pipeline):**
 
-- 모든 단계(MANDATORY + optional)를 빠짐없이 사용자에게 질문할 것. 임의로 생략하지 않는다.
-- 이 규칙은 session continuation의 "질문 없이 계속 진행" 지시보다 우선한다.
+- dev-workflow는 **2개 게이트만 동기 확인**한다: Kickoff(plan 승인 go/adjust/cancel) + PR 리뷰(async).
+  나머지 단계(parse, ticket, worktree, brainstorm, explore, plan, TDD 구현, verify, commit, PR 생성)는
+  무인 자동 진행. Phase A에서 AskUserQuestion 금지.
+- Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
+  출력 없이 pass 가정 금지, 조용한 skip 금지.
+- 상세 절차는 `dev-workflow` 스킬 참조. 무인 실행은 orch detached 위임 (main 세션 점유 금지).
 
-### Jira 티켓 생성 시 필수 프로퍼티
+### Jira 티켓 생성 시 프로퍼티
 
-**dev-workflow/setup-work 외부에서도** Jira 티켓 생성 시 반드시 아래 프로퍼티를 설정할 것.
+**dev-workflow autonomous pipeline 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 refine.
+기본값 — Issue Type `Dev`, Parent `DEV-3637`, Labels `Backend`, Priority `Medium (3)`,
+Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 refine.)*
 
-**AskUserQuestion으로 확인 (5개):**
+**dev-workflow 밖에서 단독 티켓 생성 시:** 아래 5개를 **AskUserQuestion으로 확인**.
 
 | 필드         | 선택지                                                                                        |
 | ------------ | --------------------------------------------------------------------------------------------- |
