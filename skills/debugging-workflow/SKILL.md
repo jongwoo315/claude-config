@@ -61,16 +61,32 @@ Auto-detect URLs from the input — no "source?" question:
 
 Auto-detect existing `docs/plans/*-input.md` (today/yesterday) and fold it in.
 
-### A2. Systematic debugging (Phase 1-3, unattended)
+### A2. Investigation strategy (Claude auto-decides, no ask)
+Pick serial vs parallel by heuristic — **announce the call + one-line reason, do not ask**
+(Phase A has no AskUserQuestion). User can veto by interjecting; default is no question.
+
+| Signal | Route |
+|---|---|
+| single clear error/stack → one file/func; obvious cause | **serial** (default) |
+| Tier C, OR no repro yet, OR spans ≥2 systems/services, OR intermittent/flaky, OR Phase 1 yields >1 live hypothesis | **parallel fan-out** |
+
+Fan-out is reversible (worst case: some wasted tokens) → Claude's call, not a gate. Only the
+irreversible fix fork (Gate 1) stays with the user.
+
+### A3. Systematic debugging (Phase 1-3, unattended)
 Invoke `superpowers:systematic-debugging` with the A1 context. Run Phase 1-3 explicitly,
 **log each phase output** (do not silently pass):
 
 - **Phase 1 — Root Cause Investigation:** trace error/stack, reproduction conditions, recent
   changes, data flow. Output: "error path + suspect points".
+  - **Parallel path** (`dispatching-parallel-agents`, read-only agents, blind to each other —
+    multi-modal sweep): agent A traces stack/error path; agent B `git blame` + recent changes on
+    the suspect area; agent C compares vs working similar code (folds in Phase 2); agent D
+    reproduces conditions + data-flow trace. Synthesize findings → single hypothesis.
 - **Phase 2 — Pattern Analysis:** compare against working similar code, list differences.
-  Output: "normal vs broken diff".
+  Output: "normal vs broken diff". *(Parallel path: covered by agent C above.)*
 - **Phase 3 — Hypothesis:** single root cause statement — "X is root cause because Y".
-  Output: "root cause hypothesis".
+  Serial or synthesized-from-fan-out, always converges to ONE hypothesis. Output: "root cause".
 
 systematic-debugging is **not skippable** — no fix is chosen without a root cause. Do NOT assume
 "the fix is code" and jump ahead; Phase 3 always ends at Gate 1.
@@ -135,6 +151,8 @@ Explain the manual steps, stop. No autonomous action.
 - **Only Gate 1 is synchronous.** No AskUserQuestion in Phase A. Investigation runs unattended,
   logging each phase.
 - **systematic-debugging is not skippable.** No fix without a root cause (Phase 1-3 always run).
+- **Investigation strategy is Claude's call, announced not asked.** Serial vs parallel fan-out by
+  the A2 heuristic — reversible, so no gate. User vetoes by interjecting.
 - **Don't presume the fix is code.** Gate 1 always presents non-code options; proceed to B-code only
   on explicit "코드 수정".
 - **Irreversible non-PR fixes gate, never loop.** DB/rollback/param → `infra-safety-gate`. Same
