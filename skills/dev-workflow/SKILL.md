@@ -190,7 +190,10 @@ The loop created the PR. Review is asynchronous — no session waiting.
 
 This is the ONLY place ticket fields get asked — post-facto, non-blocking (point 4).
 
-**Worktree cleanup** (after PR merged, main session):
+**Worktree cleanup — manual, user-initiated. Do NOT auto-remove on merge.** Keep the worktree
+live until the PR is fully closed: review feedback often needs follow-up commits pushed to the
+same branch, and reusing the existing worktree avoids re-setup (venv symlink, deps). Remove only
+when the user explicitly says so:
 ```bash
 git -C <worktree> status --porcelain   # must be empty (loop committed everything)
 git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are untracked
