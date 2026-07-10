@@ -38,16 +38,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/jw/.claude/hooks/kimi-read-check.sh",
-            "timeout": 10
-          }
-        ]
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -121,11 +111,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/jw/.claude/hooks/learning-hook.sh",
-            "timeout": 5
-          },
-          {
-            "type": "command",
             "command": "T=$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' '); [ -n \"$T\" ] && [ \"$T\" != \"??\" ] && printf '\\a' > \"/dev/$T\" 2>/dev/null || true",
             "timeout": 2
           }
@@ -149,15 +134,6 @@
             "command": "node \"/Users/jw/.claude/hooks/caveman-activate.js\"",
             "timeout": 5,
             "statusMessage": "Loading caveman mode..."
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "for t in ask-kimi kimi-write extract-chat; do chmod +x \"$HOME/.claude/kimi-tools/$t\" 2>/dev/null; [ -L \"$HOME/.local/bin/$t\" ] || ln -sf \"$HOME/.claude/kimi-tools/$t\" \"$HOME/.local/bin/$t\"; done",
-            "timeout": 5
           }
         ]
       },
