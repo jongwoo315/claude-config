@@ -69,10 +69,14 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 - `superpowers:using-git-worktrees` from the **existing** branch:
   `git worktree add "$path" "$BRANCH_NAME"` (no `-b`).
 - **Skip the "Verify Clean Baseline" test step** of using-git-worktrees.
-- Symlink venv/.env so the detached loop can boot the server for Pre-PR checks:
+- Symlink venv/.env so the detached loop can boot the server for Pre-PR checks.
+  Detect the env flavor per `~/.claude/rules/python-env.md` — symlink whichever of
+  `venv/.venv/env` exists; pyenv (`.python-version`) is git-tracked so needs no symlink:
   ```bash
   REPO_ROOT=$(git rev-parse --show-toplevel)
-  ln -s "$REPO_ROOT/venv" <worktree>/venv
+  for v in venv .venv env; do
+    [ -d "$REPO_ROOT/$v" ] && ln -s "$REPO_ROOT/$v" "<worktree>/$v" && break
+  done
   [ -f "$REPO_ROOT/.env" ] && ln -s "$REPO_ROOT/.env" <worktree>/.env
   ```
 
@@ -122,6 +126,9 @@ Ticket to create: DEV-XX "<title>" [default fields]
 Construct the ralph-loop command and dispatch it into the worktree via `orch`. The main session
 does NOT run the loop (ralph-loop's Stop-hook would hijack it). Main session stays free.
 
+**`<N>` (max-iterations) by Tier** — no guessing: Tier A → 15, Tier B → 30, Tier C → 50.
+(The A4 tier already decided; reuse it. Bigger tier = more tasks + more TDD cycles.)
+
 **Ralph prompt** (substitute real `<plan-file>`, `<N>`; append the personal-mode line only in
 personal mode):
 
@@ -139,7 +146,7 @@ against the plan. Fix all Critical/Important issues. Do not create the PR until 
 
 Pre-PR checks (all required — do not assume pass, show output):
 1. New env vars: git diff main...HEAD -- | grep '^+' | grep -E 'os\.environ\.get|os\.getenv|process\.env\.' | grep -v '^+++' — log any found.
-2. Server boots: pf-server-django → 'source venv/bin/activate && cd web && python manage.py runserver' (Ctrl+C after boot); CDK → 'cdk synth'; Zappa/Lambda Django → 'PYENV_VERSION=<env> python manage.py runserver --settings=<app>.settings.local'; else project-specific.
+2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Run backgrounded with a timeout, curl the port, then kill. Never bare 'runserver' (hangs loop till ORCH_STUCK_SECS). Django → 'source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver'; CDK → 'cdk synth' (no server to boot); Zappa/Lambda Django → same background+timeout pattern with PYENV_VERSION=<env> --settings=<app>.settings.local; else project-specific (must self-terminate).
 3. Full test suite runs green (show pass/fail). If no runner: state 'no tests — skipped', do not silently pass.
 
 PR: gh pr create --assignee @me, title '[DEV-XXXX] type: 간결한 설명', body with Summary/Changes/Test Plan/Jira (work) or Summary/Changes/Notes (personal).
@@ -167,6 +174,10 @@ The loop created the PR. Review is asynchronous — no session waiting.
 
 - Review the PR diff on GitHub. Merge = human call. (Kickoff gate already approved the plan; PR
   review is the second safety net before production.)
+- **Verify the loop's Pre-PR output, not just the diff.** Pre-PR checks are a completion-*promise*,
+  not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
+  the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
+  legitimately N/A). A promise the loop can fib is only as good as this read.
 - **After merge**, one non-blocking prompt:
   > "티켓 DEV-XX 기본값으로 생성됨. 지금 조정할까요?"
   > - 조정 — Priority / Story Points / Labels / Parent를 실제 값으로 수정
