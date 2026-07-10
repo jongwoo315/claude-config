@@ -6,6 +6,24 @@ An automation layer on top of the [`tmux-claude-session-manager`](https://github
 
 orch reads the `@claude_state` / `@claude_state_at` tmux options that are stamped by the plugin's Claude Code hooks. **Those hooks MUST be installed** (follow the plugin README). Without them orch can't detect when a step finishes and pipelines will never advance.
 
+## Install (per-machine)
+
+The orch **code** syncs via the claude-config repo, but three things are per-machine and **not tracked**:
+the `~/.local/bin/orch` PATH symlink, `tmux`, and the `jongwoo315/tmux-claude-session-manager` plugin.
+On a new machine run:
+
+```bash
+bash ~/.claude/orch/install.sh
+```
+
+It creates the symlink and reports what's still missing (tmux, plugin, PATH). Symptom → missing piece:
+
+| symptom | missing |
+| --- | --- |
+| `orch: command not found` | the `~/.local/bin/orch` symlink (install.sh fixes this) |
+| tasks stuck `queued` forever | daemon not started → `orch start` |
+| tasks go `running` but never complete (false `failed` at 20 min) | the plugin — no `@claude_state` stamp |
+
 ## Commands
 
 | Command | What it does |
