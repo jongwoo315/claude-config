@@ -178,10 +178,15 @@ The loop created the PR. Review is asynchronous — no session waiting.
   not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
-- **After merge**, one non-blocking prompt:
-  > "티켓 DEV-XX 기본값으로 생성됨. 지금 조정할까요?"
+- **Ticket refine — triggered by orch completion, NOT by merge.** Merge is done by CodePipeline /
+  teammates, so no session ever catches a merge event; anchoring refine to merge means it never
+  fires. Instead: when **orch notifies this task done** (loop finished + PR created), fire one
+  non-blocking prompt in the notified session:
+  > "티켓 DEV-XX 기본값으로 생성됨. PR `<url>` 올라왔습니다. 지금 조정할까요?"
   > - 조정 — Priority / Story Points / Labels / Parent를 실제 값으로 수정
   > - 생략 — 기본값 유지
+  If the orch-completion notification is missed (session gone), the fields keep their A2 defaults —
+  acceptable, refine is best-effort.
 
 This is the ONLY place ticket fields get asked — post-facto, non-blocking (point 4).
 
