@@ -91,10 +91,19 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 - **Explore** — `dispatching-parallel-agents` (`Task(subagent_type=Explore)`) **only if** Tier C or
   brainstorm flags unknowns. Focused scope per agent, structured output. Else skip.
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/YYMMDD-DEV-XX-<topic>-plan.md`
-  (`YYMMDD` prefix, NOT `YYYY-MM-DD`). Plan header directive MUST be:
+  (`YYMMDD` prefix, NOT `YYYY-MM-DD`). Because Phase B's ralph prompt is only a short pointer to
+  this file, **all execution detail must live in the plan**: TDD task breakdown, a **Pre-PR checks**
+  section (embed the canonical block from Phase B verbatim), a **Done criteria** section, and the
+  PR-creation step (personal mode: include the "update Notion PR property" step). Plan header
+  directive MUST be:
   ```markdown
-  > **For Claude:** This plan is executed via /ralph-loop:ralph-loop (autonomous TDD iteration).
-  > Do NOT use superpowers:executing-plans or subagent-driven-development.
+  > **For Claude:** This plan is executed via /ralph-loop:ralph-loop in a detached orch session.
+  > You are ALREADY in the worktree, checked out on the feature branch. Do NOT switch branches,
+  > create another worktree, or use AskUserQuestion / any interactive prompt — the session is
+  > headless and cannot receive input, so always take the autonomous (recommended) default and
+  > keep working. Do NOT use superpowers:executing-plans or subagent-driven-development.
+  > Emit `<promise>RALPH_DONE</promise>` ONLY when every Done-criteria item and every Pre-PR check
+  > is genuinely true AND the PR has been created — never to escape the loop.
   ```
   Header metadata: `**Tier:** [X]`, `**Jira:** DEV-XXXX` (or `**Notion:** DEV-XX`).
 
@@ -129,37 +138,36 @@ does NOT run the loop (ralph-loop's Stop-hook would hijack it). Main session sta
 **`<N>` (max-iterations) by Tier** — no guessing: Tier A → 15, Tier B → 30, Tier C → 50.
 (The A4 tier already decided; reuse it. Bigger tier = more tasks + more TDD cycles.)
 
-**Ralph prompt** (substitute real `<plan-file>`, `<N>`; append the personal-mode line only in
-personal mode):
+**Ralph prompt — MUST be quote-safe (one plain line).** The ralph-loop slash command runs
+`setup.sh $ARGUMENTS` inside a shell code-fence, so ANY quote, apostrophe, newline, or shell
+metachar (`; & | $ ( ) < > "` `'`) in the args breaks tokenization (`(eval): unmatched "`, seen
+twice in real runs). So the inline prompt is ONE short line of **plain words only** — all real
+detail already lives in the plan file (A4) — and the completion promise is a **single bare token**
+(no spaces → needs no quotes). Substitute `<plan-file>` and `<N>` (Tier A→15, B→30, C→50):
 
 ```
-/ralph-loop:ralph-loop "Use superpowers:test-driven-development for each task
-(test → RED [fails for the right reason] → minimal implement → GREEN → refactor). Read the full
-plan at docs/plans/<plan-file>.md. When all tasks are implemented and the full test suite is green,
-run the code review and Pre-PR checks below, then commit (exclude docs/plans/), then create the PR.
-
-Completeness (before commit): run sc:reflect — implementation vs the plan (and the design.md if
-present). Implement any missing requirements before proceeding.
-
-Code review (before commit): run superpowers:requesting-code-review (or the code-reviewer subagent)
-against the plan. Fix all Critical/Important issues. Do not create the PR until none remain.
-
-Pre-PR checks (all required — do not assume pass, show output):
-1. New env vars: git diff main...HEAD -- | grep '^+' | grep -E 'os\.environ\.get|os\.getenv|process\.env\.' | grep -v '^+++' — log any found.
-2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Run backgrounded with a timeout, curl the port, then kill. Never bare 'runserver' (hangs loop till ORCH_STUCK_SECS). Django → 'source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver'; CDK → 'cdk synth' (no server to boot); Zappa/Lambda Django → same background+timeout pattern with PYENV_VERSION=<env> --settings=<app>.settings.local; else project-specific (must self-terminate).
-3. Full test suite runs green (show pass/fail). If no runner: state 'no tests — skipped', do not silently pass.
-
-PR: gh pr create --assignee @me, title '[DEV-XXXX] type: 간결한 설명', body with Summary/Changes/Test Plan/Jira (work) or Summary/Changes/Notes (personal).
-[personal only] After PR: update the Notion page PR property with the PR URL." \
-  --completion-promise "All plan tasks implemented via TDD, full test suite green, spec completeness verified via sc:reflect (no missing requirements), code review passed (no Critical/Important issues remaining), Pre-PR checks pass with output shown, changes committed excluding docs/plans, PR created and assigned to @me" \
-  --max-iterations <N>
+/ralph-loop:ralph-loop Read docs/plans/<plan-file>.md and implement it fully using TDD. You are already in the worktree on the feature branch, so never switch branches, never create a worktree, and never use AskUserQuestion — take the autonomous default and keep working. Open a PR when the plan Done criteria and Pre-PR checks all pass. --completion-promise RALPH_DONE --max-iterations <N>
 ```
 
-**Dispatch:**
+Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The plan header directive
+(A4) carries the promise-emission condition and the no-AskUserQuestion / no-branch-switch guard.
+
+**Canonical Pre-PR block — A4 embeds THIS verbatim into the plan's "Pre-PR checks" section**
+(it is plan content, NOT part of the ralph prompt):
+> Pre-PR checks (all required — do not assume pass, show output):
+> 1. New env vars: `git diff main...HEAD` added lines matching `os\.environ\.get|os\.getenv|process\.env\.` — log any found.
+> 2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Background + timeout + curl the port + kill. Never bare `runserver` (hangs the loop till ORCH_STUCK_SECS). Django → `source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver`; CDK → `cdk synth` (no server); Zappa/Lambda Django → same background+timeout with `PYENV_VERSION=<env> --settings=<app>.settings.local`; CLI/library → smoke-run the entrypoint (it must self-terminate); else project-specific.
+> 3. Full test suite green (show pass/fail). If no runner: state `no tests — skipped`, do not silently pass.
+> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit excluding `docs/plans/`; PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property).
+
+**Dispatch (into the A3 worktree — session starts already on the branch, so no checkout needed):**
 ```bash
 ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running; high stuck-timeout
-orch add <worktree-absolute-path> "<full ralph-loop command above>"
+orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
 ```
+- Confirm the orch session did NOT stall on an interactive prompt: `orch logs <id>` should show work,
+  not a menu. If it stalls despite the guard, the plan directive is missing the no-AskUserQuestion
+  line — fix the plan, not the running session.
 - Substitute the real absolute worktree path (no generic prompt).
 - **Main session is now free.** Announce:
   > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 완료되면 PR이 GitHub에
@@ -209,7 +217,17 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
 - **Pre-PR checks are completion-promise conditions**, not gates. The loop must show their output
   before it is allowed to create the PR — never assume pass, never silently skip.
 - **orch, not in-session.** ralph-loop hijacks its host session via Stop-hook. Always dispatch
-  detached so the main session stays free for parallel fan-out.
+  detached so the main session stays free for parallel fan-out. NEVER arm the loop in a directory
+  the main session shares as cwd — the Stop-hook is cwd-scoped and will hijack the main session too
+  (observed: main session captured, fed the build task). The A3 worktree is a separate path, which
+  is exactly why dispatch targets it.
+- **Quote-safe ralph line.** The slash command shell-evals `$ARGUMENTS`; the dispatched line is ONE
+  plain-word line with a single-token `--completion-promise`, no quotes/apostrophes/metachars/newlines.
+  All detail lives in the plan. A quoted multi-line prompt = `unmatched "` and a dead loop.
+- **Autonomous execution session.** The orch session is headless — it CANNOT answer AskUserQuestion.
+  The plan header directive forbids interactive prompts and branch switches (it starts in the
+  worktree already on the branch). A stalled menu in `orch logs` means the guard is missing from the
+  plan — fix the plan and re-dispatch, do not hand-drive the session through tmux.
 - **Worktree = worktree-first**, created right after parse (A3), before brainstorm/plan.
 - **Scope Guard holds:** infra / non-PR deploys route to infra-workflow. Never loop those.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
