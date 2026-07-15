@@ -18,7 +18,8 @@ does not re-implement shipping.
 
 **The gates (only synchronous human touches):**
 1. **Fix approach** — root cause is summarized; user picks DB fix / config / rollback / feature
-   flag / code fix / other. This is the fork that determines everything downstream.
+   flag / code fix / **investigate-only (record & hold — on-call default)** / other. This is the
+   fork that determines everything downstream.
 2. **PR review** — async, GitHub. *Code-fix path only*, inherited from `dev-workflow`.
    Non-code fixes (DB/rollback/flag) have no PR.
 
@@ -100,13 +101,16 @@ Summarize the root cause, then **AskUserQuestion** (options ranked, recommended 
 Root cause: [one line]
 Evidence: [phase 1-3 findings, brief]
 ```
-> "근본 원인이 파악되었습니다. 어떻게 해결할까요?"
+> "근본 원인이 파악되었습니다. 어떻게 진행할까요?"
 > - DB 직접 수정 (데이터 픽스) — 데이터 문제면 가장 빠름. `infra-safety-gate` 경유.
 > - 코드 수정 — 코드 버그거나 데이터 픽스로 불충분할 때. `dev-workflow`로 핸드오프.
 > - 롤백 / 피처 플래그 / 설정 변경 — 즉시 완화. (직접 설명하면 세부 확인)
-> - 기타 (직접 설명)
+> - 원인만 파악 / 보류 — 지금은 안 고침. 근본 원인 기록 후 종료 (기타는 직접 설명).
 
-*(AskUserQuestion max 4 options — collapse rollback/flag/config into one; sub-confirm after.)*
+*(AskUserQuestion max 4 options — collapse rollback/flag/config into one; the 4th folds
+investigate-only + catch-all. **On-call default is often this 4th** — 당직 중엔 원인 파악·기록·인계가
+목표고 픽스는 정규 시간에. Recommended-first ordering depends on context: incident/on-call framing →
+put "원인만 파악 / 보류" first.)*
 
 ---
 
@@ -141,8 +145,15 @@ loop proves the bug before fixing it.
 - App feature flag / env config → apply, then `superpowers:verification-before-completion`.
 - No PR unless it also needs a code change (then → B-code).
 
-### B-other → guide + stop
-Explain the manual steps, stop. No autonomous action.
+### B-hold → 원인 기록 후 종료 (on-call default, 기타 포함)
+픽스하지 않고 근본 원인만 남긴다 — 당직 중 트리아지의 정착점.
+1. **근본 원인 기록** (no ask, autonomous): Phase 1-3 요약(root cause + evidence + 재현 조건)을
+   추적 항목에 남긴다. A1에서 티켓 키가 잡혔으면 그 티켓에 코멘트, 없으면 tracker에 항목 생성만
+   (Bug, 상태 = 조사됨/보류). work=Jira / personal=Notion, Mode Detection 규칙.
+2. **인계 노트 한 줄**: "원인은 X. 픽스 보류 — [코드 / DB / 롤백 중 뭐가 유력한지]. 정규 시간 처리."
+3. 픽스 없음 → PR 없음, 무인 액션 없음. 나중에 재개하면 이 기록으로 바로 Gate 1 복귀.
+
+*"기타 (직접 설명)"*도 여기: 사용자가 설명한 수동 스텝을 안내하고 stop. No autonomous action.
 
 ---
 
@@ -159,6 +170,8 @@ Explain the manual steps, stop. No autonomous action.
   Scope Guard principle as dev-workflow.
 - **Code fixes delegate, don't re-implement.** dev-workflow owns TDD → review → Pre-PR → PR and its
   async PR gate. This skill hands off and ends.
+- **Investigate-only records, never drops.** B-hold(원인만 파악)는 반드시 근본 원인을 tracker에
+  남기고 종료 — 조용히 끝내지 않는다. On-call 재개 시 그 기록이 Gate 1 복귀점.
 - **Bug ticket / `fix/` branch.** Issue Type always Bug; branch prefix `fix/` — set by dev-workflow
   on the B-code path.
 
