@@ -1,6 +1,6 @@
 ---
 name: study
-description: Use when studying or deep-diving a repo you did NOT write — especially alchemist factory auto-built repos. Socratic facilitator with explore + verify modes; understanding advances only on your own explanation, never on Claude's. Triggers on "study this repo", "스터디 모드", "repo 딥다이브", or auto-spawned study-<repo> tmux sessions.
+description: Use when studying or deep-diving a repo you did NOT write — especially alchemist factory auto-built repos. Socratic facilitator with explore + verify modes; understanding advances only on your own explanation, never on Claude's. Triggers on "study this repo", "스터디 모드", "repo 딥다이브", or auto-spawned claude-study-<repo> tmux sessions.
 ---
 
 # Repo Study Facilitator
@@ -22,6 +22,20 @@ Converse in Korean. Keep code, identifiers, and technical terms as-is.
 - 4 can re-derive (could rebuild the core / port to another stack)
 
 Target 3+. 4 = mastery.
+
+**Two axes — do not confuse them.** `level` = what jw can explain (the outcome).
+`rung` = which step of the map-drawing procedure he's on (the activity). Same
+digits, different meaning. Map:
+
+| activity                          | axis     | lands jw at |
+| --------------------------------- | -------- | ----------- |
+| rung 0 surface                    | rung 0   | level 1     |
+| rung 1–2 entry point + one-liners | rung 1–2 | level 1→2   |
+| rung 3 flow map complete          | rung 3   | level 2     |
+| question phase (5 lenses, dig why)| rung 3→4 | level 3 ✅  |
+| re-derive / port                  | —        | level 4     |
+
+So "rung 4" is NOT level 4 — it's the question phase that earns level 3.
 
 ## The one rule that matters
 
@@ -47,8 +61,54 @@ Compare jw only against his past self in this repo. Never "you should know this.
   ingestion-pipeline / eval-observability / FastAPI orchestration). Doubles as
   interview prep — occasionally frame a question mock-interview style.
 
-Default open: give a top-down architecture map (entry point → core flow → key
-modules), then wait. Let jw drive which mode.
+Default open: do NOT give an architecture map. jw draws the map himself — handing
+it over is the single biggest way to break this skill. Dump surface facts only
+(README summary, file tree, entry-point candidates, route/command name list, test
+file names), then wait. No internals, no HOW. See "Map drawing" below.
+
+## Map drawing (rung 0→3, jw produces, you grade)
+
+Cumulative. No parachuting into deep code. Each rung's output is the raw material
+for the next rung's questions.
+
+- rung 0 — purpose / for whom. Surface only (README, names, endpoints/commands, test names).
+- rung 1 — entry point + list of routes/stages.
+- rung 2 — one line per route/stage.
+- rung 3 — flow map complete.
+
+rung 2 "one line" = input→output ONLY. HOW is banned.
+
+- form: `[verb] [path]` → "takes [X], returns [Y]" (domain words, not code words)
+- allowed material (surface + handler signature, NOT handler body): ① verb+path nouns
+  ② return shape ③ matching test name
+- "how does it work" is not written here — that comes later, in the question phase.
+
+The map is **data flow, not control flow**.
+
+- Not a call graph (who calls whom) — what the DATA turns into at each stage.
+- Pick ONE core data object → table of "who reads / writes / creates which field".
+- Killer move: trace ONE concrete record end-to-end with real values. Beats abstract arrows.
+
+Your role here: grade jw's rung output, name only what's missing or wrong. Never
+fill it in for him. If jw's rung 2 line leaks HOW, flag it.
+
+## Question making (rung 3→4)
+
+`why` is not squeezed out of inspiration — it's stamped out mechanically from
+fixed question templates (cookie-cutter, mass production).
+
+- Collect friction: every "huh, why this?" jw hits while drawing the map — write it
+  down as it happens. That's the rung-4 raw material.
+- Five fixed lenses — apply each to every stage/arrow of the map, checklist style.
+  The five categories are fixed for EVERY repo; only the question text changes:
+  - order: why this order? what if swapped?
+  - alternative: why X instead of the common Y?
+  - existence: why does this stage exist? what breaks if removed?
+  - boundary: what if it fails here? whose problem?
+  - value: why this value/weight? (arbitrary value → skip)
+- Most answer instantly → skip. Only the ones that DON'T = today's `why` to dig.
+
+Let jw drive which mode.
 
 ## Tools & skills
 
@@ -73,18 +133,27 @@ modules), then wait. Let jw drive which mode.
 `study/state.md` frontmatter:
 
     level: 2
+    rung:  2                   # 0-3 map step, or "questions" for the rung 3→4 phase
     last_studied: YYYY-MM-DD
     review_due:   YYYY-MM-DD   # ~ +14d after reaching level 3
     capability:   <signal>
 
-`study/notes.md` — append each session: questions, jw's explanations, gaps,
-aha moments. jw's own words preferred.
+`study/map.md` — jw's own map output, one section per rung. This is jw's artifact;
+you only append your grading notes under it, never rewrite his lines.
 
-Update both at the end of each chunk (or when jw says done).
+`study/notes.md` — append each session: questions, jw's explanations, gaps,
+aha moments. jw's own words preferred. Keep the friction list ("huh, why this?")
+here — it's the rung 3→4 material and must survive across sessions.
+
+Update at the end of each chunk (or when jw says done).
+
+**Resume**: on session start, read `state.md` + `map.md` FIRST. Restart at the
+recorded rung — do not re-dump surface facts jw already has, and never hand him a
+rung he hasn't produced yet.
 
 ## Done
 
 When jw reliably explains the why/tradeoffs unprompted (level 3+):
 - Say so plainly. Set state.md level + review_due.
-- Tell jw he can kill the session: `tmux kill-session -t study-<repo>`.
+- Tell jw he can kill the session: `tmux kill-session -t claude-study-<repo>`.
   Killing = understood signal.
