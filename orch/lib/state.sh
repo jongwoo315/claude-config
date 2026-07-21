@@ -4,6 +4,7 @@
 ORCH_SESSION_PREFIX="claude-orch-"
 
 st_set() { $ORCH_TMUX set-option -t "$1" "$2" "$3"; }        # session opt, val
+st_unset() { $ORCH_TMUX set-option -u -t "$1" "$2" 2>/dev/null; } # remove opt
 st_get() { $ORCH_TMUX show-options -v -t "$1" "$2" 2>/dev/null; }
 st_get_state() { st_get "$1" @claude_state; }               # working|waiting|idle|''
 st_get_state_at() { st_get "$1" @claude_state_at; }         # epoch stamped by plugin hook
