@@ -8,7 +8,7 @@ sess=$(spawn_session task-demo-0 /tmp "first step" true)
 assert_eq "$sess" "claude-orch-tmp-0" "session name from id"
 assert_eq "$($ORCH_TMUX has-session -t "$sess" 2>/dev/null; echo $?)" "0" "session exists"
 assert_eq "$(st_get "$sess" @orch_task)" "task-demo-0" "task id stamped"
-assert_eq "$(st_get "$sess" @claude_state)" "working" "state seeded working"
+assert_eq "$(st_get "$sess" @claude_state)" "" "state NOT self-seeded (hooks own it)"
 assert_eq "$(st_get "$sess" @orch_await)" "working" "await=working after step sent"
 
 finish
