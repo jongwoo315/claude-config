@@ -13,7 +13,11 @@ task_create() {
   local n; n=$(find "$ORCH_QUEUE" -name 'task-*.json' | wc -l | tr -d ' ')
   id="${slug}-${n}"
   while [ -e "$(_task_file "$id")" ]; do n=$((n+1)); id="${slug}-${n}"; done
-  local steps; steps=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+  # One array element PER ARG, each slurped whole (jq -Rs) so a multi-line prompt
+  # stays ONE step. The old `printf '%s\n' "$@" | jq -R .` split every arg on its
+  # newlines, shattering a single multi-line instruction into per-line steps that
+  # the daemon then dribbled out as separate prompts.
+  local steps a; steps=$(for a in "$@"; do printf '%s' "$a" | jq -Rs .; done | jq -s .)
   jq -n --arg id "$id" --arg target "$dir" --arg mode "$mode" \
         --argjson steps "$steps" \
     '{id:$id, target:$target, mode:$mode, steps:$steps,
