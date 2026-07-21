@@ -39,15 +39,13 @@ orch_advance() {
       task_set "$id" status done
     else
       task_set_num "$id" cursor "$cur"
+      # Re-arm the start-gate. @claude_state is NOT self-stamped anymore — the
+      # plugin's hooks own it, so @orch_await=working now waits for the session's
+      # REAL working (UserPromptSubmit), not our own stamp. submit_step guarantees
+      # the step actually submits (resends Enter until it leaves the input box);
+      # a bare send-keys lost Enter on a busy TUI and deadlocked the pipeline.
       st_set "$sess" @orch_await working
-      # CAVEAT: we self-stamp @claude_state=working here (spawn.sh does the same on
-      # launch). Because that stamp is not hook-sourced, the working->idle guard's
-      # real protection against premature advance is the DEBOUNCE, not the working
-      # observation. The common case stays safe because a genuine hook-sourced
-      # working reset of @claude_state_at is what the debounce measures against.
-      st_set "$sess" @claude_state working
-      # -- ends option parsing so a step starting with '-' isn't read as a tmux flag
-      $ORCH_TMUX send-keys -t "$sess" -- "$(task_step "$id" "$cur")" C-m
+      submit_step "$sess" "$(task_step "$id" "$cur")"
     fi
   done
 }
