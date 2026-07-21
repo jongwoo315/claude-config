@@ -76,7 +76,7 @@ orch_notify() {   # override-able; default tmux message + bell
 }
 
 orch_watch_failures() {
-  local id sess state now at
+  local id sess state now seen
   now=$(orch_now)
   for id in $(task_list_by_status running); do
     sess=$(task_get "$id" session)
@@ -87,18 +87,43 @@ orch_watch_failures() {
     fi
     state=$(st_get_state "$sess")
     if [ "$state" = "working" ]; then
-      at=$(st_get_state_at "$sess"); at=${at:-$now}
-      if [ $((now - at)) -ge "$ORCH_STUCK_SECS" ]; then
+      # Measure "stuck" against orch's OWN clock (@orch_seen_at), stamped when we
+      # first observe working — NOT the hook's @claude_state_at. @claude_state_at
+      # is set by the plugin hook and persists across a daemon restart, so keying
+      # the stuck timeout off it fails a mid-flight session on the first post-restart
+      # tick (its start timestamp is already older than the timeout). @orch_seen_at
+      # is cleared on daemon start (orch_reset_watch), giving a full fresh grace.
+      seen=$(st_get "$sess" @orch_seen_at)
+      if [ -z "$seen" ]; then
+        st_set "$sess" @orch_seen_at "$now"
+      elif [ $((now - seen)) -ge "$ORCH_STUCK_SECS" ]; then
         task_set "$id" status failed
         orch_notify "task $id stuck ${ORCH_STUCK_SECS}s"
       fi
+    else
+      # Left working (idle/waiting) -> reset the stuck clock; the next step's
+      # working restarts it. Keeps the timeout per-step, not cumulative.
+      st_unset "$sess" @orch_seen_at
     fi
+  done
+}
+
+# Clear orch's stuck-clock for every running session. Called once at daemon start:
+# @orch_seen_at is a tmux option that survives a restart, so without this a session
+# that was mid-step would carry an old stamp and trip the stuck timeout immediately.
+# Cleared here -> re-established fresh on the next observed working.
+orch_reset_watch() {
+  local id sess
+  for id in $(task_list_by_status running); do
+    sess=$(task_get "$id" session)
+    $ORCH_TMUX has-session -t "$sess" 2>/dev/null && st_unset "$sess" @orch_seen_at
   done
 }
 
 orch_tick() { orch_watch_failures; orch_advance; orch_dispatch; }
 
 orch_loop() {
+  orch_reset_watch   # fresh stuck-grace for sessions that were mid-flight
   while true; do orch_tick; sleep "$ORCH_TICK"; done
 }
 
