@@ -56,20 +56,28 @@ case "$cmd" in
     [ -n "${1:-}" ] || { echo "usage: orch rm <id>" >&2; exit 1; }
     rm -f "$ORCH_QUEUE/task-$1.json" ;;
   start)
-    if [ -f "$ORCH_PIDFILE" ] && kill -0 "$(cat "$ORCH_PIDFILE")" 2>/dev/null; then
-      echo "daemon already running (pid $(cat "$ORCH_PIDFILE"))" >&2; exit 1
-    fi
+    # Validate args BEFORE any side-effect check so a bad --max is rejected the
+    # same whether or not a daemon is already up.
     max=3
     if [ "${1:-}" = "--max" ]; then
       max="${2:-}"
       _valid_max "$max" || { echo "invalid --max: '${max}' (need positive integer)" >&2; exit 1; }
+    fi
+    # Refuse if ANY daemon is alive, not just the one in the pidfile. A stale/lost
+    # pidfile let restarts stack multiple daemons that then raced — duplicate spawns
+    # and concurrent task_set (jq->tmp->mv) corrupting queue jsons to 0 bytes.
+    existing=$(pgrep -f "$ORCH_HOME/daemon.sh" | head -1)
+    if [ -n "$existing" ]; then
+      echo "daemon already running (pid $existing) — 'orch stop' first" >&2; exit 1
     fi
     ORCH_MAX="$max" nohup bash "$ORCH_HOME/daemon.sh" \
       >>"$ORCH_HOME/daemon.log" 2>&1 &
     echo $! > "$ORCH_PIDFILE"
     echo "daemon started (pid $(cat "$ORCH_PIDFILE"), max $max)" ;;
   stop)
-    [ -f "$ORCH_PIDFILE" ] && kill "$(cat "$ORCH_PIDFILE")" 2>/dev/null
+    # Kill EVERY daemon process, not just the pidfile's — orphans from a lost
+    # pidfile must not survive a stop (that's what stacked the racing daemons).
+    pkill -f "$ORCH_HOME/daemon.sh" 2>/dev/null
     rm -f "$ORCH_PIDFILE"; echo "daemon stopped" ;;
   logs)
     sess=$(task_get "$1" session)
