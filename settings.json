@@ -8,7 +8,7 @@
       "Bash(bq *)"
     ]
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "allowedMcpServers": [
     {
       "serverName": "context7"
@@ -192,7 +192,8 @@
     "pr-review-toolkit@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "architecture-diagram@architecture-diagram-skill": true
   },
   "extraKnownMarketplaces": {
     "claudeclaw": {
@@ -205,6 +206,12 @@
       "source": {
         "source": "github",
         "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "architecture-diagram-skill": {
+      "source": {
+        "source": "github",
+        "repo": "konraddzbik/architecture-diagram-skill"
       }
     }
   },
