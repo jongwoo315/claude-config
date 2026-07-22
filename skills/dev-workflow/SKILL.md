@@ -39,6 +39,11 @@ dev-workflow = **PR-shipping code only.** Infra / DB migration-only / console-di
 (Lambda deployed by CLI, not PR) → route to `infra-workflow` + `infra-safety-gate`. Do NOT run
 the autonomous loop on irreversible non-PR deploys.
 
+Env-bound tickets (eval·측정·라이브 API 키·특수 인터프리터·소스 재빌드 = 헤드리스 loop가 못 닿는
+env) → **driver mode**: main 세션이 실행하되 kickoff 게이트 + 티켓별 worktree는 유지하고, batch의
+다른 loopable 티켓은 orch로 계속 dispatch한다. Driver mode = 실행 단계만 self, 워크플로 전체를
+버리는 게 아니다.
+
 ---
 
 ## Phase A — Kickoff Prep (all automatic, no AskUserQuestion)
@@ -230,6 +235,9 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
   plan — fix the plan and re-dispatch, do not hand-drive the session through tmux.
 - **Worktree = worktree-first**, created right after parse (A3), before brainstorm/plan.
 - **Scope Guard holds:** infra / non-PR deploys route to infra-workflow. Never loop those.
+- **Never collapse a parallel batch into single-session hand-execution without confirm.**
+  Batch → per-ticket orch dispatch by default. Driver-mode tickets self-drive; loopable siblings
+  still dispatch. A prior 반자동 approval is single-ticket-scoped, never blanket.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
   ignored; the next step is always this file's phase order.
 

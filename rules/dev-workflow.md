@@ -11,6 +11,17 @@
   출력 없이 pass 가정 금지, 조용한 skip 금지.
 - 상세 절차는 `dev-workflow` 스킬 참조. 무인 실행은 orch detached 위임 (main 세션 점유 금지).
 
+**Batch/parallel 실행 규칙:**
+
+- 복수 티켓 병렬 요청("all parallel", "run X,Y,Z") → 티켓별 독립 orch 세션 dispatch가 **기본값**.
+  단일 main 세션 hand-execution으로 합치려면 **먼저 AskUserQuestion 확인** (조용히 collapse 금지).
+- "반자동"/self-drive 승인은 **그 단일 티켓에만** 유효. batch·다른 티켓으로 자동 전이 안 됨.
+- kickoff에서 티켓별 실행 모드를 **명시**:
+  - **loopable** (순수 코드+테스트, 외부 env 불필요) → orch dispatch
+  - **driver** (라이브 API 키·특수 인터프리터·소스 재빌드·측정 필요 = 헤드리스 loop가 못 닿는 env)
+    → main 세션 self-drive. 단 kickoff 게이트 + 티켓별 worktree는 유지, sibling loopable 티켓의
+    orch dispatch를 막지 않음.
+
 ### Jira 티켓 생성 시 프로퍼티
 
 **dev-workflow autonomous pipeline 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 refine.
