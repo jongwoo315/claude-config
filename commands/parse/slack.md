@@ -45,6 +45,15 @@ curl -s -X POST "https://slack.com/api/conversations.replies" \
   | jq '.'
 ```
 
+**봇/알림 메시지 주의:** 알림 봇 메시지(Datadog, CloudWatch 등)는 `text`가 빈 문자열인 경우가 많음 — 실제 내용은 `attachments[]`(`.title`, `.text`, `.fallback`)와 `blocks[]`에 있음. `text`가 비어 있으면 반드시 fallback 추출:
+
+```bash
+# text 빈 메시지 → attachments/blocks에서 내용 추출
+... | jq '.messages[0] | {user, bot_id, ts,
+  attachments: [.attachments[]? | {title, text, fallback}],
+  blocks: [.blocks[]? | .. | .text? // empty]}'
+```
+
 ### 3. 결과 저장
 
 결과를 `docs/plans/YYMMDD-<topic>-input.md`에 저장:
