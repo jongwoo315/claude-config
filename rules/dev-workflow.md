@@ -10,8 +10,6 @@
 - Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
   출력 없이 pass 가정 금지, 조용한 skip 금지.
 - 상세 절차는 `dev-workflow` 스킬 참조. 무인 실행은 orch detached 위임 (main 세션 점유 금지).
-- **kickoff마다 `Skill(dev-workflow)` 명시 호출** — compaction 이후 요약으로 계승된 경우에도
-  재호출한다 (statusline 스킬 표시 + 최신 스킬 내용 보장. 단, 일회성 setup 동작은 반복 금지).
 
 **Batch/parallel 실행 규칙:**
 
