@@ -248,9 +248,15 @@ aws rds describe-events \
 - `maintenance`, `notification` → ⚠️ WARNING
 - `recovery`, `restoration` → 정보
 
-**2c. CloudWatch 성능 메트릭 (최근 1시간, 5분 단위):**
+**2c. CloudWatch 성능 메트릭:**
+
+시간 윈도우는 사건 시점에 맞춘다 (하드코딩 금지):
+
+- **진행 중인 이슈**: 최근 1시간, `PERIOD=300`
+- **과거 사건 postmortem** (예: "어제 CPU 부하"): 사건 전후를 포함한 커스텀 윈도우를 직접 계산 (KST-9h=UTC 변환 주의). 긴 윈도우는 `PERIOD=3600`으로 시간별 곡선을 먼저 그려 부하 시작/종료 시각을 식별한 뒤, 필요 시 300초로 세분화
 
 ```bash
+# 기본값 (진행 중 이슈): 최근 1시간 — postmortem이면 사건 윈도우로 직접 지정
 START_TIME=$(date -u -v-1H +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -d "1 hour ago" +%Y-%m-%dT%H:%M:%S)
 END_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
 PERIOD=300
@@ -340,6 +346,7 @@ DBI_RESOURCE_ID=$(aws rds describe-db-instances \
   --query 'DBInstances[0].DbiResourceId' \
   --output text)
 
+# 윈도우는 2c와 동일 원칙 (postmortem이면 사건 윈도우 지정)
 PI_START=$(date -u -v-1H +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -d "1 hour ago" +%Y-%m-%dT%H:%M:%S)
 PI_END=$(date -u +%Y-%m-%dT%H:%M:%S)
 
@@ -365,6 +372,25 @@ aws pi get-resource-metrics \
 ```
 
 **Top SQL** 결과에서 `db.sql.tokenized_id`와 `db.sql.statement` 추출하여 문제 쿼리 식별.
+
+부하 기여 주체 attribution — wait event / 사용자 / 호스트별 분해:
+
+```bash
+for G in db.wait_event db.user db.host; do
+  aws pi get-resource-metrics \
+    --service-type RDS \
+    --identifier $DBI_RESOURCE_ID \
+    --metric-queries "[{\"Metric\":\"db.load.avg\",\"GroupBy\":{\"Group\":\"$G\",\"Limit\":7}}]" \
+    --start-time $PI_START --end-time $PI_END \
+    --period-in-seconds 3600 \
+    --region $AWS_REGION --profile $AWS_PROFILE --output json
+done
+```
+
+**주의:**
+- `--period-in-seconds` 유효값은 **1, 60, 300, 3600, 86400 만** 허용. 그 외 값(예: 36000)은 `InvalidArgumentException`
+- `db.user`/`db.host` 값은 **해시로 반환됨** (예: `0F57BD74EE...`) — 실명 계정/실제 IP는 slow query log(2h)에서만 확인 가능
+- wait event가 `wait/io/table/sql/handler` 지배적이면 테이블 풀스캔 신호
 
 **2e. MySQL 전용 CloudWatch 메트릭 (InnoDB/쿼리):**
 
@@ -456,6 +482,36 @@ aws cloudwatch get-metric-statistics \
 | 커넥션 고갈 | → EB 인스턴스 수 × 앱 커넥션 풀 크기 산출 |
 | Replica lag 증가 | → Primary 쓰기 부하, binlog 확인 |
 | DB Load 급증 (PI) | → Top SQL 식별, 실행 계획 분석 권장 |
+| CPU 장시간 지속 부하 → 특정 SQL 의심 | → 2h slow log로 실사용자/시작시각/스캔량 확정 |
+
+**2h. Slow Query Log 분석 (문제 쿼리 attribution — PI로 쿼리 식별 후 필수):**
+
+PI Top SQL은 쿼리 텍스트만 준다. **실사용자, 접속 IP, 정확한 실행시간, Rows_examined, 시작 시각**은 slow log에서만 확정된다.
+
+```bash
+# 로그 파일 목록 — 반드시 날짜 필터 사용 (필터 없이 나열하면 수백 개 파일 출력 폭탄)
+aws rds describe-db-log-files \
+  --db-instance-identifier <instance_id> \
+  --filename-contains "slowquery/mysql-slowquery.log.<YYYY-MM-DD>" \
+  --region $AWS_REGION --profile $AWS_PROFILE --output json
+
+# 대상 파일 다운로드 (파일명 suffix = UTC 시각)
+aws rds download-db-log-file-portion \
+  --db-instance-identifier <instance_id> \
+  --log-file-name "slowquery/mysql-slowquery.log.<YYYY-MM-DD>.<HH>" \
+  --starting-token 0 --output text \
+  --region $AWS_REGION --profile $AWS_PROFILE > /tmp/slow_<HH>.log
+```
+
+**핵심 노하우:**
+
+- 로그 엔트리는 **쿼리 종료 시점**에 기록됨. 장기 실행 쿼리는 **CPU가 떨어진 시각(UTC)의 파일**에 있음 — 부하 시작 시각 파일이 아님
+- 쿼리 **시작 시각** = 엔트리의 `SET timestamp=<epoch>` 값 (`# Time:`은 종료 시각). 시작 = 종료 − `Query_time`으로 교차 검증
+- 파일명 시간대는 **UTC** (KST−9h)
+- `# User@Host:`로 실행 주체 확정 (`u_*` 개인 분석 계정 vs 서비스 계정), `Rows_examined`로 스캔 규모 실측 → PI 해시 한계 보완
+- 타임라인 완성 조건: 시작 시각·종료 시각이 CloudWatch CPU 곡선의 부하 시작/해소와 일치하는지 확인
+
+**직접 검증 (선택):** 문제 쿼리 식별 후 replica에 접속해 `SHOW INDEX FROM <table>` / `EXPLAIN <query>`로 인덱스 부재·실행계획 실측. 접속 방법은 `~/.claude/rules/databases.md` 참조.
 
 ---
 
@@ -527,4 +583,5 @@ aws cloudwatch get-metric-statistics \
 | 실패 이력 없음 | "최근 실패 이력이 없습니다. 현재 상태: <status>" |
 | 로그 조회 실패 | "⚠️ 로그 조회 실패" 표시, 콘솔 링크 제공 |
 | Performance Insights 비활성화 | CloudWatch 메트릭만으로 분석, PI 활성화 권장 안내 |
+| PI `db.user`/`db.host`가 해시값만 반환 | slow query log(2h)에서 실명 계정/IP 확인 |
 | RDS 메트릭 데이터 없음 | "메트릭 데이터 없음 (Enhanced Monitoring 미활성화?)" 표시 |
