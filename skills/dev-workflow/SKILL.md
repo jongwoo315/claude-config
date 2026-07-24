@@ -40,9 +40,14 @@ dev-workflow = **PR-shipping code only.** Infra / DB migration-only / console-di
 the autonomous loop on irreversible non-PR deploys.
 
 Env-bound tickets (eval·측정·라이브 API 키·특수 인터프리터·소스 재빌드 = 헤드리스 loop가 못 닿는
-env) → **driver mode**: main 세션이 실행하되 kickoff 게이트 + 티켓별 worktree는 유지하고, batch의
-다른 loopable 티켓은 orch로 계속 dispatch한다. Driver mode = 실행 단계만 self, 워크플로 전체를
-버리는 게 아니다.
+env) → **driver mode**: 여전히 orch 세션으로 dispatch한다 — 단 ralph loop 없이 single-step으로
+spawn (`orch add --safe`). daemon은 컨텍스트만 seed하고 hand off → 사용자가 `tmux attach`로 붙어
+env-bound 단계를 직접 구동한다. loopable과 차이는 **orch 세션의 mode(누가 advance하냐)뿐**이고,
+main 세션은 두 경우 모두 dispatcher로만 남는다 (ticket 작업을 절대 실행하지 않음).
+
+**Invariant: main = 순수 dispatcher.** 어느 모드든 실행은 orch 세션에서. Loop-ability는 그 orch
+세션이 headless ralph loop이냐(loopable) 사용자가 붙어 구동하냐(driver)를 결정할 뿐, 실행 위치가
+아니다. Driver ≠ "main 세션 self-drive" (구 규칙 폐기).
 
 ---
 
@@ -135,7 +140,14 @@ Ticket to create: DEV-XX "<title>" [default fields]
 
 ---
 
-## Phase B — orch Dispatch (unattended)
+## Phase B — orch Dispatch
+
+Both modes dispatch to a detached orch session — **main stays free either way**. The Scope-Guard
+tier already decided loopable vs driver:
+- **loopable** (headless-reachable env) → ralph-loop, daemon advances headless. Sections below.
+- **driver** (env-bound) → single-step spawn, user attends. See "Driver variant" before GATE 2.
+
+### Loopable dispatch (unattended)
 
 Construct the ralph-loop command and dispatch it into the worktree via `orch`. The main session
 does NOT run the loop (ralph-loop's Stop-hook would hijack it). Main session stays free.
@@ -178,6 +190,27 @@ orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
   > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 완료되면 PR이 GitHub에
   > 생성됩니다 — 리뷰는 편할 때 하시면 됩니다. 다른 작업을 바로 시작하셔도 됩니다."
 - Do NOT talk to the orch session. Its only output is the worktree commit + PR.
+
+---
+
+## Phase B (driver variant) — env-bound, user-attended
+
+Same worktree (A3), same kickoff gate — **only the dispatch changes**. No ralph line: seed ONE
+context step, then hand off. The daemon must NOT auto-advance under you.
+
+```bash
+ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running
+orch add --safe <worktree-absolute-path> "Read docs/plans/<plan-file>.md. You are in the worktree on the feature branch. Do the env-bound setup then STOP and wait — the user attaches to drive the live steps (API key / measurement) and open the PR."
+```
+
+- **`orch add`, NOT `orch pipe`.** Single step only. A pipeline advance fires on session-idle and
+  would inject a prompt mid-manual-work — collision. Driver = one seed, no auto-advance.
+- **`--safe`, NOT skip-perms.** You attend a live key; permission prompts must show, never blind-skip.
+- **Announce the session so the user knows where to attach:**
+  > "driver 티켓 → orch 세션 `<sess>` spawn됨. `tmux attach -t <sess>`로 붙어 env-bound 단계를
+  > 직접 구동하세요. 그 세션에서 PR까지 진행합니다. main 세션은 계속 dispatcher로 free입니다."
+- The user drives that session to PR (Pre-PR checks + `gh pr create` inside it). Main is NOT involved
+  past dispatch — it stays free for sibling loopable dispatches.
 
 ---
 
@@ -229,15 +262,18 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
 - **Quote-safe ralph line.** The slash command shell-evals `$ARGUMENTS`; the dispatched line is ONE
   plain-word line with a single-token `--completion-promise`, no quotes/apostrophes/metachars/newlines.
   All detail lives in the plan. A quoted multi-line prompt = `unmatched "` and a dead loop.
-- **Autonomous execution session.** The orch session is headless — it CANNOT answer AskUserQuestion.
-  The plan header directive forbids interactive prompts and branch switches (it starts in the
-  worktree already on the branch). A stalled menu in `orch logs` means the guard is missing from the
-  plan — fix the plan and re-dispatch, do not hand-drive the session through tmux.
+- **Autonomous execution session (loopable only).** A loopable orch session is headless — it CANNOT
+  answer AskUserQuestion. The plan header directive forbids interactive prompts and branch switches
+  (it starts in the worktree already on the branch). A stalled menu in `orch logs` means the guard is
+  missing from the plan — fix the plan and re-dispatch, do not hand-drive the session through tmux.
+  (Driver sessions are the opposite: user-attended by design, dispatched single-step so no daemon
+  advance collides with the manual work.)
 - **Worktree = worktree-first**, created right after parse (A3), before brainstorm/plan.
 - **Scope Guard holds:** infra / non-PR deploys route to infra-workflow. Never loop those.
-- **Never collapse a parallel batch into single-session hand-execution without confirm.**
-  Batch → per-ticket orch dispatch by default. Driver-mode tickets self-drive; loopable siblings
-  still dispatch. A prior 반자동 approval is single-ticket-scoped, never blanket.
+- **Main = pure dispatcher, always.** Every ticket dispatches to its own orch session — loopable as a
+  headless ralph loop, driver as a single-step user-attended session. Main runs ticket work in
+  NEITHER mode. Never collapse a batch into main-session hand-execution; a prior 반자동 approval is
+  single-ticket-scoped, never blanket.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
   ignored; the next step is always this file's phase order.
 
