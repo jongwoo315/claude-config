@@ -9,18 +9,23 @@
   무인 자동 진행. Phase A에서 AskUserQuestion 금지.
 - Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
   출력 없이 pass 가정 금지, 조용한 skip 금지.
-- 상세 절차는 `dev-workflow` 스킬 참조. 무인 실행은 orch detached 위임 (main 세션 점유 금지).
+- 상세 절차는 `dev-workflow` 스킬 참조. 실행은 항상 orch 세션 위임 (loopable=무인 ralph loop,
+  driver=사용자 attended). **main 세션 점유 금지** — 두 모드 모두.
 
 **Batch/parallel 실행 규칙:**
 
 - 복수 티켓 병렬 요청("all parallel", "run X,Y,Z") → 티켓별 독립 orch 세션 dispatch가 **기본값**.
   단일 main 세션 hand-execution으로 합치려면 **먼저 AskUserQuestion 확인** (조용히 collapse 금지).
-- "반자동"/self-drive 승인은 **그 단일 티켓에만** 유효. batch·다른 티켓으로 자동 전이 안 됨.
-- kickoff에서 티켓별 실행 모드를 **명시**:
-  - **loopable** (순수 코드+테스트, 외부 env 불필요) → orch dispatch
+- driver(attended) 실행 승인은 **그 단일 티켓에만** 유효. batch·다른 티켓으로 자동 전이 안 됨.
+- **모든 티켓은 orch 세션으로 dispatch. main 세션은 순수 dispatcher (ticket 작업 실행 안 함).**
+  kickoff에서 티켓별 실행 모드를 **명시** — 차이는 orch 세션이 headless냐 attended냐뿐:
+  - **loopable** (순수 코드+테스트, 외부 env 불필요) → `orch pipe`, daemon이 headless ralph loop로
+    advance. 무인.
   - **driver** (라이브 API 키·특수 인터프리터·소스 재빌드·측정 필요 = 헤드리스 loop가 못 닿는 env)
-    → main 세션 self-drive. 단 kickoff 게이트 + 티켓별 worktree는 유지, sibling loopable 티켓의
-    orch dispatch를 막지 않음.
+    → `orch add --safe` single-step spawn. daemon이 컨텍스트만 seed하고 hand off → 사용자가
+    `tmux attach`로 붙어 직접 구동. **main 세션 self-drive 아님** (구 규칙 폐기). single-step 필수 —
+    pipeline이면 daemon advance가 수작업 중 prompt를 injection해서 충돌.
+  - 두 모드 모두 kickoff 게이트 + 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
 
 ### Jira 티켓 생성 시 프로퍼티
 
