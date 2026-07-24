@@ -10,7 +10,10 @@
 - Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
   출력 없이 pass 가정 금지, 조용한 skip 금지.
 - 상세 절차는 `dev-workflow` 스킬 참조. 실행은 항상 orch 세션 위임 (loopable=무인 ralph loop,
-  driver=사용자 attended). **main 세션 점유 금지** — 두 모드 모두.
+  driver=attended-autonomous). **main 세션 점유 금지** — 두 모드 모두.
+- **worktree 위치: `~/plab/.wt/<repo>-<branch-suffix>`** (repo sibling 아닌 중앙 주차장). `~/plab/`
+  하위라 mode/계정/이메일 규칙이 자동 work/kimwoz/plabfootball로 해석 — 별도 처리 불필요. orch 세션은
+  `--name claude-<task-id>`로 spawn돼 tmux picker에 읽을 수 있는 라벨로 노출.
 
 **Batch/parallel 실행 규칙:**
 
@@ -22,10 +25,11 @@
   - **loopable** (순수 코드+테스트, 외부 env 불필요) → `orch pipe`, daemon이 headless ralph loop로
     advance. 무인.
   - **driver** (라이브 API 키·특수 인터프리터·소스 재빌드·측정 필요 = 헤드리스 loop가 못 닿는 env)
-    → `orch add` single-step spawn (skip-perms — 사용자가 attach해서 직접 보며 구동하므로
-    권한 프롬프트가 흐름을 끊지 않게 한다). daemon이 컨텍스트만 seed하고 hand off → 사용자가
-    `tmux attach`로 붙어 직접 구동. **main 세션 self-drive 아님** (구 규칙 폐기). single-step 필수 —
-    pipeline이면 daemon advance가 수작업 중 prompt를 injection해서 충돌.
+    → `orch add` single-step spawn (skip-perms). **loopable처럼 TDD로 PR까지 자율 진행** — 라이브 키가
+    worktree env에 있어 세션이 직접 라이브 단계 실행. 사람은 지켜보거나 개입하러 attach(선택), stop-and-wait
+    아님. loopable과 유일한 차이 = 실행 엔진: driver는 일반 단일 세션(막히면 AskUserQuestion 가능, 사람 개입
+    가능), loopable은 헤드리스 ralph loop(Stop-hook 재기동, RALPH_DONE, 비대화형). **main self-drive 아님**
+    (구 규칙 폐기). single-step 필수 — pipeline이면 daemon advance가 개입 중 prompt injection 충돌.
   - 두 모드 모두 kickoff 게이트 + 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
 
 ### Jira 티켓 생성 시 프로퍼티

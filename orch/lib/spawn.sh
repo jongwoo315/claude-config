@@ -44,9 +44,10 @@ spawn_session() {
 
   local flags=""
   [ "$skip" = "true" ] && flags="--dangerously-skip-permissions"
-  # 세션 picker에 raw session-id 대신 읽을 수 있는 라벨(=orch task id)을 표시.
-  # --name은 명시적 이름(nameSource 없음)이라 picker title 최우선순위를 잡는다.
-  flags="$flags --name $id"
+  # 세션 picker에 raw session-id 대신 읽을 수 있는 라벨을 표시. claude- prefix로
+  # tmux-claude-session-manager에 claude 세션으로 노출. --name은 명시적 이름
+  # (nameSource 없음)이라 picker title 최우선순위를 잡는다.
+  flags="$flags --name claude-$id"
   if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
     # real claude: launch, wait for its TUI to be READY, then send + submit.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m

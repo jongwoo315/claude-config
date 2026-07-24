@@ -76,8 +76,18 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 - **Announce** the defaults used (text, not a question).
 
 ### A3. Worktree (worktree-first)
-- `superpowers:using-git-worktrees` from the **existing** branch:
-  `git worktree add "$path" "$BRANCH_NAME"` (no `-b`).
+- **Worktree location: `~/plab/.wt/<repo>-<branch-suffix>`** (central parking lot, NOT a repo
+  sibling). e.g. plab repo `pf-policy-bot` + branch `feature/DEV-7032-x` → `~/plab/.wt/pf-policy-bot-DEV-7032`.
+  ```bash
+  REPO_ROOT=$(git rev-parse --show-toplevel); REPO=$(basename "$REPO_ROOT")
+  WT="$HOME/plab/.wt/${REPO}-${BRANCH_NAME##*/DEV-}"   # fallback: ${REPO}-$(echo "$BRANCH_NAME" | tr / -)
+  mkdir -p "$HOME/plab/.wt"
+  git -C "$REPO_ROOT" worktree add "$WT" "$BRANCH_NAME"   # no -b, existing branch
+  ```
+  `~/plab/.wt/` is under `~/plab/`, so mode/account/email rules already resolve to work/kimwoz/
+  plabfootball — no special identity handling needed.
+- `superpowers:using-git-worktrees` from the **existing** branch (used only for its add mechanics —
+  location is overridden above).
 - **Skip the "Verify Clean Baseline" test step** of using-git-worktrees.
 - Symlink venv/.env so the detached loop can boot the server for Pre-PR checks.
   Detect the env flavor per `~/.claude/rules/python-env.md` — symlink whichever of
@@ -193,31 +203,36 @@ orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
 
 ---
 
-## Phase B (driver variant) — env-bound, user-attended
+## Phase B (driver variant) — env-bound, attended-autonomous
 
-Same worktree (A3), same kickoff gate — **only the dispatch changes**. No ralph line: seed ONE
-context step, then hand off. The daemon must NOT auto-advance under you.
+Same worktree (A3), same kickoff gate — **only the dispatch changes**. No ralph loop wrapper, but
+the session still runs **autonomously to PR using TDD** — the human attaches only to watch or
+intervene, not because the session stops and waits. Single seed, no daemon re-kick.
 
 ```bash
 ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running
-orch add <worktree-absolute-path> "Read docs/plans/<plan-file>.md. You are in the worktree on the feature branch. Do the env-bound setup then STOP and wait — the user attaches to drive the live steps (API key / measurement) and open the PR."
+orch add <worktree-absolute-path> "Read docs/plans/<plan-file>.md and implement it fully using TDD. You are in the worktree on the feature branch, so never switch branches or create a worktree. Skip-perms is on and the live API key is in the worktree env, so run the live steps (embed / measurement / eval) yourself. Open a PR when the plan Done criteria and Pre-PR checks all pass. Use AskUserQuestion only if genuinely blocked."
 ```
 
-- **`orch add`, NOT `orch pipe`.** Single step only. A pipeline advance fires on session-idle and
-  would inject a prompt mid-manual-work — collision. Driver = one seed, no auto-advance.
-- **skip-perms (default `orch add`), NOT `--safe`.** User attends and watches every step, so
-  permission prompts only interrupt the flow — let them skip. (Reversed from the earlier `--safe`
-  rule at the user's request.)
+- **`orch add`, NOT `orch pipe`.** Single step only — this is one continuous session, not a
+  daemon-advanced pipeline. No auto-advance to collide with a human who attaches mid-run.
+- **skip-perms (default `orch add`), NOT `--safe`.** The session runs autonomously; permission
+  prompts only stall it. Claude still asks (AskUserQuestion) for genuinely important calls, so
+  read/command prompts skipping is the intended trade. (Reversed from the earlier `--safe` rule at
+  the user's request.)
+- **TDD, drives to PR — same as loopable.** The difference from loopable is ONLY the execution
+  engine: driver is a plain single Claude session (can AskUserQuestion when blocked, human can
+  attach to intervene), loopable is a headless ralph loop (Stop-hook re-kick, RALPH_DONE promise,
+  never interactive). Driver is for env-bound work the headless loop can't reach; both TDD to PR.
 - **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
   welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
   submitted one). If the attached session shows an empty `❯` with no seed, resend it once via
-  `tmux send-keys -t <sess> -- "<seed>"; tmux send-keys -t <sess> C-m` — this is a dispatch action,
-  not ticket work. So **always announce the seed text** too, so the user can paste it as fallback.
-- **Announce the session so the user knows where to attach:**
-  > "driver 티켓 → orch 세션 `<sess>` spawn됨. `tmux attach -t <sess>`로 붙어 env-bound 단계를
-  > 직접 구동하세요. 그 세션에서 PR까지 진행합니다. main 세션은 계속 dispatcher로 free입니다."
-- The user drives that session to PR (Pre-PR checks + `gh pr create` inside it). Main is NOT involved
-  past dispatch — it stays free for sibling loopable dispatches.
+  `tmux send-keys -t <sess> -- "<seed>"; tmux send-keys -t <sess> C-m` — dispatch action, not ticket
+  work. So **always announce the seed text** too, so the user can paste it as fallback.
+- **Announce the session (attach is optional — watching/intervening, not required):**
+  > "driver 티켓 → orch 세션 `<sess>` spawn됨. TDD로 PR까지 자율 진행합니다. 지켜보거나 개입하려면
+  > `tmux attach -t <sess>`. main 세션은 계속 dispatcher로 free입니다."
+- Main is NOT involved past dispatch — it stays free for sibling dispatches.
 
 ---
 

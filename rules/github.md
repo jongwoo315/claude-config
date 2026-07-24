@@ -7,7 +7,7 @@
 | `~/prv/*`   | `jongwoo315` | 개인 프로젝트                       |
 | `~/.claude` | `jongwoo315` | claude-config repo (예외 — "그 외" 아님) |
 | `~/work/*`  | `kimwoz`     | myplaycompany 업무                 |
-| `~/plab/*`  | `kimwoz`     | myplaycompany 업무                 |
+| `~/plab/*`  | `kimwoz`     | myplaycompany 업무 (`~/plab/.wt/*` worktree 주차장 포함 — 자동 kimwoz) |
 | 그 외       | `kimwoz`     | 기본값                             |
 
 GitHub API 호출, git push, PR 생성/코멘트 등 **모든 GitHub 작업 전에** 현재 계정을 확인하고 필요시 전환:
