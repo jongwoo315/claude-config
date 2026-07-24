@@ -39,15 +39,14 @@ dev-workflow = **PR-shipping code only.** Infra / DB migration-only / console-di
 (Lambda deployed by CLI, not PR) → route to `infra-workflow` + `infra-safety-gate`. Do NOT run
 the autonomous loop on irreversible non-PR deploys.
 
-Env-bound tickets (eval·측정·라이브 API 키·특수 인터프리터·소스 재빌드 = 헤드리스 loop가 못 닿는
-env) → **driver mode**: 여전히 orch 세션으로 dispatch한다 — 단 ralph loop 없이 single-step으로
-spawn (`orch add`, skip-perms). daemon은 컨텍스트만 seed하고 hand off → 사용자가 `tmux attach`로 붙어
-env-bound 단계를 직접 구동한다. loopable과 차이는 **orch 세션의 mode(누가 advance하냐)뿐**이고,
-main 세션은 두 경우 모두 dispatcher로만 남는다 (ticket 작업을 절대 실행하지 않음).
+**Single execution mode: orch detached ralph-loop for every ticket. No exceptions.** There is no
+separate driver/attended/env-bound mode (collapsed — the old distinction earned nothing: the human
+only judges the PR, never intervenes mid-run). Live-key / measurement tickets run headless too —
+symlink the key into the worktree env (.env) and the ralph session does embed/eval/measurement
+itself.
 
-**Invariant: main = 순수 dispatcher.** 어느 모드든 실행은 orch 세션에서. Loop-ability는 그 orch
-세션이 headless ralph loop이냐(loopable) 사용자가 붙어 구동하냐(driver)를 결정할 뿐, 실행 위치가
-아니다. Driver ≠ "main 세션 self-drive" (구 규칙 폐기).
+**Invariant: main = 순수 dispatcher.** 실행은 항상 orch 세션(ralph loop)에서. main은 ticket 작업을
+절대 실행하지 않는다.
 
 ---
 
@@ -124,6 +123,9 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   > keep working. Do NOT use superpowers:executing-plans or subagent-driven-development.
   > Emit `<promise>RALPH_DONE</promise>` ONLY when every Done-criteria item and every Pre-PR check
   > is genuinely true AND the PR has been created — never to escape the loop.
+  > On a HARD, retry-proof API error (OpenAI insufficient_quota, 401/403, exhausted billing), STOP —
+  > do NOT emit RALPH_DONE, do NOT create a PR, do NOT spin retrying. It surfaces via the orch
+  > completion notification; a human fixes billing. (Transient TPM 429 is different — pace and retry.)
   ```
   Header metadata: `**Tier:** [X]`, `**Jira:** DEV-XXXX` (or `**Notion:** DEV-XX`).
 
@@ -150,14 +152,7 @@ Ticket to create: DEV-XX "<title>" [default fields]
 
 ---
 
-## Phase B — orch Dispatch
-
-Both modes dispatch to a detached orch session — **main stays free either way**. The Scope-Guard
-tier already decided loopable vs driver:
-- **loopable** (headless-reachable env) → ralph-loop, daemon advances headless. Sections below.
-- **driver** (env-bound) → single-step spawn, user attends. See "Driver variant" before GATE 2.
-
-### Loopable dispatch (unattended)
+## Phase B — orch Dispatch (unattended ralph-loop)
 
 Construct the ralph-loop command and dispatch it into the worktree via `orch`. The main session
 does NOT run the loop (ralph-loop's Stop-hook would hijack it). Main session stays free.
@@ -200,39 +195,11 @@ orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
   > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 완료되면 PR이 GitHub에
   > 생성됩니다 — 리뷰는 편할 때 하시면 됩니다. 다른 작업을 바로 시작하셔도 됩니다."
 - Do NOT talk to the orch session. Its only output is the worktree commit + PR.
-
----
-
-## Phase B (driver variant) — env-bound, attended-autonomous
-
-Same worktree (A3), same kickoff gate — **only the dispatch changes**. No ralph loop wrapper, but
-the session still runs **autonomously to PR using TDD** — the human attaches only to watch or
-intervene, not because the session stops and waits. Single seed, no daemon re-kick.
-
-```bash
-ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running
-orch add <worktree-absolute-path> "Read docs/plans/<plan-file>.md and implement it fully using TDD. You are in the worktree on the feature branch, so never switch branches or create a worktree. Skip-perms is on and the live API key is in the worktree env, so run the live steps (embed / measurement / eval) yourself. Open a PR when the plan Done criteria and Pre-PR checks all pass. Use AskUserQuestion only if genuinely blocked."
-```
-
-- **`orch add`, NOT `orch pipe`.** Single step only — this is one continuous session, not a
-  daemon-advanced pipeline. No auto-advance to collide with a human who attaches mid-run.
-- **skip-perms (default `orch add`), NOT `--safe`.** The session runs autonomously; permission
-  prompts only stall it. Claude still asks (AskUserQuestion) for genuinely important calls, so
-  read/command prompts skipping is the intended trade. (Reversed from the earlier `--safe` rule at
-  the user's request.)
-- **TDD, drives to PR — same as loopable.** The difference from loopable is ONLY the execution
-  engine: driver is a plain single Claude session (can AskUserQuestion when blocked, human can
-  attach to intervene), loopable is a headless ralph loop (Stop-hook re-kick, RALPH_DONE promise,
-  never interactive). Driver is for env-bound work the headless loop can't reach; both TDD to PR.
 - **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
   welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
-  submitted one). If the attached session shows an empty `❯` with no seed, resend it once via
-  `tmux send-keys -t <sess> -- "<seed>"; tmux send-keys -t <sess> C-m` — dispatch action, not ticket
-  work. So **always announce the seed text** too, so the user can paste it as fallback.
-- **Announce the session (attach is optional — watching/intervening, not required):**
-  > "driver 티켓 → orch 세션 `<sess>` spawn됨. TDD로 PR까지 자율 진행합니다. 지켜보거나 개입하려면
-  > `tmux attach -t <sess>`. main 세션은 계속 dispatcher로 free입니다."
-- Main is NOT involved past dispatch — it stays free for sibling dispatches.
+  submitted one). If `orch logs <id>` shows an empty `❯` with the ralph line never sent, resend once
+  via `tmux send-keys -t <sess> -- "<ralph line>"; tmux send-keys -t <sess> C-m` — a dispatch action,
+  not ticket work.
 
 ---
 
@@ -284,18 +251,17 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
 - **Quote-safe ralph line.** The slash command shell-evals `$ARGUMENTS`; the dispatched line is ONE
   plain-word line with a single-token `--completion-promise`, no quotes/apostrophes/metachars/newlines.
   All detail lives in the plan. A quoted multi-line prompt = `unmatched "` and a dead loop.
-- **Autonomous execution session (loopable only).** A loopable orch session is headless — it CANNOT
-  answer AskUserQuestion. The plan header directive forbids interactive prompts and branch switches
-  (it starts in the worktree already on the branch). A stalled menu in `orch logs` means the guard is
+- **Autonomous execution session.** The orch ralph session is headless — it CANNOT answer
+  AskUserQuestion. The plan header directive forbids interactive prompts and branch switches (it
+  starts in the worktree already on the branch). A stalled menu in `orch logs` means the guard is
   missing from the plan — fix the plan and re-dispatch, do not hand-drive the session through tmux.
-  (Driver sessions are the opposite: user-attended by design, dispatched single-step so no daemon
-  advance collides with the manual work.)
+- **Live-key / measurement tickets run headless too** — symlink the key into the worktree env; no
+  separate attended mode. On a hard API error (insufficient_quota, 401) the plan directive makes the
+  session stop WITHOUT emitting RALPH_DONE or a PR (no spin); TPM 429 self-heals via code pacing.
 - **Worktree = worktree-first**, created right after parse (A3), before brainstorm/plan.
 - **Scope Guard holds:** infra / non-PR deploys route to infra-workflow. Never loop those.
-- **Main = pure dispatcher, always.** Every ticket dispatches to its own orch session — loopable as a
-  headless ralph loop, driver as a single-step user-attended session. Main runs ticket work in
-  NEITHER mode. Never collapse a batch into main-session hand-execution; a prior 반자동 approval is
-  single-ticket-scoped, never blanket.
+- **Main = pure dispatcher, always.** Every ticket dispatches to its own orch ralph session. Main
+  runs ticket work in no case. Never collapse a batch into main-session hand-execution.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
   ignored; the next step is always this file's phase order.
 

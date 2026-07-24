@@ -9,28 +9,23 @@
   무인 자동 진행. Phase A에서 AskUserQuestion 금지.
 - Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
   출력 없이 pass 가정 금지, 조용한 skip 금지.
-- 상세 절차는 `dev-workflow` 스킬 참조. 실행은 항상 orch 세션 위임 (loopable=무인 ralph loop,
-  driver=attended-autonomous). **main 세션 점유 금지** — 두 모드 모두.
+- 상세 절차는 `dev-workflow` 스킬 참조. **모든 티켓은 orch detached ralph-loop으로 실행** — 단일 실행
+  모드, 예외 없음. main 세션은 순수 dispatcher (ticket 작업 실행 안 함, 점유 금지).
 - **worktree 위치: `~/plab/.wt/<repo>-<branch-suffix>`** (repo sibling 아닌 중앙 주차장). `~/plab/`
   하위라 mode/계정/이메일 규칙이 자동 work/kimwoz/plabfootball로 해석 — 별도 처리 불필요. orch 세션은
   `--name claude-<task-id>`로 spawn돼 tmux picker에 읽을 수 있는 라벨로 노출.
+- **라이브 키/측정 작업도 ralph로 처리** — 키를 worktree env(.env symlink)에 넣으면 헤드리스 세션이 embed·
+  eval·측정을 직접 실행한다. 별도 driver/attended 모드 없음 (구 개념 폐기 — 사람은 PR만 판단, 실행 중간
+  개입 안 함).
+- **하드 에러 fail-fast:** plan 헤더에 "insufficient_quota·401 등 재시도 무의미한 하드 에러 시 RALPH_DONE
+  방출·PR 생성 말고 즉시 stop (스핀 금지)" 명시. TPM 429는 코드 페이싱+백오프로 자가치유. billing 수정은
+  어차피 사람 몫이라 orch 완료 알림(실패)로 발견.
 
 **Batch/parallel 실행 규칙:**
 
 - 복수 티켓 병렬 요청("all parallel", "run X,Y,Z") → 티켓별 독립 orch 세션 dispatch가 **기본값**.
   단일 main 세션 hand-execution으로 합치려면 **먼저 AskUserQuestion 확인** (조용히 collapse 금지).
-- driver(attended) 실행 승인은 **그 단일 티켓에만** 유효. batch·다른 티켓으로 자동 전이 안 됨.
-- **모든 티켓은 orch 세션으로 dispatch. main 세션은 순수 dispatcher (ticket 작업 실행 안 함).**
-  kickoff에서 티켓별 실행 모드를 **명시** — 차이는 orch 세션이 headless냐 attended냐뿐:
-  - **loopable** (순수 코드+테스트, 외부 env 불필요) → `orch pipe`, daemon이 headless ralph loop로
-    advance. 무인.
-  - **driver** (라이브 API 키·특수 인터프리터·소스 재빌드·측정 필요 = 헤드리스 loop가 못 닿는 env)
-    → `orch add` single-step spawn (skip-perms). **loopable처럼 TDD로 PR까지 자율 진행** — 라이브 키가
-    worktree env에 있어 세션이 직접 라이브 단계 실행. 사람은 지켜보거나 개입하러 attach(선택), stop-and-wait
-    아님. loopable과 유일한 차이 = 실행 엔진: driver는 일반 단일 세션(막히면 AskUserQuestion 가능, 사람 개입
-    가능), loopable은 헤드리스 ralph loop(Stop-hook 재기동, RALPH_DONE, 비대화형). **main self-drive 아님**
-    (구 규칙 폐기). single-step 필수 — pipeline이면 daemon advance가 개입 중 prompt injection 충돌.
-  - 두 모드 모두 kickoff 게이트 + 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
+- 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
 
 ### Jira 티켓 생성 시 프로퍼티
 
