@@ -22,7 +22,8 @@
   - **loopable** (순수 코드+테스트, 외부 env 불필요) → `orch pipe`, daemon이 headless ralph loop로
     advance. 무인.
   - **driver** (라이브 API 키·특수 인터프리터·소스 재빌드·측정 필요 = 헤드리스 loop가 못 닿는 env)
-    → `orch add --safe` single-step spawn. daemon이 컨텍스트만 seed하고 hand off → 사용자가
+    → `orch add` single-step spawn (skip-perms — 사용자가 attach해서 직접 보며 구동하므로
+    권한 프롬프트가 흐름을 끊지 않게 한다). daemon이 컨텍스트만 seed하고 hand off → 사용자가
     `tmux attach`로 붙어 직접 구동. **main 세션 self-drive 아님** (구 규칙 폐기). single-step 필수 —
     pipeline이면 daemon advance가 수작업 중 prompt를 injection해서 충돌.
   - 두 모드 모두 kickoff 게이트 + 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.

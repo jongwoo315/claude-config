@@ -41,7 +41,7 @@ the autonomous loop on irreversible non-PR deploys.
 
 Env-bound tickets (eval·측정·라이브 API 키·특수 인터프리터·소스 재빌드 = 헤드리스 loop가 못 닿는
 env) → **driver mode**: 여전히 orch 세션으로 dispatch한다 — 단 ralph loop 없이 single-step으로
-spawn (`orch add --safe`). daemon은 컨텍스트만 seed하고 hand off → 사용자가 `tmux attach`로 붙어
+spawn (`orch add`, skip-perms). daemon은 컨텍스트만 seed하고 hand off → 사용자가 `tmux attach`로 붙어
 env-bound 단계를 직접 구동한다. loopable과 차이는 **orch 세션의 mode(누가 advance하냐)뿐**이고,
 main 세션은 두 경우 모두 dispatcher로만 남는다 (ticket 작업을 절대 실행하지 않음).
 
@@ -200,12 +200,19 @@ context step, then hand off. The daemon must NOT auto-advance under you.
 
 ```bash
 ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running
-orch add --safe <worktree-absolute-path> "Read docs/plans/<plan-file>.md. You are in the worktree on the feature branch. Do the env-bound setup then STOP and wait — the user attaches to drive the live steps (API key / measurement) and open the PR."
+orch add <worktree-absolute-path> "Read docs/plans/<plan-file>.md. You are in the worktree on the feature branch. Do the env-bound setup then STOP and wait — the user attaches to drive the live steps (API key / measurement) and open the PR."
 ```
 
 - **`orch add`, NOT `orch pipe`.** Single step only. A pipeline advance fires on session-idle and
   would inject a prompt mid-manual-work — collision. Driver = one seed, no auto-advance.
-- **`--safe`, NOT skip-perms.** You attend a live key; permission prompts must show, never blind-skip.
+- **skip-perms (default `orch add`), NOT `--safe`.** User attends and watches every step, so
+  permission prompts only interrupt the flow — let them skip. (Reversed from the earlier `--safe`
+  rule at the user's request.)
+- **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
+  welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
+  submitted one). If the attached session shows an empty `❯` with no seed, resend it once via
+  `tmux send-keys -t <sess> -- "<seed>"; tmux send-keys -t <sess> C-m` — this is a dispatch action,
+  not ticket work. So **always announce the seed text** too, so the user can paste it as fallback.
 - **Announce the session so the user knows where to attach:**
   > "driver 티켓 → orch 세션 `<sess>` spawn됨. `tmux attach -t <sess>`로 붙어 env-bound 단계를
   > 직접 구동하세요. 그 세션에서 PR까지 진행합니다. main 세션은 계속 dispatcher로 free입니다."
