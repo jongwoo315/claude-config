@@ -115,6 +115,21 @@ RELEASE→…→HIDE) is NOT the same as a proven *causal writer* (which code pa
 must say which of the two it has. If only the state transition is proven, the root cause is
 **OPEN** — say so; do not let a well-evidenced symptom masquerade as a closed cause.
 
+**Contradiction is the lead, not a footnote.** When evidence contradicts the working theory —
+final state is impossible under the code path that supposedly produced it (e.g. child rows
+committed while the parent status didn't = atomicity violation) — that contradiction is the
+highest-value signal. Pivot to it immediately; do NOT park it as "needs local repro" and exit the
+gate on the theory it just falsified.
+
+**When local code can't explain it, suspect a SECOND writer.** The service-under-investigation is
+not the only thing that writes its DB. If its code is atomically incapable of the observed
+transition, enumerate other writers BEFORE more local spelunking: (a) **another service** calling
+in — cross-service API / lambda / webhook (check the caller host, not just the local repo); (b) a
+**signal-bypassing bulk op** — `bulk_update` / `.update()` / `save_without_signal` that skips the
+hooks you're reading; (c) a **celery/cron task**; (d) a **DB trigger**. The revert that reads as
+"impossible" locally is usually one of these — and it's invisible to code-grep of the local
+service. Widen to the telemetry inventory's cross-service traces (A2b) to catch it.
+
 systematic-debugging is **not skippable** — no fix is chosen without a root cause. Do NOT assume
 "the fix is code" and jump ahead; Phase 3 always ends at Gate 1.
 
@@ -212,6 +227,9 @@ loop proves the bug before fixing it.
   closure language ("물증 100%", "결정적") until a complete source confirms.
 - **State transition ≠ causal writer.** Don't close root cause on a proven symptom-state when the
   writer is unproven — mark it OPEN.
+- **Local code can't explain it → second writer.** Contradiction (impossible-under-local-code) is
+  the lead, not a footnote. Enumerate cross-service callers / signal-bypassing bulk ops / celery /
+  triggers before more local grep.
 - **Durable doc = proven only.** Guesses stay in scratch or get an explicit `(미검증)` label; never
   seed a conclusion slot with a hypothesis.
 - **Bug ticket / `fix/` branch.** Issue Type always Bug; branch prefix `fix/` — set by dev-workflow
@@ -230,6 +248,12 @@ loop proves the bug before fixing it.
   (custom admin actions) are NOT logged unless the action calls `log_change` itself.
 - **Sampled APM absence ≠ non-occurrence.** A client-aborted/errored request may emit no span.
   Missing trace is not evidence the code didn't run.
+- **The writer may be another service.** A row in service A's DB can be written by service B via a
+  cross-service call (API gateway / lambda / shared DB). A `PUT /{proxy+}` + `aws.lambda` span, or a
+  caller host that isn't the local app, means grepping the local repo will never find the writer —
+  follow the trace to the calling service. Signal-bypassing bulk ops (`bulk_update`, `.update()`,
+  `save_without_signal`) write without firing the model hooks you're reading, so they're invisible
+  to a hook-level code read.
 
 ## Entry Points
 
