@@ -74,6 +74,22 @@ Pick serial vs parallel by heuristic — **announce the call + one-line reason, 
 Fan-out is reversible (worst case: some wasted tokens) → Claude's call, not a gate. Only the
 irreversible fix fork (Gate 1) stays with the user.
 
+### A2b. Telemetry inventory — authoritative-source-first (do this BEFORE code spelunking)
+
+List what observability exists and its **trust class**, then consume high-trust sources FIRST.
+Guessing at code candidates or leaning on lagged/sampled data before exhausting complete logs is
+the #1 time-sink (see Gotchas).
+
+| Class | Meaning | Examples | Use |
+|---|---|---|---|
+| **complete** | every event, no sampling | ALB access logs (S3, Athena), CloudWatch app logs, DB audit/**binlog**, `django_admin_log` | source of truth — consume first |
+| **sampled** | partial retention | Datadog APM traces/spans | strong but absence ≠ non-occurrence |
+| **lagged** | delayed + merge-collapsed | BigQuery CDC / Datastream, read-replica | direction only; never treat absence as proof |
+
+Rule: **prove or kill a hypothesis with a complete source before writing it down.** A finding from
+a sampled/lagged source is a lead, not a conclusion. Enumerate the inventory explicitly in Phase A
+output so gaps are visible (e.g. "no binlog access → exact writer may stay unproven").
+
 ### A3. Systematic debugging (Phase 1-3, unattended)
 Invoke `superpowers:systematic-debugging` with the A1 context. Run Phase 1-3 explicitly,
 **log each phase output** (do not silently pass):
@@ -89,8 +105,22 @@ Invoke `superpowers:systematic-debugging` with the A1 context. Run Phase 1-3 exp
 - **Phase 3 — Hypothesis:** single root cause statement — "X is root cause because Y".
   Serial or synthesized-from-fan-out, always converges to ONE hypothesis. Output: "root cause".
 
+**Tag every finding** with `evidence-class` (**proven** = confirmed by a complete source /
+reproduced · **strong-circumstantial** = fits but unconfirmed · **hypothesis** = unverified) and
+one-line confidence. Banned until a complete source confirms: "물증 100%", "결정적 단서", or any
+closure language. Overclaiming then walking it back costs more than hedging.
+
+**Separate "what happened" from "who did it".** A proven *state transition* (e.g. row reverted
+RELEASE→…→HIDE) is NOT the same as a proven *causal writer* (which code path wrote it). Phase 3
+must say which of the two it has. If only the state transition is proven, the root cause is
+**OPEN** — say so; do not let a well-evidenced symptom masquerade as a closed cause.
+
 systematic-debugging is **not skippable** — no fix is chosen without a root cause. Do NOT assume
 "the fix is code" and jump ahead; Phase 3 always ends at Gate 1.
+
+**Hypotheses stay in scratch, not the durable doc.** Write only `proven` findings into
+`docs/plans/*-input.md` / the tracker. Unverified guesses that must be recorded get an explicit
+`(미검증)` label. Never seed a conclusion slot with a guess — it gets copied forward as fact.
 
 ---
 
@@ -98,9 +128,11 @@ systematic-debugging is **not skippable** — no fix is chosen without a root ca
 
 Summarize the root cause, then **AskUserQuestion** (options ranked, recommended first):
 ```
-Root cause: [one line]
+Root cause: [one line]  ·  evidence-class: [proven | OPEN — state proven, writer unproven]
 Evidence: [phase 1-3 findings, brief]
 ```
+If the causal writer is unproven (root cause **OPEN**), say so in the summary — the urgent fix
+(DB/rollback) can still proceed to mitigate the symptom, but don't present it as a closed RCA.
 > "근본 원인이 파악되었습니다. 어떻게 진행할까요?"
 > - DB 직접 수정 (데이터 픽스) — 데이터 문제면 가장 빠름. `infra-safety-gate` 경유.
 > - 코드 수정 — 코드 버그거나 데이터 픽스로 불충분할 때. `dev-workflow`로 핸드오프.
@@ -133,7 +165,9 @@ loop proves the bug before fixing it.
 ### B-DB → infra-safety-gate, then verify + optional deeper dig
 1. Present the fix SQL. Route through `infra-safety-gate` (identity check + confirm + rollback note)
    before executing — this is a prod mutation, never auto-apply.
-2. Apply, confirm resolved.
+2. Apply, confirm resolved. **Label state honestly:** "증상 완화됨 (symptom mitigated), RCA
+   [완료 | 진행중/OPEN]." A data fix is not an RCA — if the causal writer is still OPEN, the tracker
+   entry says so, and the 2차 조사 offer below is the path to close it.
 3. **Autonomous 2차 조사 (offer, non-blocking):**
    > "해결됐습니다. '왜 이 데이터가 없었는가'를 조사할까요?"
    > - 예 → re-enter Phase A with "why was this data missing" as the new question. If a missing/buggy
@@ -172,8 +206,30 @@ loop proves the bug before fixing it.
   async PR gate. This skill hands off and ends.
 - **Investigate-only records, never drops.** B-hold(원인만 파악)는 반드시 근본 원인을 tracker에
   남기고 종료 — 조용히 끝내지 않는다. On-call 재개 시 그 기록이 Gate 1 복귀점.
+- **Authoritative-source-first (A2b).** Complete logs before sampled/lagged; prove or kill with a
+  complete source before writing a finding down.
+- **Findings carry evidence-class.** proven / strong-circumstantial / hypothesis + confidence. No
+  closure language ("물증 100%", "결정적") until a complete source confirms.
+- **State transition ≠ causal writer.** Don't close root cause on a proven symptom-state when the
+  writer is unproven — mark it OPEN.
+- **Durable doc = proven only.** Guesses stay in scratch or get an explicit `(미검증)` label; never
+  seed a conclusion slot with a hypothesis.
 - **Bug ticket / `fix/` branch.** Issue Type always Bug; branch prefix `fix/` — set by dev-workflow
   on the B-code path.
+
+## Gotchas (evidence semantics)
+
+- **BigQuery CDC / Datastream time-travel** = state of the **BQ table** at that wall-clock, lagging
+  the source 15–20 min; sub-second source changes get merge-collapsed to one version. `AS OF` HIDE
+  ≠ source was HIDE then, and a missing intermediate version ≠ it never happened. Direction only.
+- **Read-replica** has replication lag; no per-row change history unless the table has audit
+  columns. Confirm the real column set (`SHOW COLUMNS`) before assuming `updated_at` etc.
+- **ALB access log** is complete but URL/method only — no request **body**. A write whose culprit
+  detail lives in the body (which field was set) needs APM-with-body or binlog to prove.
+- **Django `django_admin_log`** records change-**form** saves only; **changelist bulk actions**
+  (custom admin actions) are NOT logged unless the action calls `log_change` itself.
+- **Sampled APM absence ≠ non-occurrence.** A client-aborted/errored request may emit no span.
+  Missing trace is not evidence the code didn't run.
 
 ## Entry Points
 
