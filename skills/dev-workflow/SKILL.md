@@ -75,14 +75,19 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 - **Announce** the defaults used (text, not a question).
 
 ### A3. Worktree (worktree-first)
-- **Worktree location: `~/plab/.wt/<repo>-<branch-suffix>`** (central parking lot, NOT a repo
-  sibling). e.g. plab repo `pf-policy-bot` + branch `feature/DEV-7032-x` → `~/plab/.wt/pf-policy-bot-DEV-7032`.
+- **Worktree location: `~/plab/.wt/DEV-XXXX-<subject>`** (central parking lot, NOT a repo sibling).
+  The dir name is the branch suffix VERBATIM — no repo prefix. e.g. branch
+  `feature/DEV-7032-hybrid-search` → `~/plab/.wt/DEV-7032-hybrid-search`.
   ```bash
-  REPO_ROOT=$(git rev-parse --show-toplevel); REPO=$(basename "$REPO_ROOT")
-  WT="$HOME/plab/.wt/${REPO}-${BRANCH_NAME##*/DEV-}"   # fallback: ${REPO}-$(echo "$BRANCH_NAME" | tr / -)
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  WT="$HOME/plab/.wt/${BRANCH_NAME##*/}"   # feature/DEV-7032-x -> DEV-7032-x
   mkdir -p "$HOME/plab/.wt"
   git -C "$REPO_ROOT" worktree add "$WT" "$BRANCH_NAME"   # no -b, existing branch
   ```
+  **This name is the single source of truth for the whole chain** — orch derives its task id from
+  the dir basename, the tmux session is `claude-orch-<id>`, and claude's `--name` is `<id>`. So a
+  repo-prefixed dir (`pf-policy-bot-DEV-7133`) desyncs every downstream label. Ticket keys are
+  unique org-wide, so dropping the repo prefix cannot collide.
   `~/plab/.wt/` is under `~/plab/`, so mode/account/email rules already resolve to work/kimwoz/
   plabfootball — no special identity handling needed.
 - `superpowers:using-git-worktrees` from the **existing** branch (used only for its add mechanics —
