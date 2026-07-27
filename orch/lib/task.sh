@@ -7,12 +7,20 @@ _task_file() { printf '%s/task-%s.json\n' "$ORCH_QUEUE" "$1"; }
 # task_create <dir> <mode> <step...> ; echoes new id
 task_create() {
   local dir="$1" mode="$2"; shift 2
-  local slug id
+  local slug base id n
   slug=$(basename "$dir" | tr -c 'A-Za-z0-9' '-' | sed 's/-*$//')
-  # unique-ish suffix without Date/random: count existing files
-  local n; n=$(find "$ORCH_QUEUE" -name 'task-*.json' | wc -l | tr -d ' ')
-  id="${slug}-${n}"
-  while [ -e "$(_task_file "$id")" ]; do n=$((n+1)); id="${slug}-${n}"; done
+  # ID = {jira-ticket}-{subject}. Strip any repo prefix before the DEV-<num> token
+  # (worktree may be named <repo>-DEV-XXXX or DEV-XXXX-subject → both start the id
+  # at DEV-). No subject in the dir name → id is just the ticket (DEV-7130).
+  case "$slug" in
+    *DEV-[0-9]*) base="DEV-${slug#*DEV-}" ;;
+    *)           base="$slug" ;;
+  esac
+  # Bare base in the common case; a numeric suffix is appended ONLY on a real
+  # collision (re-dispatch of the same ticket), so ids stay clean and stable and
+  # done-task files no longer inflate the counter.
+  id="$base"; n=1
+  while [ -e "$(_task_file "$id")" ]; do id="${base}-${n}"; n=$((n+1)); done
   # One array element PER ARG, each slurped whole (jq -Rs) so a multi-line prompt
   # stays ONE step. The old `printf '%s\n' "$@" | jq -R .` split every arg on its
   # newlines, shattering a single multi-line instruction into per-line steps that
