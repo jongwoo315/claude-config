@@ -11,6 +11,7 @@ orch pipe <dir> <step...>          queue a pipeline task
 orch add --each <dir...> <prompt>  fan-out (one task per dir)
 orch ls                            list tasks
 orch rm <id>                       remove a task
+orch clean                         remove all done tasks (+ kill any leftover session)
 orch start [--max N]               start daemon (default 3)
 orch stop                          stop daemon
 orch logs <id>                     dump the session's pane
@@ -55,6 +56,18 @@ case "$cmd" in
   rm)
     [ -n "${1:-}" ] || { echo "usage: orch rm <id>" >&2; exit 1; }
     rm -f "$ORCH_QUEUE/task-$1.json" ;;
+  clean)
+    # Drop finished tasks (status done). Kill any lingering worker session first —
+    # normally already gone, but defensive so clean never orphans a tmux session.
+    removed=0
+    for f in "$ORCH_QUEUE"/task-*.json; do
+      [ -e "$f" ] || continue
+      [ "$(jq -r .status "$f")" = "done" ] || continue
+      sess=$(jq -r '.session // empty' "$f")
+      [ -n "$sess" ] && ${ORCH_TMUX:-tmux} kill-session -t "$sess" 2>/dev/null
+      rm -f "$f"; removed=$((removed+1))
+    done
+    echo "cleaned $removed done task(s)" ;;
   start)
     # Validate args BEFORE any side-effect check so a bad --max is rejected the
     # same whether or not a daemon is already up.
