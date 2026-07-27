@@ -11,9 +11,12 @@
   출력 없이 pass 가정 금지, 조용한 skip 금지.
 - 상세 절차는 `dev-workflow` 스킬 참조. **모든 티켓은 orch detached ralph-loop으로 실행** — 단일 실행
   모드, 예외 없음. main 세션은 순수 dispatcher (ticket 작업 실행 안 함, 점유 금지).
-- **worktree 위치: `~/plab/.wt/<repo>-<branch-suffix>`** (repo sibling 아닌 중앙 주차장). `~/plab/`
-  하위라 mode/계정/이메일 규칙이 자동 work/kimwoz/plabfootball로 해석 — 별도 처리 불필요. orch 세션은
-  `--name claude-<task-id>`로 spawn돼 tmux picker에 읽을 수 있는 라벨로 노출.
+- **worktree 위치: `~/plab/.wt/DEV-XXXX-<subject>`** (repo sibling 아닌 중앙 주차장). repo prefix
+  금지 — 브랜치 suffix 그대로. `~/plab/` 하위라 mode/계정/이메일 규칙이 자동 work/kimwoz/
+  plabfootball로 해석 — 별도 처리 불필요.
+- **네이밍 단일화 — worktree 디렉터리명이 체인 전체의 single source of truth.**
+  `~/plab/.wt/DEV-7133-corpus` → orch id `DEV-7133-corpus` → tmux 세션 `claude-orch-DEV-7133-corpus`
+  → claude `--name DEV-7133-corpus`. 디렉터리에 repo prefix가 붙으면 하위 라벨이 전부 어긋난다.
 - **라이브 키/측정 작업도 ralph로 처리** — 키를 worktree env(.env symlink)에 넣으면 헤드리스 세션이 embed·
   eval·측정을 직접 실행한다. 별도 driver/attended 모드 없음 (구 개념 폐기 — 사람은 PR만 판단, 실행 중간
   개입 안 함).

@@ -17,4 +17,11 @@ assert_contains "$(task_list_by_status queued)" "" "no queued left"
 task_set "$id" status queued
 assert_contains "$(task_list_by_status queued)" "$id" "lists queued ids"
 
+# id = {jira}-{subject}: the repo prefix on a worktree dir is dropped, everything
+# from the DEV- token on is kept. Non-DEV dirs fall through to the plain basename.
+assert_eq "$(task_create /tmp/pf-policy-bot-DEV-7133 single s)" "DEV-7133" \
+  "repo prefix stripped, ticket kept"
+assert_eq "$(task_create /tmp/pf-policy-bot-DEV-7134-hybrid-search single s)" \
+  "DEV-7134-hybrid-search" "subject preserved after ticket"
+
 finish

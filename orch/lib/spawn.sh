@@ -29,13 +29,22 @@ submit_step() {
 # spawn_session <task_id> <dir> <step0> <skip_perms:true|false> ; echoes session name
 spawn_session() {
   local id="$1" dir="$2" step0="$3" skip="$4"
-  local slug; slug=$(basename "$dir" | tr -c 'A-Za-z0-9' '-' | sed 's/-*$//')
-  # include task numeric suffix for uniqueness across same-dir tasks
-  local suffix="${id##*-}"
-  local sess="${ORCH_SESSION_PREFIX}${slug}-${suffix}"
+  # Session name MIRRORS the task id ({jira}-{subject}) so `orch ls`, the picker row
+  # and tmux all read the same label. (Deriving it from the dir slug instead left the
+  # session showing the repo-prefixed worktree name, and appending ${id##*-} tacked
+  # the ticket NUMBER on as a bogus suffix.) task_create already guarantees the id is
+  # unique; the loop below only covers a session that outlived its task file — e.g.
+  # re-dispatching a ticket after `orch clean` removed the json but the pane lingered.
+  local sess="${ORCH_SESSION_PREFIX}${id}" n=1
+  while $ORCH_TMUX has-session -t "$sess" 2>/dev/null; do
+    sess="${ORCH_SESSION_PREFIX}${id}-${n}"; n=$((n+1))
+  done
 
   $ORCH_TMUX new-session -d -s "$sess" -c "$dir"
   st_set "$sess" @orch_task "$id"
+  # Picker label. Without it the row falls back to the worktree dir basename
+  # (pf-policy-bot-DEV-7133); an orch session has no explicit /rename title.
+  st_set "$sess" @claude_title "$id"
   # @claude_state is owned by the plugin's Claude Code hooks — do NOT self-stamp it.
   # A self-stamped working masks the session's real state (idle/waiting) in the
   # picker and makes the @orch_await start-gate read our own stamp instead of the
@@ -44,10 +53,11 @@ spawn_session() {
 
   local flags=""
   [ "$skip" = "true" ] && flags="--dangerously-skip-permissions"
-  # 세션 picker에 raw session-id 대신 읽을 수 있는 라벨을 표시. claude- prefix로
-  # tmux-claude-session-manager에 claude 세션으로 노출. --name은 명시적 이름
-  # (nameSource 없음)이라 picker title 최우선순위를 잡는다.
-  flags="$flags --name claude-$id"
+  # 세션 picker에 raw session-id 대신 읽을 수 있는 라벨을 표시. --name은 명시적 이름
+  # (nameSource 없음)이라 picker title 최우선순위를 잡는다. 값은 task id 그대로 —
+  # picker의 claude- prefix 필터는 tmux 세션명(claude-orch-*)에만 걸리므로 라벨에
+  # prefix를 덧붙이면 "claude-DEV-7133"처럼 노이즈만 붙는다.
+  flags="$flags --name $id"
   if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
     # real claude: launch, wait for its TUI to be READY, then send + submit.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m
