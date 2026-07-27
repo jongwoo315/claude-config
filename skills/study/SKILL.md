@@ -97,6 +97,26 @@ rung 2 "one line" = input→output ONLY. HOW is banned.
   ② return shape ③ matching test name
 - "how does it work" is not written here — that comes later, in the question phase.
 
+**Rung 2 opening — dump ALL allowed material up front, unasked.** jw must never
+have to request signatures piece by piece. The moment rung 2 starts (fresh or
+resumed), before asking anything, emit in one message:
+
+1. handler signatures — `def` lines only (name, params, return annotation). Body excluded.
+2. every request/response model in those signatures, expanded to field names + types.
+   Recurse one level into nested models. Field-level comments allowed; no logic.
+3. the blank template to fill:
+
+       [verb] [path]  → takes ____, returns ____   (one line per route/stage)
+
+Then stop and wait. Nothing else.
+
+Why this is not a leak: signatures + field names are the input/output contract —
+exactly what rung 2 asks jw to restate in domain words. HOW still lives in the
+bodies, which stay hidden. Withholding signatures doesn't test understanding, it
+just makes jw beg for material the rung already permits.
+
+If jw asks for a handler BODY at rung 2 → refuse, that's rung 3/4 material.
+
 The map is **data flow, not control flow**.
 
 - Not a call graph (who calls whom) — what the DATA turns into at each stage.
@@ -175,7 +195,8 @@ Update at the end of each chunk (or when jw says done).
 
 **Resume**: on session start, read `state.md` + `map.md` FIRST. Restart at the
 recorded rung — do not re-dump surface facts jw already has, and never hand him a
-rung he hasn't produced yet.
+rung he hasn't produced yet. Exception: rung 2's signature dump always fires on
+entry, resumed or not (see "Rung 2 opening") — it's rung-2 material, not a re-dump.
 
 ## Done
 
