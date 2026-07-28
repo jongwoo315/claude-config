@@ -47,6 +47,14 @@ PR 리뷰 두 지점뿐이다.
   방출·PR 생성 말고 즉시 stop (스핀 금지)" 명시. TPM 429는 코드 페이싱+백오프로 자가치유. billing 수정은
   어차피 사람 몫이라 orch 완료 알림(실패)로 발견.
 
+**orch daemon stale 코드 주의:**
+
+- daemon은 `orch/lib/*.sh`를 **메모리에 물고 돈다.** `~/.claude` sync 후나 orch 코드 수정 후
+  첫 dispatch 전에 `orch stop && ORCH_STUCK_SECS=7200 orch start --max 3`로 재시작할 것.
+- 증상: status는 `running`인데 tmux 세션이 없고 `orch logs <id>`가 `can't find pane`을 뱉는다.
+  `jq -r '.session' ~/.claude/orch/queue/task-<id>.json`이 id와 다르면 확정.
+- 복구: `orch rm <id>` → `orch stop` → `orch start` → 재 dispatch.
+
 **Batch/parallel 실행 규칙:**
 
 - 복수 티켓 병렬 요청("all parallel", "run X,Y,Z") → 티켓별 독립 orch 세션 dispatch가 **기본값**.
