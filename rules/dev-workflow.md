@@ -47,6 +47,18 @@ PR 리뷰 두 지점뿐이다.
   방출·PR 생성 말고 즉시 stop (스핀 금지)" 명시. TPM 429는 코드 페이싱+백오프로 자가치유. billing 수정은
   어차피 사람 몫이라 orch 완료 알림(실패)로 발견.
 
+**⚠️ PR 존재는 완료 신호가 아니다:**
+
+- ralph 루프는 **PR을 만든 뒤에도 계속 일한다** — Pre-PR 단계의 자기 코드 리뷰
+  (`superpowers:requesting-code-review`)를 돌려 지적사항을 추가 커밋으로 얹는다.
+  실측: PR 생성 후 8분 넘게 작업 지속.
+- **완료 판정 = `orch ls`가 `done` + 워크트리 `git status --porcelain`이 빈 것.**
+  PR URL이나 Notion `PR` 컬럼이 찼다고 완료가 아니다.
+- orch가 `running`인 동안 PR을 리뷰하지 말 것 — 리뷰 도중 커밋이 얹혀 대상이 어긋난다.
+- 같은 이유로 **산출물이 그럴듯할수록 확인을 건너뛰기 쉽다.** PR 본문에 테스트 수와 통과 기준
+  표가 있어도 그건 루프의 주장이지 완료 증거가 아니다 (`rules/portfolio-judgment.md`의
+  "동작한다로 완료 보고하지 않는다"가 자기 자신에게도 적용된다).
+
 **orch daemon stale 코드 주의:**
 
 - daemon은 `orch/lib/*.sh`를 **메모리에 물고 돈다.** `~/.claude` sync 후나 orch 코드 수정 후
