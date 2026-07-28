@@ -262,6 +262,17 @@ done   # worktree 경로와 정확히 일치하는 PID만 kill. main 세션은 r
 
 The loop created the PR. Review is asynchronous — no session waiting.
 
+⚠️ **PR이 떴다고 루프가 끝난 게 아니다.** 루프는 PR 생성 후에도 Pre-PR 단계의 자기 코드 리뷰를
+돌려 지적사항을 추가 커밋으로 얹는다 (실측: PR 생성 후 8분 이상 계속 작업). **리뷰를 시작하기 전에**:
+
+```bash
+orch ls                                          # done 이어야 함. running 이면 대기
+git -C <worktree> status --porcelain             # 비어야 함
+git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않는지
+```
+
+`running` 중에 리뷰하면 도중에 커밋이 얹혀 리뷰 대상이 어긋난다.
+
 - Review the PR diff on GitHub. Merge = human call. (Kickoff gate already approved the plan; PR
   review is the second safety net before production.)
 - **Verify the loop's Pre-PR output, not just the diff.** Pre-PR checks are a completion-*promise*,
