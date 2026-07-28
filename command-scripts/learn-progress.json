@@ -462,7 +462,7 @@
   },
   "level": {
     "current_level": 5,
-    "xp": 2320,
+    "xp": 2350,
     "xp_to_next": 0,
     "title": "숙련자",
     "history": [
@@ -1230,20 +1230,270 @@
         "date": "2026-07-03",
         "track": "rag",
         "topic": "reranking"
+      },
+      {
+        "date": "2026-07-03",
+        "track": "fastapi",
+        "topic": "fastapi-auth"
+      },
+      {
+        "date": "2026-07-04",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-04",
+        "track": "prompt",
+        "topic": "system-prompt"
+      },
+      {
+        "date": "2026-07-05",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-05",
+        "track": "agent",
+        "topic": "react-loop"
+      },
+      {
+        "date": "2026-07-06",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-06",
+        "track": "agent",
+        "topic": "tool-use"
+      },
+      {
+        "date": "2026-07-07",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-07",
+        "track": "agent",
+        "topic": "langgraph"
+      },
+      {
+        "date": "2026-07-08",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-08",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-09",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-09",
+        "track": "agent",
+        "topic": "planning"
+      },
+      {
+        "date": "2026-07-10",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-10",
+        "track": "fastapi",
+        "topic": "fastapi-auth"
+      },
+      {
+        "date": "2026-07-11",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-12",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-12",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-13",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-13",
+        "track": "prompt",
+        "topic": "system-prompt"
+      },
+      {
+        "date": "2026-07-14",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-14",
+        "track": "agent",
+        "topic": "reflexion"
+      },
+      {
+        "date": "2026-07-15",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-15",
+        "track": "prompt",
+        "topic": "role-prompting"
+      },
+      {
+        "date": "2026-07-16",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-16",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-17",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-17",
+        "track": "fastapi",
+        "topic": "fastapi-auth"
+      },
+      {
+        "date": "2026-07-18",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-18",
+        "track": "prompt",
+        "topic": "chain-of-thought"
+      },
+      {
+        "date": "2026-07-19",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-19",
+        "track": "prompt",
+        "topic": "few-shot"
+      },
+      {
+        "date": "2026-07-20",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-20",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-21",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-21",
+        "track": "prompt",
+        "topic": "system-prompt"
+      },
+      {
+        "date": "2026-07-22",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-22",
+        "track": "prompt",
+        "topic": "prompt-injection"
+      },
+      {
+        "date": "2026-07-23",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-23",
+        "track": "agent",
+        "topic": "react-loop"
+      },
+      {
+        "date": "2026-07-24",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-24",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-07-25",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-07-25",
+        "track": "fastapi",
+        "topic": "fastapi-auth"
+      },
+      {
+        "date": "2026-07-26",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-26",
+        "track": "agent",
+        "topic": "tool-use"
+      },
+      {
+        "date": "2026-07-27",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-07-27",
+        "track": "agent",
+        "topic": "langgraph"
+      },
+      {
+        "date": "2026-07-28",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-07-28",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
       }
     ]
   },
   "daily_quests": {
-    "current_streak": 5,
+    "current_streak": 0,
     "longest_streak": 4,
     "today": {
-      "date": "2026-07-03",
+      "date": "2026-07-28",
       "type": "explain",
-      "topic": "reranking",
-      "track": "rag",
-      "description": "reranking — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
+      "topic": "fastapi-lifespan",
+      "track": "fastapi",
+      "description": "fastapi lifespan — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
       "xp": 30,
-      "completed": true,
+      "completed": false,
       "source": "daily_quest"
     },
     "quest_log": [
@@ -1580,6 +1830,17 @@
         "type": "explain",
         "topic": "reranking",
         "track": "rag",
+        "grade": "🟡 반반",
+        "self_rating": "어려움",
+        "xp_awarded": 30,
+        "source": "daily_quest",
+        "completed": true
+      },
+      {
+        "date": "2026-07-04",
+        "type": "explain",
+        "topic": "fastapi-lifespan",
+        "track": "fastapi",
         "grade": "🟡 반반",
         "self_rating": "어려움",
         "xp_awarded": 30,

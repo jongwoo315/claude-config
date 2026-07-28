@@ -8,7 +8,6 @@
       "Bash(bq *)"
     ]
   },
-  "model": "opus[1m]",
   "allowedMcpServers": [
     {
       "serverName": "context7"
@@ -74,6 +73,16 @@
             "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh waiting"
           }
         ]
+      },
+      {
+        "_tag": "ccstatusline-managed",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
+          }
+        ],
+        "matcher": "Skill"
       }
     ],
     "PostToolUse": [
@@ -165,6 +174,15 @@
           {
             "type": "command",
             "command": "$HOME/.tmux/plugins/tmux-claude-session-manager/scripts/state.sh working"
+          }
+        ]
+      },
+      {
+        "_tag": "ccstatusline-managed",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
           }
         ]
       }
