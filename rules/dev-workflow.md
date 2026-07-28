@@ -53,7 +53,30 @@ PR 리뷰 두 지점뿐이다.
   첫 dispatch 전에 `orch stop && ORCH_STUCK_SECS=7200 orch start --max 3`로 재시작할 것.
 - 증상: status는 `running`인데 tmux 세션이 없고 `orch logs <id>`가 `can't find pane`을 뱉는다.
   `jq -r '.session' ~/.claude/orch/queue/task-<id>.json`이 id와 다르면 확정.
-- 복구: `orch rm <id>` → `orch stop` → `orch start` → 재 dispatch.
+- 복구: 아래 "재 dispatch 전 고아 프로세스 확인"을 반드시 거칠 것.
+
+**⚠️ 재 dispatch 전 고아 프로세스 확인 (필수):**
+
+`orch rm`은 **큐 항목과 tmux 세션만 정리하고 claude 프로세스는 죽이지 않는다.** 세션이 죽어도
+claude는 고아로 살아남아 같은 worktree에 계속 쓴다. 이 상태에서 재 dispatch하면
+**한 worktree에 에이전트 2개**가 붙어 서로의 DB·파일을 깨뜨린다 (실제 발생함 — 두 번째 세션이
+같은 DB에 pytest를 돌리면 첫 번째 작업이 오염된다).
+
+```bash
+# worktree에 붙은 claude 프로세스 전수 확인
+ps aux | grep "claude --dangerously" | grep -v grep | awk '{print $2}' | while read p; do
+  echo "$p  $(lsof -p $p -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)"
+done
+```
+
+대상 worktree가 cwd인 PID가 있으면 **kill 후에 재 dispatch**한다.
+`orch rm <id>` → 위 확인 → `kill <pid>` → `tmux kill-session -t claude-orch-<id>` → 재 dispatch.
+
+> 자기 자신(main 세션)의 cwd가 repo 루트로 잡히니 **worktree 경로와 정확히 일치하는 것만** 죽일 것.
+
+**중단된 실행을 재개할 때는 plan에 RESUME 섹션을 추가한다.** 이미 있는 산출물 목록과
+"덮어쓰지 말고 테스트로 검증하라 / 파일 존재 ≠ 통과 기준 충족"을 명시하지 않으면
+처음부터 다시 만들거나, 반대로 파일만 보고 통과 처리한다.
 
 **Batch/parallel 실행 규칙:**
 

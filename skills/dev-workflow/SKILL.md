@@ -226,8 +226,22 @@ orch stop && ORCH_STUCK_SECS=7200 orch start --max 3
 ```bash
 jq -r '.session' ~/.claude/orch/queue/task-<id>.json   # id와 정확히 일치해야 함
 ```
-**복구:** `orch rm <id>` → `orch stop` → `orch start` → 재 dispatch.
+**복구:** `orch rm <id>` → **고아 프로세스 확인(아래)** → `orch stop` → `orch start` → 재 dispatch.
 (디스크의 `lib/spawn.sh`가 이미 고쳐져 있어도 실행 중 daemon은 옛 코드를 쓴다 — 실제 발생함.)
+
+⚠️ **`orch rm`은 claude 프로세스를 죽이지 않는다.** 큐 항목과 tmux 세션만 정리한다. 세션이
+사라져도 claude는 고아로 살아남아 같은 worktree에 계속 쓰므로, 그대로 재 dispatch하면
+**한 worktree에 에이전트 2개**가 붙는다 (실제 발생 — 둘이 같은 DB에 pytest를 돌려 서로를 깨뜨린다).
+재 dispatch 전 반드시:
+```bash
+ps aux | grep "claude --dangerously" | grep -v grep | awk '{print $2}' | while read p; do
+  echo "$p  $(lsof -p $p -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)"
+done   # worktree 경로와 정확히 일치하는 PID만 kill. main 세션은 repo 루트라 걸리지 않는다
+```
+
+**중단된 실행을 재개할 때는 plan에 `## RESUME` 섹션을 추가한다** — 이미 있는 산출물 목록 +
+"덮어쓰지 말고 테스트로 검증하라, 파일 존재 ≠ 통과 기준 충족". 없으면 처음부터 다시 만들거나
+파일만 보고 통과 처리한다.
 - Confirm the orch session did NOT stall on an interactive prompt: `orch logs <id>` should show work,
   not a menu. If it stalls despite the guard, the plan directive is missing the no-AskUserQuestion
   line — fix the plan, not the running session.
