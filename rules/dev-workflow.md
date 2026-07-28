@@ -2,6 +2,27 @@
 
 개발 작업 시작 시 `dev-workflow` 스킬을 사용할 것.
 
+**적용 범위: 모든 개발 작업.** `~/plab`·`~/work` 업무든 `~/prv` 개인 프로젝트든 예외 없다.
+디렉터리에 따라 **레이어만 치환**하고 파이프라인·게이트·실행 모드는 동일하다.
+
+| 레이어 | `~/plab`, `~/work` | `~/prv` |
+| --- | --- | --- |
+| 티켓 시스템 | Jira (`DEV-XXXX`) | Notion 프로젝트 진행 DB `29241e61-65c0-801f-9529-cabf8cad919b` (`#NN`) |
+| 티켓 스킬 | `setup-work` | `personal-setup-work` |
+| worktree 주차장 | `~/plab/.wt/DEV-XXXX-<subject>` | `~/prv/.wt/<NN>-<subject>` |
+| 브랜치 | `DEV-XXXX-<subject>` | `feat/<NN>-<subject>` |
+| GitHub 계정 / 커밋 이메일 | `kimwoz` / `jongwoo.kim@plabfootball.com` | `jongwoo315` / `jongwoo315@gmail.com` |
+| 티켓 필드 갱신 | Jira 상태 | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` **전부** |
+| PR 승인 | 리뷰어 approve | 1인 레포라 self-approve 불가 → `--comment` / `--request-changes`만 |
+
+**실행 모드는 양쪽 동일 — orch detached ralph-loop, 예외 없음.** `~/prv`가 학습·포트폴리오
+목적이라고 해서 대화형으로 내려오지 않는다. 과정 경험이 아니라 **검증 기준을 정하는 능력**이
+산출물이기 때문이다 (`rules/portfolio-judgment.md`). 사람의 개입은 Kickoff(plan 승인)와
+PR 리뷰 두 지점뿐이다.
+
+**`~/prv`에서 plan이 오히려 더 중요해진다.** 통과 기준·의도적 비목표·불통과 신호가 plan에
+없으면 ralph는 "동작하는 코드"만 만들고 끝난다. Kickoff 게이트에서 이 3줄을 반드시 확인할 것.
+
 **dev-workflow 실행 규칙 (autonomous pipeline):**
 
 - dev-workflow는 **2개 게이트만 동기 확인**한다: Kickoff(plan 승인 go/adjust/cancel) + PR 리뷰(async).
@@ -14,6 +35,8 @@
 - **worktree 위치: `~/plab/.wt/DEV-XXXX-<subject>`** (repo sibling 아닌 중앙 주차장). repo prefix
   금지 — 브랜치 suffix 그대로. `~/plab/` 하위라 mode/계정/이메일 규칙이 자동 work/kimwoz/
   plabfootball로 해석 — 별도 처리 불필요.
+  **`~/prv` 프로젝트는 `~/prv/.wt/<NN>-<subject>`** (예: `~/prv/.wt/104-db-schema`). 마찬가지로
+  `~/prv/` 하위라 계정/이메일이 자동 jongwoo315/jongwoo315@gmail.com으로 해석된다.
 - **네이밍 단일화 — worktree 디렉터리명이 체인 전체의 single source of truth.**
   `~/plab/.wt/DEV-7133-corpus` → orch id `DEV-7133-corpus` → tmux 세션 `claude-orch-DEV-7133-corpus`
   → claude `--name DEV-7133-corpus`. 디렉터리에 repo prefix가 붙으면 하위 라벨이 전부 어긋난다.
@@ -54,6 +77,29 @@ Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 refine.)*
 | Start Date | 오늘 날짜                                     | `customfield_10015`  |
 
 **Story Points는 두 필드 모두 설정:** `customfield_10016` + `customfield_10031`
+
+### Notion 태스크 프로퍼티 (`~/prv`)
+
+DB `29241e61-65c0-801f-9529-cabf8cad919b` (프로젝트 진행). Jira 대신 이쪽을 갱신한다.
+
+| 시점 | 채울 컬럼 |
+| ---- | --------- |
+| 태스크 생성 | `태스크`, `프로젝트`, `상태`=시작 전, `Git 저장소`, `선행 작업` |
+| **착수** | `상태`=진행 중, `작업일.start`=오늘, `Git 브랜치` |
+| PR 생성 직후 | `PR` |
+| 머지 후 | `상태`=완료, `작업일.end`=오늘 |
+
+**컬럼을 비워두지 않는다.** 착수도 안 바꾸고 끝에 몰아서 완료 처리하지 않는다.
+
+⚠️ **`작업일`은 date range다.** 머지 후 `end`를 넣을 때 기존 `start`를 같이 보내지 않으면
+시작일이 지워진다. 반드시 현재 값을 조회한 뒤 `{start, end}` 형태로 PATCH할 것.
+
+**Notion `ID`는 prefix가 없다** — `{"prefix": null, "number": 86}`. `#86`으로 표기하고
+`DEV-86`으로 쓰지 않는다. `DEV-`는 Jira 티켓 형식이라 로그에서 둘을 구분할 수 없게 된다.
+
+**실제 프로퍼티는 10개뿐이다:** `태스크`(title) · `상태`(select) · `프로젝트`(select) ·
+`ID`(unique_id, 읽기 전용) · `작업일`(date range) · `Git 저장소`(url) · `Git 브랜치`(url) ·
+`PR`(url) · `선행 작업`(relation) · `후속 작업`(relation). **`생성일`은 존재하지 않는다.**
 
 ## docs/plans 파일 규칙
 
