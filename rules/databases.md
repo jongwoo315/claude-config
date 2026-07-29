@@ -3,22 +3,26 @@
 **인증:** `bq` CLI는 gcloud `credentials.db`를 직접 읽음 — `GOOGLE_APPLICATION_CREDENTIALS` 불필요.
 `gcloud auth login`이 완료된 상태면 바로 사용 가능. (`application_default_credentials.json` 없어도 됨)
 
+프로젝트 ID는 `~/.zshenv`의 `$PLAB_BQ_PROJECT`에 있다.
+
 ```bash
 # 기본 쿼리 형식
+# 작은따옴표는 변수가 확장되지 않으므로 큰따옴표를 쓰되, BigQuery 테이블 참조의
+# 백틱은 반드시 \` 로 이스케이프한다 — 안 하면 셸이 명령치환으로 해석해 쿼리가 깨진다.
 bq query --use_legacy_sql=false --format=json \
-  'SELECT * FROM `plabfootball-51bf5.plab.TABLE_NAME` LIMIT 10'
+  "SELECT * FROM \`$PLAB_BQ_PROJECT.plab.TABLE_NAME\` LIMIT 10"
 
 # 데이터셋/테이블 목록 확인
-bq ls plabfootball-51bf5:
-bq ls plabfootball-51bf5:plab
+bq ls "$PLAB_BQ_PROJECT":
+bq ls "$PLAB_BQ_PROJECT":plab
 ```
 
-| 항목             | 값                                         |
-| ---------------- | ------------------------------------------ |
-| Project ID       | `plabfootball-51bf5`                       |
-| Dataset          | `plab`                                     |
-| 테이블 참조 형식 | `` `plabfootball-51bf5.plab.TABLE_NAME` `` |
-| 데이터 지연      | 약 15~20분 (RDS 대비)                      |
+| 항목             | 값                                          |
+| ---------------- | ------------------------------------------- |
+| Project ID       | `$PLAB_BQ_PROJECT` (`~/.zshenv`)            |
+| Dataset          | `plab`                                      |
+| 테이블 참조 형식 | `` `$PLAB_BQ_PROJECT.plab.TABLE_NAME` ``    |
+| 데이터 지연      | 약 15~20분 (RDS 대비)                       |
 
 **쿼리 우선순위:**
 

@@ -254,7 +254,7 @@ fi
 
 **CRITICAL**: 티켓 생성 시 반드시 아래 필드들을 포함해야 함.
 
-### Custom Field IDs (myplaycompany.atlassian.net)
+### Custom Field IDs ($PLAB_JIRA_HOST)
 
 ```
 customfield_10015: Start Date (YYYY-MM-DD 형식)
@@ -274,7 +274,7 @@ customfield_10014: Epic Link / Parent
 ```bash
 curl -s -X GET \
   -H "Authorization: Basic $(echo -n "$JIRA_EMAIL:$JIRA_API_TOKEN" | base64)" \
-  "https://myplaycompany.atlassian.net/rest/api/3/user/search?query=jongwoo.kim@plabfootball.com" \
+  "https://$PLAB_JIRA_HOST/rest/api/3/user/search?query=$PLAB_WORK_EMAIL" \
   | jq -r '.[0].accountId'
 ```
 
@@ -320,7 +320,7 @@ curl -s -X GET \
 > "Jira 티켓이 생성되었습니다.
 >
 > - Jira: PROJ-123
-> - URL: https://myplaycompany.atlassian.net/browse/PROJ-123
+> - URL: https://$PLAB_JIRA_HOST/browse/PROJ-123
 >
 > 나중에 작업을 재개하려면 티켓 URL을 입력하세요."
 

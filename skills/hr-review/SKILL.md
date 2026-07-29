@@ -51,7 +51,7 @@ description: Use when writing 셀프 리뷰(self-review) or 피어 리뷰(peer-r
    assignee = currentUser() AND created >= "<시작>" AND created <= "<끝>" ORDER BY created
    ```
    - 100+개면 Epic(parent)별로 뭉쳐 **대형 프로젝트 축** 도출. `approximate-count` 엔드포인트로 테마별 카운트.
-   - 엔드포인트: `/rest/api/3/search/jql` (deprecated `/search` 금지). `-u jongwoo.kim@plabfootball.com:$JIRA_API_TOKEN | jq` (RTK bypass).
+   - 엔드포인트: `/rest/api/3/search/jql` (deprecated `/search` 금지). `-u $PLAB_WORK_EMAIL:$JIRA_API_TOKEN | jq` (RTK bypass).
 2. **§1 테이블** — 컬럼: 주요 프로젝트(분기/소속팀) / 당초 목표 / **결과(Result=목표 달성 '사실')** / **성과(Impact=조직에 만든 '변화·기여')** / 업무 비중(%) / 참고 / 비고.
    - **결과 ≠ 성과** 를 반드시 구분. 회고가 "결과"까지라면 셀프리뷰는 "그래서 조직에 뭐가 바뀌었나"를 추가.
    - **비중**: 티켓 수는 심하게 왜곡됨(인프라 1건=수주, CS 1건=수시간). 티켓 수 + 실제 투입기간 블렌딩. 보여줄 가치 큰 코어에 가중.

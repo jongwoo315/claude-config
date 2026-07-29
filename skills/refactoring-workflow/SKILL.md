@@ -268,7 +268,7 @@ Invoke `superpowers:finishing-a-development-branch`.
 ## Before/After
 ## Test Plan
 ## Jira
-- https://myplaycompany.atlassian.net/browse/DEV-XXXX
+- https://$PLAB_JIRA_HOST/browse/DEV-XXXX
 ```
 
 **PR Body (Personal):**

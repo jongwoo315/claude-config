@@ -11,7 +11,7 @@
 | 티켓 스킬 | `setup-work` | `personal-setup-work` |
 | worktree 주차장 | `~/plab/.wt/DEV-XXXX-<subject>` | `~/prv/.wt/<NN>-<subject>` |
 | 브랜치 | `DEV-XXXX-<subject>` | `feat/<NN>-<subject>` |
-| GitHub 계정 / 커밋 이메일 | `kimwoz` / `jongwoo.kim@plabfootball.com` | `jongwoo315` / `jongwoo315@gmail.com` |
+| GitHub 계정 / 커밋 이메일 | `kimwoz` / `$PLAB_WORK_EMAIL` | `jongwoo315` / `jongwoo315@gmail.com` |
 | 티켓 필드 갱신 | Jira 상태 | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` **전부** |
 | PR 승인 | 리뷰어 approve | 1인 레포라 self-approve 불가 → `--comment` / `--request-changes`만 |
 
