@@ -35,8 +35,22 @@ bq ls "$PLAB_BQ_PROJECT":plab
 
 **자격증명은 `~/.zshenv` 환경변수에 있다. 저장소에 절대 쓰지 않는다.**
 `PLAB_DB_HOST_MYSQL` `PLAB_MYSQL_USER` `PLAB_MYSQL_PASSWORD`
-`PLAB_MYSQL_RO_USER` `PLAB_MYSQL_RO_PASSWORD`
 `PLAB_DB_HOST_PG` `PLAB_PG_USER` `PLAB_PG_DB` `PLAB_PG_PASSWORD`
+
+**`plab_readonly` 계정은 폐기됐다** (2026-07-29 확인 — 인증 실패). MySQL은
+`$PLAB_MYSQL_USER` 하나만 쓴다.
+
+**이 계정의 권한 한계:**
+
+| 대상 | 가능 여부 |
+| --- | --- |
+| `plab` 스키마 조회 | O |
+| `information_schema` | O |
+| `performance_schema` | **X** (`ERROR 1142`) |
+| `mysql.user` | **X** (`ERROR 1142`) |
+
+`performance_schema`가 필요한 작업(쿼리 다이제스트·full scan 분석)은 별도 권한 부여
+없이는 불가능하다. 실패 시 그 단계만 건너뛰고 진행할 것 — 하드 실패시키지 말 것.
 
 `~/.zshenv`는 비대화형 셸에도 자동 적용되므로 `source` 없이 바로 쓸 수 있다.
 비어 있으면 셸을 새로 띄우거나 `source ~/.zshenv`.
