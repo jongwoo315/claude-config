@@ -29,28 +29,43 @@ bq ls plabfootball-51bf5:plab
 
 **IP 허용:** Slack에서 `@플래비 ip 등록`으로 임시 등록 (24시간 만료)
 
+**자격증명은 `~/.zshenv` 환경변수에 있다. 저장소에 절대 쓰지 않는다.**
+`PLAB_DB_HOST_MYSQL` `PLAB_MYSQL_USER` `PLAB_MYSQL_PASSWORD`
+`PLAB_MYSQL_RO_USER` `PLAB_MYSQL_RO_PASSWORD`
+`PLAB_DB_HOST_PG` `PLAB_PG_USER` `PLAB_PG_DB` `PLAB_PG_PASSWORD`
+
+`~/.zshenv`는 비대화형 셸에도 자동 적용되므로 `source` 없이 바로 쓸 수 있다.
+비어 있으면 셸을 새로 띄우거나 `source ~/.zshenv`.
+
 ```bash
 # MySQL (plab replica, read-only)
-# 비밀번호의 ! 문자 때문에 --defaults-extra-file 방식 사용
-cat > /tmp/.my.cnf << 'EOF'
-[client]
-host=plab3-replica.ct9mlhi5xnrs.ap-northeast-2.rds.amazonaws.com
-port=3306
-user=u_jongwoo.kim
-password=***REMOVED-CREDENTIAL***
-database=plab
-EOF
-chmod 600 /tmp/.my.cnf
+# 비밀번호에 특수문자가 있어 커맨드라인 -p 대신 --defaults-extra-file 사용
+umask 077
+printf '[client]\nhost=%s\nport=3306\nuser=%s\npassword=%s\ndatabase=plab\n' \
+  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_USER" "$PLAB_MYSQL_PASSWORD" > /tmp/.my.cnf
 mysql --defaults-extra-file=/tmp/.my.cnf -e "YOUR QUERY;"
 rm -f /tmp/.my.cnf
 
 # PostgreSQL (googwansa prod)
-# 비밀번호의 ! 문자 때문에 .pgpass 방식 사용
-echo "plab-product-prod.ct9mlhi5xnrs.ap-northeast-2.rds.amazonaws.com:5432:plab_product:plab:***REMOVED-CREDENTIAL***" > /tmp/.pgpass
-chmod 600 /tmp/.pgpass
-PGPASSFILE=/tmp/.pgpass psql -h plab-product-prod.ct9mlhi5xnrs.ap-northeast-2.rds.amazonaws.com -p 5432 -U plab -d plab_product -c "YOUR QUERY;"
+umask 077
+printf '%s:5432:%s:%s:%s\n' \
+  "$PLAB_DB_HOST_PG" "$PLAB_PG_DB" "$PLAB_PG_USER" "$PLAB_PG_PASSWORD" > /tmp/.pgpass
+PGPASSFILE=/tmp/.pgpass psql -h "$PLAB_DB_HOST_PG" -p 5432 \
+  -U "$PLAB_PG_USER" -d "$PLAB_PG_DB" -c "YOUR QUERY;"
 rm -f /tmp/.pgpass
 ```
+
+**heredoc 함정 — 이것 때문에 예전에 환경변수 방식이 실패했다.**
+
+```bash
+cat > /tmp/.my.cnf << 'EOF'     # ← delimiter에 따옴표가 있으면 변수가 확장되지 않는다
+password=$PLAB_MYSQL_PASSWORD   # ← 이 문자열이 그대로 파일에 쓰여 인증 실패
+EOF
+```
+
+따옴표를 떼면(`<< EOF`) 확장되지만, 위처럼 **`printf '%s'` 방식이 안전하다** — 비밀번호에
+`$`, 백틱, 백슬래시가 있어도 그대로 기록된다. `umask 077`로 파일 생성 시점부터 권한을
+막는다 (`chmod 600`은 생성과 chmod 사이에 짧은 노출 창이 있다).
 
 **plab DB 테이블 네이밍 규칙:**
 Django 기본 `app_label_model` 대신 **모델명만** 사용 (`Meta.db_table` 설정):

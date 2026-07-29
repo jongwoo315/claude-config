@@ -172,15 +172,11 @@ python3 /tmp/dbm_merge.py $MIN_COUNT $MIN_DURATION $TOP_N > /tmp/dbm_filtered.js
 MySQL replica에 연결하여 `information_schema.TABLES`에서 plab DB의 테이블별 행 수를 조회:
 
 ```bash
-cat > /tmp/.my.cnf << 'EOF'
-[client]
-host=plab3-replica.ct9mlhi5xnrs.ap-northeast-2.rds.amazonaws.com
-port=3306
-user=plab_readonly
-password=***REMOVED-CREDENTIAL***
-database=plab
-EOF
-chmod 600 /tmp/.my.cnf
+# 자격증명은 ~/.zshenv 환경변수 (저장소에 두지 않는다).
+# heredoc은 delimiter에 따옴표가 있으면 변수가 확장되지 않으므로 printf를 쓴다.
+umask 077
+printf '[client]\nhost=%s\nport=3306\nuser=%s\npassword=%s\ndatabase=plab\n' \
+  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_RO_USER" "$PLAB_MYSQL_RO_PASSWORD" > /tmp/.my.cnf
 
 mysql --defaults-extra-file=/tmp/.my.cnf -N -e "
 SELECT TABLE_NAME, TABLE_ROWS
@@ -198,15 +194,11 @@ rm -f /tmp/.my.cnf
 최근 실행된 쿼리 중 full scan이 의심되는 것들의 실제 SQL 텍스트를 추출:
 
 ```bash
-cat > /tmp/.my.cnf << 'EOF'
-[client]
-host=plab3-replica.ct9mlhi5xnrs.ap-northeast-2.rds.amazonaws.com
-port=3306
-user=plab_readonly
-password=***REMOVED-CREDENTIAL***
-database=plab
-EOF
-chmod 600 /tmp/.my.cnf
+# 자격증명은 ~/.zshenv 환경변수 (저장소에 두지 않는다).
+# heredoc은 delimiter에 따옴표가 있으면 변수가 확장되지 않으므로 printf를 쓴다.
+umask 077
+printf '[client]\nhost=%s\nport=3306\nuser=%s\npassword=%s\ndatabase=plab\n' \
+  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_RO_USER" "$PLAB_MYSQL_RO_PASSWORD" > /tmp/.my.cnf
 
 mysql --defaults-extra-file=/tmp/.my.cnf -N -e "
 SELECT
