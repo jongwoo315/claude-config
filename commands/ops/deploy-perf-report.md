@@ -33,7 +33,7 @@ description: Use when checking API performance changes after a production deploy
 2. Fetch PR details:
 
 ```bash
-gh api repos/myplaycompany/pf-server-django/pulls/{PR_NUMBER}
+gh api repos/$PLAB_GH_ORG/$PLAB_REPO_SERVER/pulls/{PR_NUMBER}
 ```
 
 Extract: `title`, `merged_at`, `merge_commit_sha`
@@ -41,7 +41,7 @@ Extract: `title`, `merged_at`, `merge_commit_sha`
 3. Fetch changed files:
 
 ```bash
-gh api repos/myplaycompany/pf-server-django/pulls/{PR_NUMBER}/files --jq '.[].filename'
+gh api repos/$PLAB_GH_ORG/$PLAB_REPO_SERVER/pulls/{PR_NUMBER}/files --jq '.[].filename'
 ```
 
 **Validation:**
@@ -86,7 +86,7 @@ Analyze the **PR diff** to determine which specific endpoints were affected. Do 
 
 ```bash
 # Get diff for each file
-gh api repos/myplaycompany/pf-server-django/pulls/{PR_NUMBER}/files \
+gh api repos/$PLAB_GH_ORG/$PLAB_REPO_SERVER/pulls/{PR_NUMBER}/files \
   --jq '.[] | {filename, patch}'
 ```
 
@@ -298,7 +298,7 @@ Note: `Reqs(B→A)` = total request count in each window (Before merge → After
 
 | Situation | Response |
 |-----------|----------|
-| PR not found | "PR #{N} not found in myplaycompany/pf-server-django" |
+| PR not found | "PR #{N} not found in $PLAB_GH_ORG/$PLAB_REPO_SERVER" |
 | PR not merged | "PR #{N}은 아직 머지되지 않았습니다." |
 | `DD_API_KEY`/`DD_APP_KEY` missing | "`DD_API_KEY` 또는 `DD_APP_KEY` 환경변수가 없습니다. `~/.zshenv`를 확인해주세요." |
 | Datadog API error | "Datadog API 오류: {message}" |
@@ -310,4 +310,4 @@ Note: `Reqs(B→A)` = total request count in each window (Before merge → After
 - Datadog trace metrics: typically 15 days retention
 - All queries use REST API via `curl` (`dog` CLI only supports `metric post`)
 - Time display: UTC → KST (+9h)
-- Resource file reference: `~/.claude/command-scripts/ops/aws-resource-analyzer/resources/pf-server-django.yaml`
+- Resource file reference: `~/.claude/command-scripts/ops/aws-resource-analyzer/resources/work-main.yaml`

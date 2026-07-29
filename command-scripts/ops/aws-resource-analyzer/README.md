@@ -5,7 +5,7 @@
 ```
 aws-resource-analyzer/
 ├── resources/              # 프로젝트별 리소스 정의
-│   └── pf-server-django.yaml
+│   └── work-main.yaml
 ├── thresholds.yaml         # 전역 판정 기준
 └── README.md               # 이 파일
 ```

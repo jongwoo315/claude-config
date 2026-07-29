@@ -46,7 +46,7 @@ curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
 
 | 디렉토리               | AWS Profile | 용도               |
 | ---------------------- | ----------- | ------------------ |
-| `~/work/*`, `~/plab/*` | `plab`      | myplaycompany 업무 |
+| `~/work/*`, `~/plab/*` | `plab`      | $PLAB_GH_ORG 업무 |
 | 그 외                  | `default`   | 기본값             |
 
 ```bash

@@ -1,11 +1,17 @@
-# pf-server-django — Production Infrastructure Resources
+# $PLAB_REPO_SERVER — Production Infrastructure Resources
 # Updated: 2026-02-17
 #
 # 이 파일은 /ops:production-safety-audit 커맨드가 참조하는 인프라 설정입니다.
 # 리소스가 변경되면 이 파일을 업데이트하세요. (README.md 참조)
 
-project: pf-server-django
-path_match: "*/work/pf-server-django*"
+#
+# 주의: project / path_match 값의 $PLAB_* 는 환경변수다. YAML은 스스로 확장하지
+# 않으므로, 이 파일을 읽는 쪽에서 반드시 확장한 뒤 pwd와 비교할 것.
+# 확장하지 않으면 리터럴 문자열과 비교하게 되어 매칭이 항상 실패한다.
+#   pm=$(grep '^path_match:' work-main.yaml | cut -d'"' -f2)
+#   eval "pm=\"$pm\""   # 대입 문맥. eval echo 는 zsh가 glob으로 해석해 실패한다.
+project: $PLAB_REPO_SERVER
+path_match: "*/work/$PLAB_REPO_SERVER*"
 aws_profile: default
 region: ap-northeast-2
 

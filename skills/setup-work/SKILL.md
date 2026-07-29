@@ -59,7 +59,7 @@ docs/plans/MMDD-<topic>-design.md  (brainstorming 결과)
 
 - **Issue Type**: Dev / Task / Story / Bug / Incident / Epic
 - **Parent**: DEV-2596 / Epic 또는 상위 티켓 선택 (없으면 생략 가능)
-- **Labels**: `26_2Q` / `Backend` / `Frontend` / `pf-server-django` / `Datadog` / `개발요청` / `구관사` / `인프라` / `Backlog`
+- **Labels**: `26_2Q` / `Backend` / `Frontend` / `$PLAB_REPO_SERVER` / `Datadog` / `개발요청` / `구관사` / `인프라` / `Backlog`
 - **Priority**: Critical / High / Medium / Low / Lowest
 - **Story Points**: 1 / 2 / 3 / 5 / 8 / 13
 
@@ -99,7 +99,7 @@ Acceptance Criteria:
 ```
 
 **`<repo-root>`** = `$(git rev-parse --show-toplevel)` 실행 결과 (절대 경로).
-예: `/Users/jw/work/pf-server-django/docs/plans/0319-sensitive-data-encryption-design.md`
+예: `/Users/jw/work/$PLAB_REPO_SERVER/docs/plans/0319-sensitive-data-encryption-design.md`
 
 ### 2-1. 기존 docs/plans 파일 rename (티켓 ID 포함)
 
@@ -160,7 +160,7 @@ fi
 | 디렉토리 | GitHub 계정 | 용도 |
 |----------|------------|------|
 | `~/prv/*` | `jongwoo315` | 개인 프로젝트 |
-| 그 외 | `kimwoz` | myplaycompany 업무 |
+| 그 외 | `kimwoz` | $PLAB_GH_ORG 업무 |
 
 **중요**: `CLAUDE.md`에 Commit Conventions가 정의되어 있으면 해당 규칙을 따릅니다.
 
@@ -221,7 +221,7 @@ fi
 1. **Project**: DEV / PLAB / Other
 2. **Issue Type**: Dev / Task / Story / Bug / Incident / Epic
 3. **Parent** (Epic/상위 티켓): DEV-2596 / 선택 또는 "없음"
-4. **Labels**: `26_2Q` / `Backend` / `Frontend` / `pf-server-django` / `Datadog` / `개발요청` / `구관사` / `인프라` / `Backlog`
+4. **Labels**: `26_2Q` / `Backend` / `Frontend` / `$PLAB_REPO_SERVER` / `Datadog` / `개발요청` / `구관사` / `인프라` / `Backlog`
 5. **Priority**: Critical / High / Medium / Low / Lowest
 6. **Story Points**: 1 / 2 / 3 / 5 / 8 / 13
 
