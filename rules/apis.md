@@ -24,16 +24,19 @@
 
 ## Jira API
 
-- Email: `jongwoo.kim@plabfootball.com` — **절대 `$JIRA_EMAIL` env var 사용 금지** (세션에서 빈 값일 수 있음). 항상 이 값을 하드코딩할 것.
-- Server: `myplaycompany.atlassian.net`
+- Email: `$PLAB_WORK_EMAIL` / Server: `$PLAB_JIRA_HOST` — 둘 다 `~/.zshenv`.
+  `~/.zshenv`는 비대화형 셸에도 자동 적용돼 `source` 없이 값이 보인다.
+  (구 규칙 "`$JIRA_EMAIL` env var 금지, 하드코딩할 것"은 폐기 — 당시엔 그 변수가
+  zshenv에 정의돼 있지 않아 빈 값이었던 것이지 전달 자체가 문제가 아니었다.)
+  비었으면 하드코딩하지 말고 `printenv PLAB_WORK_EMAIL`로 먼저 확인할 것.
 - **IMPORTANT:** Use `/rest/api/3/search/jql` instead of deprecated `/rest/api/3/search`
 - **Priority 설정:** name 대신 **ID 사용** (name에 비표준 문자 포함 시 실패). ID 매핑: `1`=Critical, `2`=High, `3`=Medium, `4`=Low
 
 ```bash
 # Correct - use search/jql endpoint
 # IMPORTANT: pipe to jq to bypass RTK rewrite (RTK curl wrapper breaks -u auth)
-curl -s -u "jongwoo.kim@plabfootball.com:$JIRA_API_TOKEN" \
-  "https://myplaycompany.atlassian.net/rest/api/3/search/jql?jql=assignee=currentUser()+ORDER+BY+updated+DESC&maxResults=5" \
+curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
+  "https://$PLAB_JIRA_HOST/rest/api/3/search/jql?jql=assignee=currentUser()+ORDER+BY+updated+DESC&maxResults=5" \
   | jq .
 ```
 

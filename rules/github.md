@@ -22,7 +22,7 @@ CURRENT_GH_USER=$(gh api user -q '.login' 2>/dev/null)
 | 디렉토리               | `user.email` (로컬 설정)                       |
 | ---------------------- | ---------------------------------------------- |
 | `~/prv/*`              | `jongwoo315@gmail.com`                         |
-| `~/work/*`, `~/plab/*` | `jongwoo.kim@plabfootball.com` (글로벌 기본값) |
+| `~/work/*`, `~/plab/*` | `$PLAB_WORK_EMAIL` (글로벌 기본값) |
 
 `~/prv/` 레포에서 첫 커밋 전 반드시: `git config user.email "jongwoo315@gmail.com"`
 

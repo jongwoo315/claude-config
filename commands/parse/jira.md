@@ -25,9 +25,9 @@ Jira URL에서 티켓의 핵심 정보를 추출하여 `docs/plans/`에 저장�
 
 ```bash
 # Auth: Jira API Token (Basic Auth)
-EMAIL="jongwoo.kim@plabfootball.com"
+EMAIL="$PLAB_WORK_EMAIL"
 # $JIRA_API_TOKEN은 환경변수에서 사용
-BASE_URL="https://myplaycompany.atlassian.net"
+BASE_URL="https://$PLAB_JIRA_HOST"
 ```
 
 ## Process
@@ -35,8 +35,8 @@ BASE_URL="https://myplaycompany.atlassian.net"
 ### 1. URL에서 Ticket Key 추출
 
 Jira URL 형식:
-- `https://myplaycompany.atlassian.net/browse/DEV-1234`
-- `https://myplaycompany.atlassian.net/browse/DEV-1234?...` (query params 무시)
+- `https://$PLAB_JIRA_HOST/browse/DEV-1234`
+- `https://$PLAB_JIRA_HOST/browse/DEV-1234?...` (query params 무시)
 
 ```bash
 JIRA_URL="$ARGUMENTS"
