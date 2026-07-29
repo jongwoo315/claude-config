@@ -16,3 +16,7 @@
 !/kimi-tools/
 !/orch/
 
+
+# 세션 쿠키 — 절대 추적 금지 (public repo)
+cookies.json
+**/cookies.json
