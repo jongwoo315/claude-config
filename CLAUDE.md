@@ -24,8 +24,11 @@ Personal task tracking: Notion 프로젝트 진행 DB (`29241e61-65c0-801f-9529-
 
 ## TODO
 
-- [x] GitHub에 claude-config 레포 생성 → `~/.claude` 자체가 repo (https://github.com/jongwoo315/claude-config, private)
-- [ ] DB 접속 정보를 환경변수로 분리 (현재 ~/.zshrc에 평문)
+- [x] GitHub에 claude-config 레포 생성 → `~/.claude` 자체가 repo (https://github.com/jongwoo315/claude-config, **public**, 2026-07-29 전환)
+- [x] DB 접속 정보를 환경변수로 분리 (2026-07-29) — `~/.zshenv`의 `PLAB_*`.
+      **저장소가 public이므로 자격증명·업무 식별자를 커밋하지 말 것.**
+      heredoc `<< 'EOF'`는 변수를 확장하지 않는다 → `printf '%s'` 사용.
+- [ ] DB 자격증명을 IAM 임시 자격증명으로 전환 (현재 `~/.zshenv`에 평문, ISMS 2.5.1)
 - [x] sync test → work mac 양방향 동기화 확인 (2026-07-03)
 
 ## AskUserQuestion 제약
