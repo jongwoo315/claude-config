@@ -176,7 +176,7 @@ MySQL replica에 연결하여 `information_schema.TABLES`에서 plab DB의 테�
 # heredoc은 delimiter에 따옴표가 있으면 변수가 확장되지 않으므로 printf를 쓴다.
 umask 077
 printf '[client]\nhost=%s\nport=3306\nuser=%s\npassword=%s\ndatabase=plab\n' \
-  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_RO_USER" "$PLAB_MYSQL_RO_PASSWORD" > /tmp/.my.cnf
+  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_USER" "$PLAB_MYSQL_PASSWORD" > /tmp/.my.cnf
 
 mysql --defaults-extra-file=/tmp/.my.cnf -N -e "
 SELECT TABLE_NAME, TABLE_ROWS
@@ -198,7 +198,7 @@ rm -f /tmp/.my.cnf
 # heredoc은 delimiter에 따옴표가 있으면 변수가 확장되지 않으므로 printf를 쓴다.
 umask 077
 printf '[client]\nhost=%s\nport=3306\nuser=%s\npassword=%s\ndatabase=plab\n' \
-  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_RO_USER" "$PLAB_MYSQL_RO_PASSWORD" > /tmp/.my.cnf
+  "$PLAB_DB_HOST_MYSQL" "$PLAB_MYSQL_USER" "$PLAB_MYSQL_PASSWORD" > /tmp/.my.cnf
 
 mysql --defaults-extra-file=/tmp/.my.cnf -N -e "
 SELECT
@@ -220,7 +220,14 @@ LIMIT 30;
 rm -f /tmp/.my.cnf
 ```
 
-**주의:** performance_schema는 MySQL 재시작이나 `TRUNCATE` 후 리셋됨. 데이터가 없을 수 있음.
+**주의 1 — 권한:** `$PLAB_MYSQL_USER`는 `performance_schema` SELECT 권한이 없다.
+이 단계는 `ERROR 1142 SELECT command denied ... for table
+'events_statements_summary_by_digest'`로 실패한다 (2026-07-29 확인).
+**실패해도 중단하지 말고 이 단계만 건너뛰고 Step 5로 진행할 것.**
+Datadog 결과와 table sizes만으로도 인덱스 판정은 가능하다. 다이제스트 분석이
+꼭 필요하면 DBA에게 `performance_schema` SELECT 권한을 요청해야 한다.
+
+**주의 2 — 데이터:** performance_schema는 MySQL 재시작이나 `TRUNCATE` 후 리셋됨. 권한이 있어도 데이터가 없을 수 있음.
 
 ### Step 5: Correlate & Enrich
 
