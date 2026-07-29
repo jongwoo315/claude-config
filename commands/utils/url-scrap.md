@@ -1,20 +1,34 @@
 ---
 name: url-scrap
-description: URL 하나를 받아 요약하고, 승인 시 Notion Dev Scraps DB에 새 페이지로 저장. jira/notion/slack URL은 대상 아님 (그건 parse:* 커맨드 담당).
+description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(기술=Dev Scraps / 비기술=Liv Scraps)에 새 페이지로 저장. jira/notion/slack URL은 대상 아님 (그건 parse:* 커맨드 담당).
 ---
 
-# URL → Dev Scraps
+# URL → Notion Scraps
 
 ## Overview
 
-아티클 URL을 받아 한국어로 요약하고, 사용자 승인이 있을 때만 Notion Dev Scraps DB에
-**새 페이지를 생성**한다. 승인 없으면 요약만 보여주고 세션을 계속한다.
+아티클 URL을 받아 한국어로 요약하고, 사용자 승인이 있을 때만 Notion에 **새 페이지를
+생성**한다. 승인 없으면 요약만 보여주고 세션을 계속한다.
 
 기존 `knowledge:dev-scraps-tldr`과 구분: 그건 **이미 있는 페이지**를 요약으로 교체하고,
 이건 **URL에서 새 페이지를 만든다.**
 
-**Database:** Dev Scraps — `76e9673e-d91b-41b2-9779-c0940040f542`
 **API Key:** `NOTION_API_KEY` (`~/prv` 컨텍스트)
+
+### 대상 DB 2개 — 내용에 따라 갈라진다
+
+| DB | ID | 용도 | 주제 옵션(예시) | `본문 길이` |
+| --- | --- | --- | --- | --- |
+| **Dev Scraps** | `76e9673e-d91b-41b2-9779-c0940040f542` | 기술 | Python, AWS, Architecture, LLM Engineering, RAG … (36개) | **있음** |
+| **Liv Scraps** | `1cf41e61-65c0-80be-abfe-dcdf7012740d` | 비기술 | 돈 관리, 부동산, 애플리케이션, Etc | **없음** |
+
+**두 DB는 스키마가 다르다.** `본문 길이`가 Liv Scraps에는 아예 없어서, Dev Scraps
+기준으로 payload를 만들어 보내면 실패한다. 프로퍼티를 하드코딩하지 말고 Step 4a에서
+선택한 DB의 스키마를 조회해 맞춘다.
+
+판정 기준: 개발·인프라·데이터·AI 등 **기술 내용이면 Dev Scraps**, 투자·부동산·생활·
+커리어 등 **그 외는 Liv Scraps**. 애매하면 사용자에게 묻는다 — 잘못 넣으면 DB 성격이
+흐려지고 나중에 검색·분류가 헝클어진다.
 
 ## 발동 조건
 
@@ -107,31 +121,45 @@ fetch-rendered.sh "<URL>" > "$SCRATCHPAD/page.txt"
 
 ### Step 3: 미리보기 + 확인
 
-요약을 마크다운으로 터미널에 직접 출력한 뒤 AskUserQuestion:
+요약을 마크다운으로 터미널에 직접 출력한다. 헤더에 **어느 DB로 갈지와 고른 주제를
+반드시 표시한다** — 오분류를 사용자가 잡을 수 있는 유일한 지점이다.
+
+```
+**제목:** … | **DB:** Dev Scraps | **주제:** LLM Engineering | **본문 길이:** 상
+```
+
+그 뒤 AskUserQuestion:
 
 - **저장** → Step 4
+- **저장 (다른 DB로)** → 판정이 애매했으면 반대쪽 DB를 선택지로 함께 제시
 - **저장 안 함** → 요약만 남기고 종료. 세션은 그대로 이어간다 (중단하지 않음)
 - **수정 요청** → 피드백 받아 Step 2 재생성
 
 ### Step 4: Notion 페이지 생성
 
-**4a. 주제 옵션 확인 (필수 — 신규 생성 금지):**
+**4a. 대상 DB 스키마 조회 (필수 — 하드코딩 금지):**
 
-`주제`는 select라 임의 값을 넣으면 새 옵션이 생긴다. 반드시 기존 옵션에서 고른다.
-목록은 하드코딩하지 말고 실행 시점에 조회한다:
+DB마다 프로퍼티 구성과 select 옵션이 다르다. 보낼 DB를 정한 뒤 그 DB의 스키마를 조회해
+① `주제` 옵션 목록 ② `본문 길이` 존재 여부를 확인한다.
 
 ```bash
 source ~/.zshenv
 notion_key=$(printenv NOTION_API_KEY)
-DB_ID="76e9673e-d91b-41b2-9779-c0940040f542"
+DB_ID="<Dev 또는 Liv Scraps ID>"
 
 curl -s "https://api.notion.com/v1/databases/$DB_ID" \
   -H "Authorization: Bearer $notion_key" \
   -H "Notion-Version: 2022-06-28" \
-  | jq '.properties["주제"].select.options | map(.name)'
+  | jq '{주제: .properties["주제"].select.options | map(.name),
+         has_길이: (.properties | has("본문 길이")),
+         관련: .properties["관련"].multi_select.options | map(.name)}'
 ```
 
-가장 연관성 높은 하나를 고른다. 마땅한 게 없으면 **`Etc`**. 새 값을 만들지 않는다.
+- `주제`는 select라 임의 값을 넣으면 **새 옵션이 생긴다.** 반드시 기존 목록에서 고르고,
+  마땅한 게 없으면 `Etc`. 새 값을 만들지 않는다.
+- `본문 길이`가 없는 DB(Liv Scraps)에 그 프로퍼티를 보내면 **요청이 실패한다.** 없으면 뺀다.
+- `관련`은 multi_select라 `Claude`가 목록에 없으면 새로 생성된다. 이건 의도된 동작이지만
+  (Claude가 만든 스크랩 표시), 처음 생성될 때는 사용자에게 알린다.
 
 **4b. 컬럼 매핑:**
 
@@ -141,10 +169,10 @@ curl -s "https://api.notion.com/v1/databases/$DB_ID" \
 | `주제` | select | 기존 옵션 중 최적 1개. 없으면 `Etc` |
 | `카테고리` | select | **비움** (프로퍼티 자체를 넣지 않음) |
 | `관련` | multi_select | `["Claude"]` |
-| `본문 길이` | select | 요약 분량 판단 → `상` / `중` / `하` |
+| `본문 길이` | select | `상`/`중`/`하`. **Dev Scraps에만 있음** — Liv Scraps면 이 줄 제외 |
 | `완료` | checkbox | `true` |
 | `작성일` | date | 오늘 (`date +%Y-%m-%d`) |
-| `URL` | url | 입력받은 URL |
+| `URL` | url | 입력받은 URL. 트래킹 파라미터(`?cds=`, `utm_*`)는 떼고 저장 |
 
 `상위카테고리`, `하위카테고리`는 건드리지 않는다.
 
@@ -160,7 +188,7 @@ curl -s -X POST "https://api.notion.com/v1/pages" \
   -H "Notion-Version: 2022-06-28" \
   -d @- <<'JSON' | jq '{id, url}'
 {
-  "parent": { "database_id": "76e9673e-d91b-41b2-9779-c0940040f542" },
+  "parent": { "database_id": "<4a에서 정한 DB ID>" },
   "properties": {
     "제목":      { "title": [{ "text": { "content": "<원문 제목>" } }] },
     "주제":      { "select": { "name": "<기존 옵션>" } },
@@ -175,8 +203,14 @@ curl -s -X POST "https://api.notion.com/v1/pages" \
 JSON
 ```
 
+위 예시는 Dev Scraps 기준이다. **Liv Scraps면 `본문 길이` 줄을 반드시 뺀다** — 없는
+프로퍼티를 보내면 400이 난다.
+
 `children`을 함께 보내면 페이지 생성과 본문 작성이 한 번에 끝난다. 블록이 100개를 넘으면
 먼저 페이지만 만들고 나머지는 `PATCH /v1/blocks/{page_id}/children`으로 이어 붙인다.
+
+한글 프로퍼티명과 긴 본문이 섞이므로 셸에서 직접 JSON을 조립하지 말 것. python으로
+payload 파일을 만든 뒤 `--data-binary @file`로 보내는 편이 따옴표 사고가 없다.
 
 **블록 구조:**
 
@@ -225,6 +259,8 @@ JSON
 | `fetch-rendered.sh` exit 1 (빈 DOM) | 중단. 붙여넣기 / 건너뛰기 제시 |
 | Chrome 미설치 | 중단. 붙여넣기 / 건너뛰기 제시 |
 | 주제에 마땅한 옵션 없음 | `Etc` 사용. 새 옵션 생성 금지 |
+| 기술/비기술 판정이 애매 | 추측하지 말고 AskUserQuestion으로 DB 선택지 제시 |
+| `body.properties.본문 길이 is not a property` | Liv Scraps에 Dev Scraps 스키마를 보냄. 해당 줄 빼고 재시도 |
 | Notion API 4xx | 응답 body를 그대로 보여주고 재시도 여부 확인 |
 | rich_text 2000자 초과 | 문단 분할 |
 | 블록 100개 초과 | 페이지 생성 후 나머지 append |
@@ -232,4 +268,6 @@ JSON
 ## Notes
 
 - `카테고리`를 비우는 건 의도적이다. `knowledge:dev-scraps-tldr`이 나중에 채운다.
+- **저작권 표기가 있는 기사**(언론사 기사 등)는 원문을 옮기지 말고 압축·재서술한다.
+  유료/부분공개 기사면 그 사실을 요약 안에 명시한다.
 - `완료`를 바로 `true`로 두는 건 이 커맨드가 요약까지 끝내기 때문이다 — 후처리 대상이 아니다.
