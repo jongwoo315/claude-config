@@ -125,7 +125,7 @@ fetch-rendered.sh "<URL>" > "$SCRATCHPAD/page.txt"
 반드시 표시한다** — 오분류를 사용자가 잡을 수 있는 유일한 지점이다.
 
 ```
-**제목:** … | **DB:** Dev Scraps | **주제:** LLM Engineering | **본문 길이:** 상
+🧠 **제목:** … | **DB:** Dev Scraps | **주제:** LLM Engineering | **본문 길이:** 상
 ```
 
 그 뒤 AskUserQuestion:
@@ -179,6 +179,34 @@ curl -s "https://api.notion.com/v1/databases/$DB_ID" \
 **본문 길이 기준:** `하` = 요약이 짧고 단일 개념 / `중` = 섹션 2~3개 / `상` = 섹션 4개 이상
 또는 코드 블록이 여럿.
 
+**페이지 아이콘 — 주제에서 기계적으로 결정한다 (매번 고르지 않는다):**
+
+| 주제 | 아이콘 | 주제 | 아이콘 |
+| --- | --- | --- | --- |
+| AI/ML | 🤖 | Linux | 🐧 |
+| LLM Engineering | 🧠 | Operating System | 💻 |
+| RAG | 🔎 | HTTP & API | 🌐 |
+| Data Engineering | 🔀 | Architecture | 🏛️ |
+| Spark | ⚡ | Design Pattern | 🧩 |
+| Airflow | 🌬️ | Git | 🌿 |
+| Elastic Stack | 🔍 | Algorithm | 🧮 |
+| Statistics | 📊 | Regex | ✳️ |
+| Python | 🐍 | Dev | 🛠️ |
+| Java | ☕ | Application / 애플리케이션 | 📱 |
+| Kotlin | 🟣 | Session TIL | 📝 |
+| Scala | 🔴 | Session Learn | 🎓 |
+| Golang | 🐹 | 돈 관리 | 💰 |
+| JavaScript | 🟨 | 부동산 | 🏠 |
+| Node.js | 🟩 | Database | 🗄️ |
+| Django | 🎸 | AWS | ☁️ |
+| Flask | 🧪 | Docker | 🐳 |
+| Terraform | 🏗️ | Kubernetes | 🚢 |
+| **Etc / 표에 없는 주제** | **📄** | | |
+
+주제가 정해지면 아이콘도 정해진다. 내용을 보고 따로 고르지 않는다 — 같은 주제인데
+페이지마다 아이콘이 다르면 목록에서 훑을 때 의미를 잃는다. 새 주제 옵션이 생겨 표에
+없으면 `📄`를 쓰고 사용자에게 알린다.
+
 **4c. 페이지 생성:**
 
 ```bash
@@ -189,6 +217,7 @@ curl -s -X POST "https://api.notion.com/v1/pages" \
   -d @- <<'JSON' | jq '{id, url}'
 {
   "parent": { "database_id": "<4a에서 정한 DB ID>" },
+  "icon": { "type": "emoji", "emoji": "<주제 매핑표에서>" },
   "properties": {
     "제목":      { "title": [{ "text": { "content": "<원문 제목>" } }] },
     "주제":      { "select": { "name": "<기존 옵션>" } },
