@@ -5,7 +5,7 @@
 ```
 infra/
 ├── README.md                     # 이 파일
-├── pf-server-django.yaml         # ~/work/pf-server-django 프로젝트
+├── work-main.yaml         # ~/work/$PLAB_REPO_SERVER 프로젝트
 └── <project-name>.yaml           # 다른 프로젝트 추가 시
 ```
 
@@ -13,14 +13,14 @@ infra/
 
 커맨드 실행 시 `pwd`를 yaml의 `path_match` 패턴과 비교하여 매칭.
 
-- `~/work/pf-server-django/` → `pf-server-django.yaml`
+- `~/work/$PLAB_REPO_SERVER/` → `work-main.yaml`
 - `~/prv/my-project/` → `my-project.yaml`
 
 ## 새 프로젝트 추가
 
 1. 기존 yaml 파일을 복사:
    ```bash
-   cp pf-server-django.yaml <new-project>.yaml
+   cp work-main.yaml <new-project>.yaml
    ```
 
 2. `project`, `path_match`, `aws_profile`, `region` 수정
@@ -88,7 +88,7 @@ yaml 파일에서 해당 리소스 항목을 추가/수정/삭제.
 
 | 디렉토리 | AWS Profile | 용도 |
 |----------|-------------|------|
-| `~/work/*` | `default` | myplaycompany 인프라 |
+| `~/work/*` | `default` | $PLAB_GH_ORG 인프라 |
 | `~/prv/*` | 프로젝트별 설정 | 개인 AWS 계정 |
 
 yaml의 `aws_profile` 필드로 구분.

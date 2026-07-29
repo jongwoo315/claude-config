@@ -35,8 +35,8 @@ PR URL을 받아서 worktree로 안전하게 코드 확인 → 코드 리뷰 →
 **`--list` 옵션:** PR 목록만 테이블 형태로 출력하고 종료합니다. 리뷰 진행 없이 현황 파악용.
 
 ```bash
-# 내가 리뷰어인 열린 PR 조회 (pf-server-django, plabManagerApi, stadiumDjango)
-gh search prs --state=open --review-requested=@me --repo=myplaycompany/pf-server-django --repo=myplaycompany/plabManagerApi --repo=myplaycompany/stadiumDjango --json number,title,url,repository,createdAt
+# 내가 리뷰어인 열린 PR 조회 ($PLAB_REPO_SERVER, $PLAB_REPO_MANAGER, $PLAB_REPO_STADIUM)
+gh search prs --state=open --review-requested=@me --repo=$PLAB_GH_ORG/$PLAB_REPO_SERVER --repo=$PLAB_GH_ORG/$PLAB_REPO_MANAGER --repo=$PLAB_GH_ORG/$PLAB_REPO_STADIUM --json number,title,url,repository,createdAt
 ```
 
 조회 결과를 보여주고 사용자가 리뷰할 PR을 선택하도록 합니다.
@@ -121,14 +121,14 @@ digraph pr_review {
 ```bash
 # 내가 리뷰어인 열린 PR 조회 (3개 레포)
 gh search prs --state=open --review-requested=@me \
-  --repo=myplaycompany/pf-server-django \
-  --repo=myplaycompany/plabManagerApi \
-  --repo=myplaycompany/stadiumDjango \
+  --repo=$PLAB_GH_ORG/$PLAB_REPO_SERVER \
+  --repo=$PLAB_GH_ORG/$PLAB_REPO_MANAGER \
+  --repo=$PLAB_GH_ORG/$PLAB_REPO_STADIUM \
   --json number,title,url,repository,createdAt
 
 # 결과 예시:
 # [
-#   {"number": 123, "title": "feat: 기능 추가", "url": "https://...", "repository": {"name": "pf-server-django"}, "createdAt": "2026-01-15T09:30:00Z"},
+#   {"number": 123, "title": "feat: 기능 추가", "url": "https://...", "repository": {"name": "$PLAB_REPO_SERVER"}, "createdAt": "2026-01-15T09:30:00Z"},
 #   ...
 # ]
 ```
@@ -137,8 +137,8 @@ gh search prs --state=open --review-requested=@me \
 
 | 상태 | Repo | PR | Title | Created |
 |------|------|-----|-------|---------|
-| 🆕 | pf-server-django | #123 | feat: 기능 추가 | 2026-01-15 |
-| 🔄 | plabManagerApi | #456 | fix: 버그 수정 | 2026-01-10 |
+| 🆕 | $PLAB_REPO_SERVER | #123 | feat: 기능 추가 | 2026-01-15 |
+| 🔄 | $PLAB_REPO_MANAGER | #456 | fix: 버그 수정 | 2026-01-10 |
 
 결과를 사용자에게 보여주고 리뷰할 PR 선택을 요청합니다.
 

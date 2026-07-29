@@ -43,8 +43,8 @@ github-pr-review Step 3.5: review 실행 → production-safety-audit (--code-onl
 3. yaml이 없으면: "이 프로젝트의 인프라 설정이 없습니다. README를 참고하여 추가하세요." 안내 후 종료
 
 ```bash
-# 예: pf-server-django.yaml 로드 확인
-cat ~/.claude/command-scripts/ops/production-safety-audit/infra/pf-server-django.yaml
+# 예: work-main.yaml 로드 확인
+cat ~/.claude/command-scripts/ops/production-safety-audit/infra/work-main.yaml
 ```
 
 ### Step 1: 코드 변경 분석

@@ -118,12 +118,12 @@ Convert percentage thresholds to bytes: `threshold_bytes = total_gb * percentage
 Examples:
 - `[RDS] plab3 Free Storage Space < 10%`
 - `[RDS] plab3-replica Replication Lag > 60s`
-- `[App] pf-server-django Error Rate > 10%`
+- `[App] $PLAB_REPO_SERVER Error Rate > 10%`
 
 **Tag convention:**
 
 ```json
-["service:pf-server-django", "env:prod", "resource:{type}", "instance:{name}"]
+["service:$PLAB_REPO_SERVER", "env:prod", "resource:{type}", "instance:{name}"]
 ```
 
 **Message template (Korean):**
@@ -202,7 +202,7 @@ After creation, display:
 
 ```bash
 # List all monitors with specific tags
-curl -s -X GET "https://api.datadoghq.com/api/v1/monitor?monitor_tags=service:pf-server-django" \
+curl -s -X GET "https://api.datadoghq.com/api/v1/monitor?monitor_tags=service:$PLAB_REPO_SERVER" \
   -H "DD-API-KEY: ${DD_API_KEY}" \
   -H "DD-APPLICATION-KEY: ${DD_APP_KEY}"
 ```

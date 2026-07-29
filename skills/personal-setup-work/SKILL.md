@@ -143,7 +143,7 @@ fi
 | 디렉토리 | GitHub 계정 | 용도 |
 |----------|------------|------|
 | `~/prv/*` | `jongwoo315` | 개인 프로젝트 |
-| 그 외 | `kimwoz` | myplaycompany 업무 |
+| 그 외 | `kimwoz` | $PLAB_GH_ORG 업무 |
 
 **Step 1: Remote 존재 여부 확인**
 ```bash

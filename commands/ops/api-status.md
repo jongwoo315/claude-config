@@ -50,7 +50,7 @@ If the keyword exists as a key, use those patterns. Wildcard patterns (e.g. `get
 
 #### Tier 2 — Code tracing (deploy-perf-report style)
 
-Only available when in the `pf-server-django` repository (or can access it).
+Only available when in the `$PLAB_REPO_SERVER` repository (or can access it).
 
 1. Find the app directory matching the keyword:
    - Check `web/{keyword}/urls.py`
@@ -242,7 +242,7 @@ Classification thresholds:
 | No endpoints resolved (all 3 tiers) | "'{keyword}'에 매핑되는 엔드포인트를 찾을 수 없습니다" |
 | Datadog API error | "Datadog API 오류: {message}" |
 | No metrics in window | "지정된 시간 범위에 메트릭이 없습니다" |
-| Not in pf-server-django (Tier 2) | Skip code tracing, proceed to Tier 3 |
+| Not in $PLAB_REPO_SERVER (Tier 2) | Skip code tracing, proceed to Tier 3 |
 
 ## Customization
 
