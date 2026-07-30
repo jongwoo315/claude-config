@@ -13,7 +13,7 @@
 | 브랜치 | `DEV-XXXX-<subject>` | `feat/<NN>-<subject>` |
 | GitHub 계정 / 커밋 이메일 | `kimwoz` / `$PLAB_WORK_EMAIL` | `jongwoo315` / `jongwoo315@gmail.com` |
 | 티켓 필드 갱신 | Jira 상태 | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` **전부** |
-| PR 승인 | 리뷰어 approve | 1인 레포라 self-approve 불가 → `--comment` / `--request-changes`만 |
+| PR 승인 | 리뷰어 approve | 1인 레포라 **self-review는 `--comment`만 가능** — `--approve`와 `--request-changes` 둘 다 GitHub이 거부한다 (`Can not request changes on your own pull request`). merge 차단 안전망이 없으므로 미해결 Critical은 사람이 기억해야 한다 |
 
 **실행 모드는 양쪽 동일 — orch detached ralph-loop, 예외 없음.** `~/prv`가 학습·포트폴리오
 목적이라고 해서 대화형으로 내려오지 않는다. 과정 경험이 아니라 **검증 기준을 정하는 능력**이

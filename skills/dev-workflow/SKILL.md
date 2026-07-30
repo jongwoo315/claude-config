@@ -42,7 +42,7 @@ fi
 | 브랜치 | `feature/DEV-XXXX-<subject>` | `feat/<NN>-<subject>` (버그면 `fix/`) |
 | worktree | `~/plab/.wt/DEV-XXXX-<subject>` | `~/prv/.wt/<NN>-<subject>` |
 | GitHub 계정 | `kimwoz` | `jongwoo315` |
-| PR 승인 | 리뷰어 approve | 1인 레포라 self-approve 불가 → `--comment` / `--request-changes` |
+| PR 승인 | 리뷰어 approve | 1인 레포라 **self-review는 `--comment`만** — `--approve`·`--request-changes` 둘 다 GitHub이 거부 |
 | 티켓 필드 | Jira Priority/SP/Labels/Parent | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` |
 
 ⚠️ **worktree를 모드에 맞는 주차장에 만들 것.** `~/prv` 프로젝트를 `~/plab/.wt/`에 두면
