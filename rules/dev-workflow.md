@@ -49,9 +49,11 @@ PR 리뷰 두 지점뿐이다.
 
 **⚠️ PR 존재는 완료 신호가 아니다:**
 
-- ralph 루프는 **PR을 만든 뒤에도 계속 일한다** — Pre-PR 단계의 자기 코드 리뷰
-  (`superpowers:requesting-code-review`)를 돌려 지적사항을 추가 커밋으로 얹는다.
+- ralph 루프는 **PR을 만든 뒤에도 계속 일한다** — 커밋 전 `superpowers:requesting-code-review`,
+  PR 생성 후 `pr-review-toolkit:review-pr`을 돌려 지적사항을 추가 커밋으로 얹는다.
   실측: PR 생성 후 8분 넘게 작업 지속.
+  내장 `/code-review`는 품질이 더 낫지만 **사람이 직접 치는 커맨드라 모델이 호출할 수 없다**
+  (헤드리스 available-skills에 없음). 무인 루프 안에서는 위 둘만 쓴다.
 - **완료 판정 = `orch ls`가 `done` + 워크트리 `git status --porcelain`이 빈 것.**
   PR URL이나 Notion `PR` 컬럼이 찼다고 완료가 아니다.
 - orch가 `running`인 동안 PR을 리뷰하지 말 것 — 리뷰 도중 커밋이 얹혀 대상이 어긋난다.
