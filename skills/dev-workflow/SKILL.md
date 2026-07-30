@@ -207,7 +207,9 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 > 1. New env vars: `git diff main...HEAD` added lines matching `os\.environ\.get|os\.getenv|process\.env\.` — log any found.
 > 2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Background + timeout + curl the port + kill. Never bare `runserver` (hangs the loop till ORCH_STUCK_SECS). Django → `source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver`; CDK → `cdk synth` (no server); Zappa/Lambda Django → same background+timeout with `PYENV_VERSION=<env> --settings=<app>.settings.local`; CLI/library → smoke-run the entrypoint (it must self-terminate); else project-specific.
 > 3. Full test suite green (show pass/fail). If no runner: state `no tests — skipped`, do not silently pass.
-> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (설계 문서를 추적하는 repo면 `docs/plans/`도 포함 — repo 관행을 따를 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property).
+> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (설계 문서를 추적하는 repo면 `docs/plans/`도 포함 — repo 관행을 따를 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property); 마지막으로 방금 만든 PR에 `pr-review-toolkit:review-pr` 실행 — 지적사항은 추가 커밋으로 얹는다 (리뷰만 하고 GitHub에 코멘트는 게시하지 않는다; 게시가 필요하면 사람이 `ops:github-pr-review`를 돌린다).
+>
+> 내장 `/code-review`를 여기 쓰지 말 것. 품질은 더 낫지만(다각도 finder + 후보별 독립 검증 CONFIRMED/PLAUSIBLE/REFUTED + failure_scenario 강제) **사람이 직접 치는 커맨드라 available-skills에 없다** — 헤드리스 세션에서 확인함. ralph가 호출하면 없는 스킬을 찾다 끝난다.
 
 **Dispatch (into the A3 worktree — session starts already on the branch, so no checkout needed):**
 ```bash
