@@ -23,8 +23,18 @@ Run `/sync-zshrc` to create encrypted zips and upload to Notion.
 - Claude는 평문 비밀번호를 다루지 않는다. 사용자가 허용해도 동일하다
 
 **대신 `zip -e`가 직접 대화형으로 묻게 한다.** 입력이 화면에 찍히지 않고 어디에도 안 남는다.
-Bash 도구는 대화형 stdin을 지원하지 않으므로 그 한 줄만 사용자가 실행한다.
 결과물은 동일하다 — 같은 ZipCrypto, 같은 파일명, 같은 경로.
+
+**이 한 줄은 진짜 터미널 탭에서 실행해야 한다.** Bash 도구는 물론이고 프롬프트의 `!` 접두사도
+tty를 주지 않는다 (`!`는 Claude Code 세션 안에서 비대화형으로 돈다). tty가 없으면 `zip -e`가
+비밀번호를 물을 곳이 없어 다음과 같이 죽는다:
+
+```
+zip error: Invalid command arguments (stderr is not a tty)
+```
+
+`!`로 시켜놓고 성공을 가정하지 말 것 — 실패하면 zip은 안 생기고 **평문 사본이 `/tmp`에
+그대로 남는다.** Step 2 뒤에 반드시 Step 3의 검증을 돌린다.
 
 ## Process
 
@@ -42,23 +52,46 @@ sleep 0.5
 open "notion://www.notion.so/jongwoo315/iTerm2-ab4c5445dede4062ab1fcb0a98e6ece0"
 ```
 
-**Step 2 — 사용자가 실행:** 아래를 그대로 제시하고, 프롬프트에 `!` 접두사로 붙여넣게 한다.
+**Step 2 — 사용자가 실행:** 아래를 제시하고 **iTerm 새 탭(⌘T)에 붙여넣게** 한다.
+`!` 접두사를 붙이라고 하지 말 것 (위 "비밀번호 처리" 참조).
 
-```
-! cd /tmp && zip -e zshrc.zip zshrc && zip -e zshenv.zip zshenv && rm -f zshrc zshenv && ls -lh /tmp/*.zip
+```bash
+cd /tmp && zip -e zshrc.zip zshrc && zip -e zshenv.zip zshenv && rm -f zshrc zshenv && ls -lh /tmp/*.zip
 ```
 
-`zip -e`가 비밀번호를 두 번(입력·확인) 묻는다. 두 파일에 같은 비밀번호를 쓴다.
+`zip -e`가 파일마다 비밀번호를 두 번(입력·확인) 묻는다. 두 파일에 같은 비밀번호를 쓴다.
 `rm -f zshrc zshenv`가 평문 사본을 지운다 — 이 부분을 빠뜨리지 말 것.
 
-**Step 3 — 사용자가 수동:** Finder에서 Notion으로 드래그
+**Step 3 — Claude가 검증:** 사용자가 끝났다고 하면 실행한다. "did it"을 그대로 믿지 않는다.
+
+```bash
+echo "=== zips:"; ls -l /tmp/zshrc.zip /tmp/zshenv.zip 2>&1
+echo "=== plaintext leftovers:"; ls -l /tmp/zshrc /tmp/zshenv 2>&1
+for f in /tmp/zshrc.zip /tmp/zshenv.zip; do
+  echo "--- $f"
+  unzip -t -P "definitely-not-the-password" "$f" 2>&1 | tail -2
+done
+```
+
+통과 조건 셋 다 충족해야 한다:
+
+| 확인 | 통과 신호 |
+| --- | --- |
+| zip 생성 | 두 파일 모두 존재, 크기 > 0 |
+| 평문 제거 | `/tmp/zshrc`, `/tmp/zshenv` → `No such file` |
+| 실제 암호화 | `unzip -t`가 `incorrect password`로 거부 |
+
+`unzip -l`은 암호화 여부를 안 보여준다 — 목록만 보고 통과 처리하지 말 것.
+틀린 비밀번호로 `-t`를 걸어야 암호화가 실증된다. (`-t`는 테스트만 하고 파일을 안 푼다.)
+
+**Step 4 — 사용자가 수동:** Finder에서 Notion으로 드래그
 
 - `zshrc.zip` → **zshrc** 섹션
 - `zshenv.zip` → **zshenv** 섹션
 
 ## Output
 
-1. `/tmp/zshrc.zip`, `/tmp/zshenv.zip` (비밀번호 보호)
+1. `/tmp/zshrc.zip`, `/tmp/zshenv.zip` (비밀번호 보호, Step 3에서 검증됨)
 2. `/tmp` 평문 사본 제거됨
 3. Finder + Notion 페이지 열림
 4. 사용자가 각 zip을 해당 섹션으로 드래그
@@ -71,5 +104,12 @@ open "notion://www.notion.so/jongwoo315/iTerm2-ab4c5445dede4062ab1fcb0a98e6ece0"
   `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in zshenv -out zshenv.enc`
   (복호화: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in zshenv.enc -out zshenv`)
 - Notion의 기존 zshrc 파일 블록(`2fc41e61-65c0-80ed-aa8f-cb6b3f7051d1`)은 "zshrc" heading 아래에 있다
-- zshenv heading_3 섹션이 없으면 새로 만들어야 한다
+- **zshrc·zshenv heading_3 섹션은 둘 다 이미 존재한다** (2026-08-03 확인). 새로 만들 필요 없다.
+  드래그 전 확인하려면:
+
+  ```bash
+  curl -s "https://api.notion.com/v1/blocks/ab4c5445dede4062ab1fcb0a98e6ece0/children?page_size=100" \
+    -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" \
+    | jq -r '.results[] | select(.type|test("heading_3|file")) | .type'
+  ```
 - Notion API는 파일 업로드를 지원하지 않아 드래그 앤 드롭이 필수다
