@@ -26,10 +26,18 @@ task_create() {
   # newlines, shattering a single multi-line instruction into per-line steps that
   # the daemon then dribbled out as separate prompts.
   local steps a; steps=$(for a in "$@"; do printf '%s' "$a" | jq -Rs .; done | jq -s .)
-  jq -n --arg id "$id" --arg target "$dir" --arg mode "$mode" \
+  # Who dispatched this. `orch add` runs inside the dispatching claude session's
+  # pane, so $TMUX_PANE resolves to that session name — the only moment the
+  # relation is observable, since nothing downstream can reconstruct it later.
+  # Purely informational for the graph UI; empty outside tmux, and consumers must
+  # tolerate a parent that has since exited.
+  local parent=''
+  [ -n "${TMUX_PANE:-}" ] &&
+    parent=$(tmux display-message -pt "$TMUX_PANE" '#{session_name}' 2>/dev/null)
+  jq -n --arg id "$id" --arg target "$dir" --arg mode "$mode" --arg parent "$parent" \
         --argjson steps "$steps" \
     '{id:$id, target:$target, mode:$mode, steps:$steps,
-      cursor:0, status:"queued", session:null, skip_perms:true}' \
+      cursor:0, status:"queued", session:null, parent:$parent, skip_perms:true}' \
     > "$(_task_file "$id")"
   printf '%s\n' "$id"
 }
