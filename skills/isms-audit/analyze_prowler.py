@@ -25,7 +25,16 @@ import sys
 SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "informational": 4}
 
 # 정규식 기반이라 오탐이 잦은 체크. 리포트에 반드시 "검증 필요"로 표시한다.
-FALSE_POSITIVE_PRONE = ("no_secrets_in_code", "no_secrets_in_variables", "_secrets_")
+# `secrets` 로 끝나는 체크(ecs_task_definitions_no_environment_secrets 등)는
+# `_secrets_` 패턴에 걸리지 않는다 — 실측에서 critical 최다 건수(76)를 놓쳤다.
+FALSE_POSITIVE_PRONE = (
+    "no_secrets_in_code",
+    "no_secrets_in_variables",
+    "no_environment_secrets",
+    "_secrets_",
+    "_secrets",
+    "find_secrets",
+)
 
 
 def load_failures(path):
