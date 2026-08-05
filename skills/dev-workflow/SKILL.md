@@ -153,6 +153,11 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   > On a HARD, retry-proof API error (OpenAI insufficient_quota, 401/403, exhausted billing), STOP —
   > do NOT emit RALPH_DONE, do NOT create a PR, do NOT spin retrying. It surfaces via the orch
   > completion notification; a human fixes billing. (Transient TPM 429 is different — pace and retry.)
+  > A TRANSIENT error that stops being transient counts as HARD. If 429/529 keeps surfacing AND you
+  > have produced no commit and no file change for 20 minutes, STOP the same way. Waiting and
+  > spinning are indistinguishable in a headless loop — nobody is watching the screen, and the loop
+  > re-submits the prompt after every failed turn, so a server-side outage burns the whole iteration
+  > budget while the picker still reads `working`.
   ```
   Header metadata: `**Tier:** [X]`, `**Jira:** DEV-XXXX` (or `**Notion:** #NN`).
 
