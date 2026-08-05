@@ -58,6 +58,13 @@ spawn_session() {
   # picker의 claude- prefix 필터는 tmux 세션명(claude-orch-*)에만 걸리므로 라벨에
   # prefix를 덧붙이면 "claude-DEV-7133"처럼 노이즈만 붙는다.
   flags="$flags --name $id"
+  # 실행 티어. ralph는 이미 승인된 plan을 TDD로 옮기는 실행 단계고, 판단은 그 앞
+  # Kickoff 게이트에서 사람이 끝낸다 — 여기에 Opus를 쓰면 값이 안 나온다.
+  # settings.json 의 전역 `model` 을 물려받지 않고 여기서 못 박는 이유: 대화형
+  # 기본값을 opus 로 되돌리는 순간 orch 세션까지 조용히 같이 올라간다 (89·92 가
+  # sonnet 으로 돈 것도 전역값을 물려받은 결과지 의도한 지정이 아니었다).
+  # plan 이 얇거나 정찰이 섞인 티켓은 ORCH_MODEL=opus orch add ... 로 올린다.
+  flags="$flags --model ${ORCH_MODEL:-sonnet}"
   if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
     # real claude: launch, wait for its TUI to be READY, then send + submit.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m
