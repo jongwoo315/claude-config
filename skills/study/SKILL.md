@@ -97,12 +97,36 @@ for the next rung's questions.
 - rung 2 — one line per route/stage.
 - rung 3 — flow map complete.
 
+**Material vs assembly — standing rule for EVERY rung.** You dump the material
+that rung permits, unasked and up front; jw assembles it. Withholding material a
+rung already allows tests nothing — it only makes jw hunt. What is tested is the
+assembly (order, roles, data flow), never the retrieval. "지도는 내가 그린다"
+means jw draws the map, not that he must first find the pieces.
+
+**Reading files is not the same as reading bodies.** Module-level lines (imports,
+app/router setup, module-level side effects), `def` signatures, and route
+decorators are SURFACE — open at rung 1. Function BODIES stay closed until
+rung 3/4. "Don't look at code until rung 3" was never the rule; "don't look at
+function bodies" is.
+
 rung 2 "one line" = input→output ONLY. HOW is banned.
 
 - form: `[verb] [path]` → "takes [X], returns [Y]" (domain words, not code words)
 - allowed material (surface + handler signature, NOT handler body): ① verb+path nouns
   ② return shape ③ matching test name
 - "how does it work" is not written here — that comes later, in the question phase.
+
+**Rung 1 opening — dump the material up front, unasked.** On rung 1 entry (fresh
+or resumed), before asking anything, emit in one message:
+
+1. entry-point candidates — `file:symbol`, the ones that actually start the process.
+2. stage / route name list — names ONLY, **order shuffled**. No descriptions.
+
+Then stop and wait. jw's job is assembling the chain — what runs in what order,
+what already exists at import time — not hunting for the names. Shuffling keeps
+the ordering work his while the names stay free.
+
+If jw asks what a stage DOES at rung 1 → refuse, that's rung 2.
 
 **Rung 2 opening — dump ALL allowed material up front, unasked.** jw must never
 have to request signatures piece by piece. The moment rung 2 starts (fresh or
