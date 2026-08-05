@@ -204,7 +204,6 @@
   },
   "enabledPlugins": {
     "superpowers@superpowers-marketplace": true,
-    "claude-notifications-go@claude-notifications-go": true,
     "pr-review-toolkit@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
@@ -232,12 +231,12 @@
     }
   },
   "effortLevel": "high",
+  "remote": {
+    "defaultEnvironmentId": "env_014JKGFZ7xqP8i8GTbKosBni"
+  },
   "tui": "default",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "normal",
-  "agentPushNotifEnabled": true,
-  "remote": {
-    "defaultEnvironmentId": "env_014JKGFZ7xqP8i8GTbKosBni"
-  }
+  "agentPushNotifEnabled": true
 }
