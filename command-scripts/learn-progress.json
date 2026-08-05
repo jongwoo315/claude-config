@@ -1550,6 +1550,11 @@
         "date": "2026-08-05",
         "track": "fastapi",
         "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-08-05",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
       }
     ]
   },

@@ -281,6 +281,43 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
+- **판단 로그 — 통과/반려의 근거를 3줄로 남긴다. 사실은 네가, 판단은 jw가.**
+  **Fires in the main / dispatcher session** (the one orch notified) — never in the orch ralph
+  session, which is headless and already finished. main is outside the worktree, so gather the
+  facts yourself (`gh pr view`, `git -C <worktree> diff --stat main...HEAD`, the loop's Pre-PR
+  output in the PR body). Emit the fact block FILLED and the judgment lines BLANK:
+
+  ```
+  <ID> — PR #<n> <title>
+
+  검증 출력 (사실)
+    테스트       <실제 pass/fail 숫자. 출력이 없으면 "출력 없음">
+    서버 부팅     <BOOT_OK / N/A / 없음>
+    신규 env      <목록 or 없음>
+    변경 범위     <n files, +a −b>   (계획: <m> files)
+    마이그레이션   <파일명 + 되돌릴 수 없는 연산 / 없음>
+    롤백 절차     <PR 본문에 있음 / 없음>
+
+  판단 (여기는 비워둠)
+    통과/반려 : ___
+    근거      : ___
+  ```
+
+  Rules:
+  - **Facts are VALUES, not verdicts.** Never write 안전함 / 문제 없음 / 위험해 보임.
+    `DROP COLUMN` and `롤백 절차 없음` are listed as plain facts; whether they disqualify is jw's call.
+  - **Never pre-fill or suggest 근거.** That blank IS the point — it is the one cell you cannot fill.
+    Suggesting it turns the log into your reasoning, which is exactly what this log exists to prevent.
+  - jw answers in one line (`통과 / 롤백 리스크 없음`). Append the row to `~/.claude/judgment-log.md`.
+  - `스킵` → append the row with 판단 EMPTY. A blank is data: it records that the gate was a rubber
+    stamp that day. Do not nag, do not fill it later.
+  - 반려 → tag the row `★ADR후보`. Weekly, one of these gets promoted to a full ADR.
+  - **Multiple completions at once** → list them compactly and accept ONE line covering all
+    (`7133 통과 롤백리스크없음 / 7150 반려 드롭컬럼 롤백없음 / 7161 스킵`). Parsing is your job.
+  - **Order: judgment prompt BEFORE ticket refine.** Judgment while the diff is fresh; refine is admin.
+  - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
+    dev-workflow entry, list PRs created since the last logged row and offer a batch fill
+    (`gh pr list --author @me --limit 20`). Best-effort; never block on it.
 - **Ticket refine — triggered by orch completion, NOT by merge.** Merge is done by CodePipeline /
   teammates, so no session ever catches a merge event; anchoring refine to merge means it never
   fires. Instead: when **orch notifies this task done** (loop finished + PR created), fire one
