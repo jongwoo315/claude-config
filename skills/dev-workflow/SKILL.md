@@ -287,8 +287,17 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
 - **판단 로그 — 통과/반려의 근거를 3줄로 남긴다. 사실은 네가, 판단은 jw가.**
-  **Fires in the main / dispatcher session** (the one orch notified) — never in the orch ralph
-  session, which is headless and already finished. main is outside the worktree, so gather the
+  **Fires on the STATE, not the notification** — whenever you have just established that a
+  ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch
+  completion notification is one path; running `orch ls` yourself (which the block above tells
+  you to do) is another, and it was silently not covered — a manual `orch ls` + PR summary
+  produced no log at all. Never in the orch ralph session, which is headless and already
+  finished.
+
+  Dedup on the PR number, not on how you got here: if `~/.claude/judgment-log.md` already has a
+  row for that PR, skip. That is what makes a state trigger safe to re-enter.
+
+  main is outside the worktree, so gather the
   facts yourself (`gh pr view`, `git -C <worktree> diff --stat main...HEAD`, the loop's Pre-PR
   output in the PR body). Emit the fact block FILLED and the judgment lines BLANK:
 
