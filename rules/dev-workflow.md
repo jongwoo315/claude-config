@@ -34,6 +34,8 @@ PR 리뷰 두 지점뿐이다.
   마이그레이션·롤백절차)은 Claude가 채우고, **통과/반려와 근거는 비워서 jw가 채운다.** 근거를 제안하거나
   대신 채우지 말 것 — 그 칸이 유일하게 사람 몫이라 이 로그가 존재한다. `스킵`이면 빈칸으로 기록(빈칸도
   데이터). 반려는 `★ADR후보` 태그. **main/dispatcher 세션에서 뜬다** (orch ralph 세션은 헤드리스라 불가).
+  **트리거는 orch 알림이 아니라 상태다** — `orch ls`로 done을 직접 확인한 경우에도 뜬다. 중복은 PR
+  번호로 판정(로그에 그 행이 있으면 skip).
 - 상세 절차는 `dev-workflow` 스킬 참조. **모든 티켓은 orch detached ralph-loop으로 실행** — 단일 실행
   모드, 예외 없음. main 세션은 순수 dispatcher (ticket 작업 실행 안 함, 점유 금지).
 - **worktree 위치: `~/plab/.wt/DEV-XXXX-<subject>`** (repo sibling 아닌 중앙 주차장). repo prefix
