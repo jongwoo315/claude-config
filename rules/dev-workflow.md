@@ -30,12 +30,7 @@ PR 리뷰 두 지점뿐이다.
   무인 자동 진행. Phase A에서 AskUserQuestion 금지.
 - Pre-PR 체크(env var, 서버 기동, 전체 테스트)는 게이트가 아니라 ralph-loop completion-promise 조건.
   출력 없이 pass 가정 금지, 조용한 skip 금지.
-- **PR 게이트에서 판단 로그 3줄을 남긴다** — `~/.claude/judgment-log.md`. 사실(테스트·부팅·변경범위·
-  마이그레이션·롤백절차)은 Claude가 채우고, **통과/반려와 근거는 비워서 jw가 채운다.** 근거를 제안하거나
-  대신 채우지 말 것 — 그 칸이 유일하게 사람 몫이라 이 로그가 존재한다. `스킵`이면 빈칸으로 기록(빈칸도
-  데이터). 반려는 `★ADR후보` 태그. **main/dispatcher 세션에서 뜬다** (orch ralph 세션은 헤드리스라 불가).
-  **트리거는 orch 알림이 아니라 상태다** — `orch ls`로 done을 직접 확인한 경우에도 뜬다. 중복은 PR
-  번호로 판정(로그에 그 행이 있으면 skip).
+- 판단 로그는 아래 별도 절 참조 — **이 항목만 dev-workflow 파이프라인 밖에서도 발동한다.**
 - 상세 절차는 `dev-workflow` 스킬 참조. **모든 티켓은 orch detached ralph-loop으로 실행** — 단일 실행
   모드, 예외 없음. main 세션은 순수 dispatcher (ticket 작업 실행 안 함, 점유 금지).
 - **worktree 위치: `~/plab/.wt/DEV-XXXX-<subject>`** (repo sibling 아닌 중앙 주차장). repo prefix
@@ -109,6 +104,48 @@ done
 - 복수 티켓 병렬 요청("all parallel", "run X,Y,Z") → 티켓별 독립 orch 세션 dispatch가 **기본값**.
   단일 main 세션 hand-execution으로 합치려면 **먼저 AskUserQuestion 확인** (조용히 collapse 금지).
 - 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
+
+### 판단 로그 — dev-workflow 밖에서도 발동한다
+
+**스킬 호출 여부와 무관하다.** 이 규칙이 `dev-workflow` 스킬 안에만 있던 동안 한 번도 뜨지 않았다 —
+스킬은 호출해야 로드되고, 임의 PR 리뷰 세션(`ops:github-pr-review` 등)은 자신이 "게이트"에 있다고
+인식하지 않는다. 그래서 트리거·블록을 여기 둔다. 여긴 항상 컨텍스트에 있다.
+
+**트리거는 상태다(이벤트 아님):** orch 태스크가 `done`이고 그 PR이 열려 있음을 **확인한 직후**.
+`orch ls`를 직접 친 경우가 여기 포함된다 — orch 완료 알림은 여러 경로 중 하나일 뿐이다.
+main/dispatcher 세션에서만 (orch ralph 세션은 헤드리스라 불가). 중복은 PR 번호로 판정 —
+`~/.claude/judgment-log.md`에 그 행이 이미 있으면 skip. 상태 트리거라 여러 번 진입해도 안전해야 한다.
+
+main은 워크트리 밖이므로 사실은 직접 모은다 (`gh pr view`,
+`git -C <worktree> diff --stat main...HEAD`, PR 본문의 Pre-PR 출력).
+
+```
+<ID> — PR #<n> <title>
+
+검증 출력 (사실)
+  테스트       <실제 pass/fail 숫자. 출력 없으면 "출력 없음">
+  서버 부팅     <BOOT_OK / N/A / 없음>
+  신규 env      <목록 or 없음>
+  변경 범위     <n files, +a −b>   (계획: <m> files)
+  마이그레이션   <파일명 + 되돌릴 수 없는 연산 / 없음>
+  롤백 절차     <PR 본문에 있음 / 없음>
+
+판단 (비워둠)
+  통과/반려 : ___
+  근거      : ___
+```
+
+- 사실은 **값**이지 판정이 아니다. 안전함 / 문제없음 / 위험해보임 금지. `DROP COLUMN`과
+  `롤백 절차 없음`은 사실로 적고, 그게 결격인지는 jw가 정한다.
+- **근거를 제안하거나 대신 채우지 말 것.** 그 빈칸이 유일하게 사람 몫이라 이 로그가 존재한다.
+  채워주는 순간 로그가 Claude의 추론이 되고, 그건 이 로그가 막으려던 바로 그것이다.
+- jw가 한 줄로 답한다 (`통과 / 롤백 리스크 없음`) → 그 행을 `~/.claude/judgment-log.md`에 append.
+- `스킵` → 판단 칸을 빈 채로 append. 빈칸도 데이터다(그날 게이트가 형식이었다는 기록). 재촉 금지,
+  나중에 채우지도 말 것.
+- 반려 → `★ADR후보` 태그. 주 1회 그중 하나를 정식 ADR로 승격.
+- 여러 건 동시 완료 → 압축해 나열하고 한 줄로 전부 받는다
+  (`7133 통과 롤백리스크없음 / 7150 반려 드롭컬럼 롤백없음 / 7161 스킵`). 파싱은 Claude 몫.
+- 순서: **판단 먼저, 티켓 refine 나중.** diff가 신선할 때 판단하고, refine은 행정이다.
 
 ### Jira 티켓 생성 시 프로퍼티
 

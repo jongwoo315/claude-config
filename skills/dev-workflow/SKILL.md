@@ -287,6 +287,8 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
 - **판단 로그 — 통과/반려의 근거를 3줄로 남긴다. 사실은 네가, 판단은 jw가.**
+  **정본은 `rules/dev-workflow.md`의 "판단 로그" 절** — 트리거와 최소 블록은 거기 있고, 이 스킬을
+  호출하지 않아도 발동한다. 아래는 파이프라인 문맥을 덧붙인 같은 내용이니, 둘이 갈리면 rules가 이긴다.
   **Fires on the STATE, not the notification** — whenever you have just established that a
   ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch
   completion notification is one path; running `orch ls` yourself (which the block above tells
