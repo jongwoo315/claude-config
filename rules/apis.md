@@ -40,6 +40,83 @@ curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
   | jq .
 ```
 
+## Grafana (Amazon Managed Grafana)
+
+plabfootball 관측 대시보드. **Datadog에서 이관 중** — 신규 지표는 이쪽을 먼저 본다.
+
+자격증명은 `~/.zshenv`의 `PLAB_GRAFANA_*`. 저장소에 절대 쓰지 않는다.
+`PLAB_GRAFANA_URL` `PLAB_GRAFANA_WORKSPACE_ID` `PLAB_GRAFANA_SA_ID` `PLAB_GRAFANA_TOKEN`
+
+**토큰은 `~/.zshenv` 인라인이 아니라 `~/.config/plab/grafana-token`(0600)에 있다.**
+AMG 토큰은 `secondsToLive` 상한이 30일이라 매달 재발급되는데, 갱신 스크립트가
+`~/.zshenv`를 자동 편집하게 두면 DB 자격증명과 같은 파일을 매달 sed로 건드리게 된다.
+`~/.zshenv`는 그 파일을 읽어 `PLAB_GRAFANA_TOKEN`으로 export만 한다.
+
+| 항목 | 값 |
+| --- | --- |
+| 인증 (브라우저) | SAML — Google Workspace. 사람이 볼 때만 |
+| 인증 (헤드리스) | 서비스 계정 토큰 `Authorization: Bearer $PLAB_GRAFANA_TOKEN` |
+| 서비스 계정 | `claude-code-jw` (id 128, Admin) |
+| 토큰 만료 | 30일. `~/plab/jobs`의 `grafana-token-rotate` 잡이 매일 07:23 확인, 7일 이내면 재발급 |
+| 데이터소스 | Amazon Managed Prometheus · CloudWatch · X-Ray |
+
+```bash
+# 대시보드 목록 (jq 파이프 필수 — RTK가 JSON을 { key: type }로 뭉갠다)
+curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
+  "$PLAB_GRAFANA_URL/api/search?limit=200" | jq -r '.[]|"\(.type) \(.title) \(.uid)"'
+
+# 대시보드 1개의 패널 쿼리 전문 — 지표를 새로 짜기 전에 이걸 먼저 읽는다
+curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
+  "$PLAB_GRAFANA_URL/api/dashboards/uid/prod-api-latency" | jq '.dashboard.panels'
+
+# 데이터소스 uid 조회 (아래 ds/query 에 필요)
+curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
+  "$PLAB_GRAFANA_URL/api/datasources" | jq -c '[.[]|{name,type,uid}]'
+```
+
+**PromQL 직접 실행** — 스크린샷을 읽지 말고 값을 가져온다.
+
+```bash
+NOW=$(python3 -c 'import time;print(int(time.time()*1000))'); FROM=$((NOW-3600000))
+curl -s -X POST "$PLAB_GRAFANA_URL/api/ds/query" \
+  -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" -H "Content-Type: application/json" \
+  -d "{\"from\":\"$FROM\",\"to\":\"$NOW\",\"queries\":[{\"refId\":\"A\",
+       \"datasource\":{\"type\":\"prometheus\",\"uid\":\"<uid>\"},
+       \"expr\":\"<promql>\",\"instant\":true,\"intervalMs\":60000,\"maxDataPoints\":1}]}" \
+  | jq '.results.A.frames[0].data.values'
+```
+
+BE 2.0 지표는 `service_name="social-backend-prod"` 라벨을 쓴다
+(`http_server_request_duration_seconds_{bucket,count,sum}`).
+
+**AWS CLI로는 대시보드·메트릭을 못 읽는다.** `aws grafana`는 컨트롤 플레인
+(`describe-workspace`, 서비스 계정 관리)뿐이다. 데이터는 위 HTTP API로만 나온다.
+
+**서비스 계정 관리는 `aws grafana` CLI로 한다** (2026-08-07 CLI 2.36.18로 업그레이드 후 가능).
+
+```bash
+AWS_PROFILE=plab aws grafana list-workspace-service-accounts \
+  --workspace-id "$PLAB_GRAFANA_WORKSPACE_ID" --region ap-northeast-2
+AWS_PROFILE=plab aws grafana list-workspace-service-account-tokens \
+  --workspace-id "$PLAB_GRAFANA_WORKSPACE_ID" --service-account-id "$PLAB_GRAFANA_SA_ID" \
+  --region ap-northeast-2
+```
+
+이 계열은 AMG가 Grafana 10.4를 지원하며 추가됐다(2024-05). 버전을 외우지 말고 확인할 것 —
+`aws grafana help | grep -c service-account` 가 0이면 CLI가 오래된 것.
+
+**갱신 잡은 여전히 boto3를 쓴다.** launchd에서 `aws`가 PATH에 있으리라 가정하지 않고,
+날짜 연산(`expiresAt` 의 `+09:00` 오프셋)이 jq·macOS `date` 양쪽에서 지저분하기 때문이다.
+인터프리터는 `~/.pyenv/versions/jobs-tools/bin/python` (python 3.13.2 + boto3).
+
+⚠️ **launchd(`zsh -lc`)의 `python3`는 `/usr/bin/python3`(3.9.6)다.** `.zshrc`를 안 읽어
+pyenv가 초기화되지 않기 때문 — 예약 실행에서만 시스템 python으로 떨어진다(2026-08-07 실측).
+PyYAML은 시스템 python에 들어 있어 `bin/jobs`는 우연히 돌지만, boto3 같은 건 없다.
+
+**스케줄 스크립트는 인터프리터를 절대경로로 고정할 것.** shim(`~/.pyenv/shims/python3`)도
+쓰지 말 것 — `pyenv global`을 따라가므로 대화형 셸에서 버전을 한 번 바꾸면 무인 잡이
+죽는다 (2026-08-07 global 3.9.10 → 3.13.2 전환에 실제로 깨졌다). 전용 virtualenv를 쓴다.
+
 ## AWS Credentials
 
 **프로파일 전환 규칙 (모든 AWS CLI/SDK 사용 전 필수):**
