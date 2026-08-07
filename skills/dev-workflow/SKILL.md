@@ -286,9 +286,9 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
-- **판단 로그 — 통과/반려의 근거를 3줄로 남긴다. 사실은 네가, 판단은 jw가.**
-  **정본은 `rules/dev-workflow.md`의 "판단 로그" 절** — 트리거와 최소 블록은 거기 있고, 이 스킬을
-  호출하지 않아도 발동한다. 아래는 파이프라인 문맥을 덧붙인 같은 내용이니, 둘이 갈리면 rules가 이긴다.
+- **판단 로그 — plan의 통과 기준과 대조하고, 판정은 jw가 쓴다. 사실은 네가, 판단은 jw가.**
+  **정본은 `rules/dev-workflow.md`의 "판단 로그" 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
+  이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules가 이긴다.
   **Fires on the STATE, not the notification** — whenever you have just established that a
   ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch
   completion notification is one path; running `orch ls` yourself (which the block above tells
@@ -303,37 +303,21 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   facts yourself (`gh pr view`, `git -C <worktree> diff --stat main...HEAD`, the loop's Pre-PR
   output in the PR body). Emit the fact block FILLED and the judgment lines BLANK:
 
-  ```
-  <ID> — PR #<n> <title>
+  **블록 형식과 사실/판단 분리 규칙은 여기 복제하지 않는다 — rules를 그대로 따른다.**
+  복제하면 갈린다: 실제로 갈렸다. rules에 "plan 통과 기준·불통과 신호와 대조" 블록과 CI 체크
+  줄이 들어간 뒤에도 이 사본은 옛 6줄 블록을 들고 있었고, 그 사본만 읽은 세션은 이 티켓이
+  **무엇을 달성했어야 하는지** 없이 판정하게 된다.
 
-  검증 출력 (사실)
-    테스트       <실제 pass/fail 숫자. 출력이 없으면 "출력 없음">
-    서버 부팅     <BOOT_OK / N/A / 없음>
-    신규 env      <목록 or 없음>
-    변경 범위     <n files, +a −b>   (계획: <m> files)
-    마이그레이션   <파일명 + 되돌릴 수 없는 연산 / 없음>
-    롤백 절차     <PR 본문에 있음 / 없음>
-
-  판단 (여기는 비워둠)
-    통과/반려 : ___
-    근거      : ___
-  ```
-
-  Rules:
-  - **Facts are VALUES, not verdicts.** Never write 안전함 / 문제 없음 / 위험해 보임.
-    `DROP COLUMN` and `롤백 절차 없음` are listed as plain facts; whether they disqualify is jw's call.
-  - **Never pre-fill or suggest 근거.** That blank IS the point — it is the one cell you cannot fill.
-    Suggesting it turns the log into your reasoning, which is exactly what this log exists to prevent.
-  - jw answers in one line (`통과 / 롤백 리스크 없음`). Append the row to `~/.claude/judgment-log.md`.
-  - `스킵` → append the row with 판단 EMPTY. A blank is data: it records that the gate was a rubber
-    stamp that day. Do not nag, do not fill it later.
-  - 반려 → tag the row `★ADR후보`. Weekly, one of these gets promoted to a full ADR.
-  - **Multiple completions at once** → list them compactly and accept ONE line covering all
-    (`7133 통과 롤백리스크없음 / 7150 반려 드롭컬럼 롤백없음 / 7161 스킵`). Parsing is your job.
+  파이프라인 문맥에서 추가로 지킬 것:
   - **Order: judgment prompt BEFORE ticket refine.** Judgment while the diff is fresh; refine is admin.
   - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
-    dev-workflow entry, list PRs created since the last logged row and offer a batch fill
-    (`gh pr list --author @me --limit 20`). Best-effort; never block on it.
+    dev-workflow entry, list PRs created since the last logged row and offer a batch fill.
+    **`--author @me` 쓰지 말 것** — `@me`는 `gh`의 *현재 활성 계정*으로 풀리는데 이 맥에는
+    `jongwoo315`와 `kimwoz`가 둘 다 등록돼 있고 활성 계정은 작업 디렉터리와 무관하게 바뀐다.
+    `~/prv`에서 활성이 `kimwoz`면 0건이 나오고 그게 "빠진 행 없음"으로 읽힌다 — 조용한 오답이다.
+    `rules/github.md`의 디렉터리 규칙대로 계정을 명시한다:
+    `gh pr list --author jongwoo315 --limit 20` (`~/prv`) / `--author kimwoz` (`~/plab`·`~/work`).
+    Best-effort; never block on it.
 - **Ticket refine — triggered by orch completion, NOT by merge.** Merge is done by CodePipeline /
   teammates, so no session ever catches a merge event; anchoring refine to merge means it never
   fires. Instead: when **orch notifies this task done** (loop finished + PR created), fire one
