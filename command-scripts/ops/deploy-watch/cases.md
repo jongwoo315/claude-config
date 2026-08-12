@@ -39,6 +39,64 @@ ADR 재료가 된다.)
 둘 다 알려야 하지만 임계가 달라야 한다. 조용히 넘기는 것도 답이 아니다 —
 조회가 계속 실패하면 감시가 눈이 먼 것이고 그건 진짜로 알아야 한다.
 
+### 감시 중 발생한 별건 2건 — 🟡 (08-12 18:50, 배포 +3h39m)
+
+`RainForecastRequestModuleError` × 2 (`sentry:7667598778` n=54 / `sentry:7667598944` n=1),
+`plab.tasks.check_ultra_short_term_matches_weather`, `environment: prod`.
+
+**배포와 무관하다.** 네 칸 전부 확인했다:
+
+- **환경** — `prod` 맞다. 비프로덕션으로 빠져나갈 건은 아니다.
+- **신규성** — 이슈 ID 만 새롭고 **실패 유형은 3개월째 상시**다. 같은 예외 클래스가
+  `firstSeen 2026-05-14`, 누적 `2318 + 384`건. 형제 이슈까지 합하면 502 Bad Gateway
+  16057+4067건, 429 rate limit 1942+43건. `apis.data.go.kr` 은 만성 불안정 업스트림이다.
+  이번 것만 새 fingerprint 를 받은 이유는 업스트림이 **timeout 대신 connection reset**
+  으로 끊었기 때문 — `forecast.py:142/361` 이 `requests.exceptions.Timeout` 과
+  `ConnectionError` 를 서로 다른 메시지로 감싸므로 Sentry 그룹이 갈린다.
+- **시각** — T0 +3h39m. 54건이 `09:47:21~09:47:32Z` 11초에 몰렸고 `lastSeen == firstSeen`.
+  매시 :47 크론 1틱의 버스트지 확산이 아니다. (과거 형제 이슈 firstSeen 도 전부 :47/:50)
+- **메커니즘** — **없다.** `web/weather/` 에 `boto3`/`AWS_`/`s3` 참조 0건이고
+  `git log --since=30d -- web/weather/` 도 0건. DEV-7711 PR #7630 은 `web/plab/tasks.py`
+  를 건드리지도 않았다.
+
+⚠️ **함정 하나 밟을 뻔했다.** 릴리즈 PR #7645(= 실제 배포분)는 `web/plab/tasks.py` 를
+`15+ 118-` 로 건드린다 — 터진 모듈과 파일이 정확히 같다. 그런데 diff 를 열어 보니
+black reflow + import 재정렬 + 무관한 배치 태스크 2개 삭제뿐이고
+`check_ultra_short_term_matches_weather` 는 한 줄도 안 바뀌었다.
+**파일 단위 일치는 메커니즘이 아니다. patch 를 열 것.**
+
+**교훈 1 — 배포에 티켓이 하나가 아니다.** 감시는 `DEV-7711` 이름으로 걸었지만 T0 에
+나간 건 릴리즈 PR #7645 전체다. 파일 목록이 티켓 PR 보다 넓으므로 `--- 티켓 PR 만
+확인하고 무관 판정` 도, `--- 릴리즈에 그 파일 있으니 유관 판정` 도 둘 다 틀린다.
+
+**교훈 2 — 신규성은 "이슈 ID" 가 아니라 "실패 유형" 으로 판정한다.** 감시 잡의
+Sentry 신호는 `firstSeen:-Nm` 로 새 이슈를 잡는데, 만성 오류의 메시지 문자열이
+조금만 달라져도 새 ID 가 발급된다. `statsPeriod=14d` 로 같은 계열을 먼저 훑지 않으면
+3개월 된 업스트림 장애를 배포 회귀로 읽는다.
+
+**신호 설계 부채(⚪ 성격):** `CRITICAL_TYPES` 에 안 걸린 🟡 도 그대로 이벤트가 된다.
+프로덕션 신규 이슈 베이스라인이 하루 약 1건이라 감시 3일이면 🟡 몇 건은 확정적으로
+낀다. `plab.tasks.check_*_weather` 처럼 **이 배포와 코드 경로가 겹칠 수 없는 culprit**
+은 제외 목록으로 빼는 편이 낫다.
+
+조치 (템플릿 수정, 라이브 잡에도 반영):
+- `SENTRY_CLASS_NOVELTY=1` (기본 on) — 후보 이슈마다 `error.type:"<타입>"` 으로
+  14일을 되짚어 **T0 이전에 같은 예외 클래스가 있었으면 억제**한다. 신규성 판정의
+  단위를 이슈 ID 에서 실패 유형으로 올린 것.
+- **조회 실패 시 억제하지 않는다.** 감시가 조용해지는 쪽으로는 절대 실패시키지
+  않는다 — 놓치는 것이 시끄러운 것보다 나쁘다.
+- **🔴(`CRITICAL_TYPES` 적중)는 억제 대상에서 제외.** 자격증명 오류는 만성일 수가
+  없고, 만에 하나 T0 이전에도 있었다면 그건 오히려 사람이 봐야 하는 사실이다.
+- 유형당 1회만 조회하고 틱 내에서 캐시 (후보가 하루 약 1건이라 비용 무시 가능).
+- `SENTRY_EXCLUDE` 정규식 (기본 빈 값) — 유형/culprit 수동 제외. 최후 수단.
+
+검증: `RainForecastRequestModuleError` → siblings 4, pre-T0 2건 → **SUPPRESS**.
+`NoCredentialsError` → siblings 0 → **ALERT** 유지. 굳은 이벤트 2건 정리 후
+잡 실행 → `OK` 복귀 (08-12 19:20 KST).
+
+**부수 발견 (배포 무관, 별도 처리 필요):** 이슈 제목에 `apis.data.go.kr` 의
+`serviceKey` 가 **전문 그대로** 찍힌다. URL 을 그대로 예외 메시지에 넣어서다.
+
 ## 초판이 배운 것 (DEV-7711, 2026-08-12)
 
 - **레이턴시 계기를 기본값으로 삼지 말 것.** 처음에 `deploy-perf-report` 로 가려다
