@@ -62,6 +62,29 @@ SENTRY_ENVS="${SENTRY_ENVS:-prod,production}"
 # 이 정규식에 걸리는 신규 이슈 유형은 🔴 로 표시한다 (이 티켓과 직접 관련).
 CRITICAL_TYPES="${CRITICAL_TYPES:-}"
 
+# 신규성을 "이슈 ID" 가 아니라 "실패 유형" 으로 판정한다.
+#
+# Sentry 는 예외 메시지 문자열이 조금만 달라져도 새 이슈 ID 를 발급한다. 만성
+# 오류는 이 때문에 배포와 무관하게 계속 새 ID 로 태어나고, firstSeen 필터만
+# 쓰면 그게 전부 "배포 후 신규" 로 잡힌다.
+#
+# 실측 (2026-08-12 DEV-7711, 배포 +3h39m):
+#   RainForecastRequestModuleError 2건이 신규로 잡혀 알림이 나갔다. 그런데 같은
+#   예외 클래스는 firstSeen 2026-05-14 로 3개월째 상시(누적 2318+384건)였고,
+#   업스트림(apis.data.go.kr)이 timeout 대신 connection reset 으로 끊으면서
+#   메시지가 바뀌어 그룹만 갈린 것이었다. 코드 경로도 안 겹친다
+#   (web/weather/ 에 boto3 참조 0건, 30일간 커밋 0건).
+#
+# 그래서 후보 이슈마다 `error.type:<타입>` 으로 14일을 되짚어 T0 이전에 같은
+# 유형이 이미 있었으면 억제한다. 조회가 실패하면 억제하지 않는다 — 감시를
+# 조용히 만드는 쪽으로는 절대 실패하지 않게 한다.
+SENTRY_CLASS_NOVELTY="${SENTRY_CLASS_NOVELTY:-1}"
+
+# 최후의 수동 제외 장치. `타입` 또는 `culprit` 에 걸리면 이벤트로 안 만든다.
+# 위 유형 신규성으로 대부분 걸러지므로 기본은 비어 있다. 유형 자체가 진짜
+# 신규인데 이 배포와 코드 경로가 겹칠 수 없는 게 확실할 때만 채울 것.
+SENTRY_EXCLUDE="${SENTRY_EXCLUDE:-}"
+
 # 신호 3 — 임의 체크. 위 메뉴로 안 되는 신호를 위한 확장점.
 # stdout 한 줄이 이벤트 하나가 된다. 출력이 없으면 정상으로 본다.
 # 예: 슬로우 쿼리 건수, row count 정합성, Datadog 임계 초과 여부.
@@ -117,6 +140,7 @@ ECS_CLUSTER="$ECS_CLUSTER" ECS_SERVICE="$ECS_SERVICE" \
 LOG_GROUP="$LOG_GROUP" LOG_PATTERN="$LOG_PATTERN" \
 SENTRY_PROJECTS="$SENTRY_PROJECTS" SENTRY_ENVS="$SENTRY_ENVS" \
 CRITICAL_TYPES="$CRITICAL_TYPES" EXTRA_CHECK_CMD="$EXTRA_CHECK_CMD" \
+SENTRY_CLASS_NOVELTY="$SENTRY_CLASS_NOVELTY" SENTRY_EXCLUDE="$SENTRY_EXCLUDE" \
 TRIAGE_HINT="$TRIAGE_HINT" \
 "$PY" -W ignore - <<'PYEOF'
 import datetime as dt
@@ -155,6 +179,8 @@ SENTRY_ORG = os.environ.get("SENTRY_ORG") or os.environ.get("PLAB_GH_ORG", "")
 SENTRY_PROJECTS = [p for p in os.environ["SENTRY_PROJECTS"].split(",") if p]
 SENTRY_ENVS = [e for e in os.environ["SENTRY_ENVS"].split(",") if e]
 CRITICAL_TYPES = os.environ["CRITICAL_TYPES"]
+CLASS_NOVELTY = os.environ.get("SENTRY_CLASS_NOVELTY", "1") == "1"
+SENTRY_EXCLUDE = os.environ.get("SENTRY_EXCLUDE", "")
 EXTRA_CHECK_CMD = os.environ["EXTRA_CHECK_CMD"]
 TRIAGE_HINT = os.environ["TRIAGE_HINT"]
 
@@ -174,6 +200,7 @@ FAIL_STREAK_THRESHOLD = int(os.environ.get("WATCH_FAIL_STREAK", "3"))
 
 LOG_RE = re.compile(LOG_PATTERN, re.I) if LOG_PATTERN else None
 CRIT_RE = re.compile(CRITICAL_TYPES, re.I) if CRITICAL_TYPES else None
+EXCL_RE = re.compile(SENTRY_EXCLUDE, re.I) if SENTRY_EXCLUDE else None
 
 
 def now():
@@ -332,7 +359,43 @@ def sentry_get(path, params):
     raise last
 
 
-def scan_sentry(since):
+def class_predates_deploy(proj, env, typ, t0, cache):
+    """이 예외 유형이 T0 이전에도 있었나.
+
+    True 면 배포가 만든 게 아니다 — 이슈 ID 만 새로 발급된 만성 오류다.
+    조회 실패 시 False (= 억제하지 않음). 감시가 조용해지는 쪽으로는 실패시키지
+    않는다 — 놓치는 것이 시끄러운 것보다 나쁘다.
+    """
+    if not typ or typ == "?":
+        return False
+    key = (proj, env, typ)
+    if key in cache:
+        return cache[key]
+    verdict = False
+    try:
+        siblings = sentry_get(
+            f"/projects/{SENTRY_ORG}/{proj}/issues/",
+            {"query": f'error.type:"{typ}"', "statsPeriod": "14d", "environment": env},
+        )
+        if isinstance(siblings, list):
+            for sib in siblings:
+                seen_at = sib.get("firstSeen")
+                if not seen_at:
+                    continue
+                try:
+                    first = dt.datetime.fromisoformat(seen_at.replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+                if first < t0:
+                    verdict = True
+                    break
+    except Exception:
+        verdict = False
+    cache[key] = verdict
+    return verdict
+
+
+def scan_sentry(since, t0=None):
     """배포 이후 **새로 나타난 이슈 유형**만 잡는다.
 
     is:unresolved 전체는 신호가 안 된다 — 프로덕션 기준 24시간에 100건이다.
@@ -342,6 +405,7 @@ def scan_sentry(since):
         return []
     minutes = max(LOOKBACK_MIN, int((now() - since).total_seconds() // 60) + 1)
     out = []
+    novelty_cache = {}
     for proj in SENTRY_PROJECTS:
         for env in SENTRY_ENVS:
             try:
@@ -364,7 +428,25 @@ def scan_sentry(since):
                 typ = meta.get("type") or it.get("title") or "?"
                 val = meta.get("value") or ""
                 culprit = it.get("culprit") or ""
-                tag = "🔴" if (CRIT_RE and CRIT_RE.search(typ)) else "🟡"
+
+                # 수동 제외 — 유형/culprit 어느 쪽에 걸려도 뺀다.
+                if EXCL_RE and (EXCL_RE.search(typ) or EXCL_RE.search(culprit)):
+                    continue
+
+                # 유형 신규성 — 이 예외 클래스가 T0 이전에도 있었으면 배포 무관.
+                # 🔴(이 티켓과 직접 관련된 자격증명 계열)는 억제하지 않는다.
+                # 자격증명 오류는 만성일 수가 없고, 만에 하나 이전에도 있었다면
+                # 그건 오히려 사람이 봐야 하는 사실이다.
+                is_crit = bool(CRIT_RE and CRIT_RE.search(typ))
+                if (
+                    CLASS_NOVELTY
+                    and not is_crit
+                    and t0 is not None
+                    and class_predates_deploy(proj, env, typ, t0, novelty_cache)
+                ):
+                    continue
+
+                tag = "🔴" if is_crit else "🟡"
                 out.append({
                     "sig": f"sentry:{it.get('id')}",
                     "text": (f"{tag} {proj}/{env} {typ}\n"
@@ -503,7 +585,7 @@ def main():
         found += scan_logs(since)
     except Exception as exc:
         found.append({"sig": "logs-error", "transient": True, "text": f"로그 조회 실패: {exc}"})
-    found += scan_sentry(since)
+    found += scan_sentry(since, t0)
     found += scan_extra()
 
     # 일시 실패(조회 타임아웃 등)는 연속 발생해야 이벤트가 된다. 이번 틱에 안 뜬
