@@ -304,7 +304,7 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   output in the PR body). Emit the fact block FILLED and the judgment lines BLANK:
 
   **블록 형식과 사실/판단 분리 규칙은 여기 복제하지 않는다 — rules를 그대로 따른다.**
-  복제하면 갈린다: 실제로 갈렸다. rules에 "plan 통과 기준·불통과 신호와 대조" 블록과 CI 체크
+  복제하면 갈린다: 실제로 갈렸다. rules에 "plan 통과 기준·실패 징후와 대조" 블록과 CI 체크
   줄이 들어간 뒤에도 이 사본은 옛 6줄 블록을 들고 있었고, 그 사본만 읽은 세션은 이 티켓이
   **무엇을 달성했어야 하는지** 없이 판정하게 된다.
 

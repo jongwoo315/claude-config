@@ -266,7 +266,7 @@ curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
 - Branch: {branch_name}
 
 이어서 `superpowers:writing-plans`로 plan을 작성한다 (질문 없이 진행).
-plan에는 **통과 기준 · 의도적 비목표 · 불통과 신호** 3줄이 반드시 들어간다
+plan에는 **통과 기준 · 이번에 안 하는 것 · 실패 징후** 3줄이 반드시 들어간다
 (`rules/portfolio-judgment.md`) — Kickoff 게이트의 승인 대상이다.
 ```
 
