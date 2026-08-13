@@ -30,14 +30,14 @@ Notion URL에서 페이지의 모든 콘텐츠를 추출하여 `docs/plans/`에 
 
 | URL 패턴 | API Key | Source |
 |----------|---------|--------|
-| `notion.so/plabfootball/*` | `PLAB_NOTION_API_KEY` | `~/.zshenv` |
+| `notion.so/plabfootball/*` | `PLAB_WOZ_NOTION_API_KEY` | `~/.zshenv` |
 | 기타 | `NOTION_API_KEY` | `~/.zshenv` |
 
 **중요:** `.env` 파일의 키는 무시하고 반드시 `~/.zshenv`에서 직접 읽어야 함 (환경변수가 outdated될 수 있음)
 
 ```bash
 # ~/.zshenv에서 직접 키 추출 (현재 env 무시)
-PLAB_KEY=$(grep -E '^export PLAB_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
+PLAB_KEY=$(grep -E '^export PLAB_WOZ_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
 NOTION_KEY=$(grep -E '^export NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
 ```
 
@@ -70,13 +70,13 @@ IS_PLAB=$(echo "$NOTION_URL" | grep -q "notion.so/plabfootball" && echo "true" |
 
 ```bash
 # ~/.zshenv에서 직접 키 추출 (현재 env 무시 - outdated 방지)
-PLAB_KEY=$(grep -E '^export PLAB_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
+PLAB_KEY=$(grep -E '^export PLAB_WOZ_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
 NOTION_KEY=$(grep -E '^export NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
 
 # 워크스페이스에 따라 API 키 선택
 if [ "$IS_PLAB" = "true" ]; then
   API_KEY="$PLAB_KEY"
-  echo "Using PLAB_NOTION_API_KEY for plabfootball workspace"
+  echo "Using PLAB_WOZ_NOTION_API_KEY for plabfootball workspace"
 else
   API_KEY="$NOTION_KEY"
   echo "Using NOTION_API_KEY for personal workspace"
@@ -251,7 +251,7 @@ if jq -e '.object == "error"' page_properties.json > /dev/null 2>&1; then
   if [ "$ERROR_CODE" = "unauthorized" ]; then
     echo "API Key 문제:"
     echo "  - ~/.zshenv의 키가 올바른지 확인"
-    echo "  - plabfootball URL → PLAB_NOTION_API_KEY 필요"
+    echo "  - plabfootball URL → PLAB_WOZ_NOTION_API_KEY 필요"
     echo "  - 개인 URL → NOTION_API_KEY 필요"
   else
     echo "Possible causes:"
@@ -269,7 +269,7 @@ Notion API를 사용하려면 Integration이 페이지에 연결되어 있어야
 1. [Notion Integrations](https://www.notion.so/my-integrations)에서 Integration 생성
 2. 대상 페이지에서 `...` → `Connections` → Integration 연결
 3. `~/.zshenv`에 환경변수 설정:
-   - **plabfootball 워크스페이스**: `export PLAB_NOTION_API_KEY=ntn_xxx`
+   - **plabfootball 워크스페이스**: `export PLAB_WOZ_NOTION_API_KEY=ntn_xxx`
    - **개인 워크스페이스**: `export NOTION_API_KEY=ntn_xxx`
 
 **주의:** 현재 세션의 환경변수가 아닌 `~/.zshenv` 파일에서 직접 읽음 (키 갱신 시 즉시 반영)

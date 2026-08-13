@@ -1,6 +1,6 @@
 ## Notion API
 
-- `~/work/*`, `~/plab/*` 또는 plab/plabfootball 관련 Notion 페이지 → `PLAB_NOTION_API_KEY`
+- `~/work/*`, `~/plab/*` 또는 plab/plabfootball 관련 Notion 페이지 → `PLAB_WOZ_NOTION_API_KEY`
 - `~/prv/*` 및 그 외 → `NOTION_API_KEY`
 
 ### 자주 쓰는 페이지
