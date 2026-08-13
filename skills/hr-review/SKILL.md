@@ -34,7 +34,7 @@ description: Use when writing 셀프 리뷰(self-review) or 피어 리뷰(peer-r
 3. **과거 리뷰 메모** (Notion, 지난 시즌들): 연속성 참조용
 4. **반기 기간**: 예) 26H1 = 2026-01-01 ~ 2026-06-30 (회사 정의 확인 — Q2를 7월까지 잡기도 함)
 
-> ⚠️ Notion API로 읽으려면 각 페이지를 integration(`dify`, `PLAB_NOTION_API_KEY`)에 **Connections 공유**해야 함. 404 나면 공유 요청.
+> ⚠️ Notion API로 읽으려면 각 페이지를 integration(`woz-claude-code`, `PLAB_WOZ_NOTION_API_KEY`)에 **Connections 공유**해야 함. 404 나면 공유 요청.
 
 ---
 
