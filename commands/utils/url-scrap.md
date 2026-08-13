@@ -201,6 +201,7 @@ curl -s "https://api.notion.com/v1/databases/$DB_ID" \
 | Django | 🎸 | AWS | ☁️ |
 | Flask | 🧪 | Docker | 🐳 |
 | Terraform | 🏗️ | Kubernetes | 🚢 |
+| 판단의 몫 | ⚖️ | | |
 | **Etc / 표에 없는 주제** | **📄** | | |
 
 주제가 정해지면 아이콘도 정해진다. 내용을 보고 따로 고르지 않는다 — 같은 주제인데
