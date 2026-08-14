@@ -2,7 +2,7 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1"
   },
-  "autoCompactWindow": 720000,
+  "autoCompactWindow": 520000,
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
@@ -76,13 +76,14 @@
         ]
       },
       {
-        "matcher": "Skill",
+        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",
             "command": "npx -y ccstatusline@latest --hook"
           }
-        ]
+        ],
+        "matcher": "Skill"
       }
     ],
     "PostToolUse": [
@@ -178,6 +179,7 @@
         ]
       },
       {
+        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",
@@ -209,7 +211,8 @@
     "learning-output-style@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
     "caveman@caveman": true,
-    "architecture-diagram@architecture-diagram-skill": true
+    "architecture-diagram@architecture-diagram-skill": true,
+    "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
     "claudeclaw": {
@@ -228,6 +231,12 @@
       "source": {
         "source": "github",
         "repo": "konraddzbik/architecture-diagram-skill"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
       }
     }
   },
