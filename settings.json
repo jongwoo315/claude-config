@@ -2,7 +2,6 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1"
   },
-  "autoCompactWindow": 520000,
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
@@ -76,14 +75,13 @@
         ]
       },
       {
-        "_tag": "ccstatusline-managed",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
             "command": "npx -y ccstatusline@latest --hook"
           }
-        ],
-        "matcher": "Skill"
+        ]
       }
     ],
     "PostToolUse": [
@@ -179,7 +177,6 @@
         ]
       },
       {
-        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",
@@ -241,6 +238,7 @@
     }
   },
   "effortLevel": "high",
+  "autoCompactWindow": 520000,
   "remote": {
     "defaultEnvironmentId": "env_014JKGFZ7xqP8i8GTbKosBni"
   },
