@@ -78,6 +78,43 @@ curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
   | jq .
 ```
 
+### 본문 작성 포맷 (ADF)
+
+description·댓글 모두 ADF(Atlassian Document Format)다. 위 §Notion 페이지 작성
+포맷과 같은 뜻이되, **색을 넣는 방식이 다르다.**
+
+| 규칙 | 내용 |
+| --- | --- |
+| 헤딩 | **h2, h3만.** `heading` 노드 `attrs.level` |
+| h2 색 | `textColor` **`#a54800`** (주황) |
+| h3 색 | `textColor` **`#44546f`** (진회색) |
+| 빈 문단 | **h2 앞에만** 하나 (첫 h2 제외) |
+| 구분선 | `rule` 노드 **금지** |
+| 취소선 | `strike` mark **금지** |
+
+```json
+{"type":"heading","attrs":{"level":2},
+ "content":[{"type":"text","text":"제목",
+   "marks":[{"type":"textColor","attrs":{"color":"#a54800"}}]}]}
+```
+
+**`backgroundColor` mark는 쓰지 않는다.** ADF에 존재하고 API도 받지만
+다크모드에서 못 쓴다 — 2026-08-16 실측:
+
+- Atlassian이 `@atlaskit/editor-palette`로 hex를 테마 토큰에 다시 매핑한다.
+  라이트모드용 연노랑 `#fff0b3`이 **어두운 갈색으로 뒤집혔다.**
+- mark는 블록이 아니라 **text 노드**에 붙는다. 헤딩이 두 줄로 접히면 배경이
+  줄마다 끊겨 오른쪽 끝이 들쭉날쭉해진다. Notion 헤딩은 블록 전체가 칠해진다.
+
+`textColor`는 `code`·`link` mark와 **같이 못 쓴다** (ADF 제약). 링크나 인라인
+코드가 든 헤딩에는 색을 빼거나 그 부분만 나눈다.
+
+색은 다크모드 기준으로 골랐다. 회색 계열은 다크모드에서 **본문보다 어둡게**
+보여 헤딩이 뒤로 물러난다 — 그걸 알고 고른 값이다.
+
+**payload를 셸에서 조립하지 말 것.** 한글과 중첩 JSON이 섞인다. python으로
+파일을 만든 뒤 `--data-binary @file`로 보낸다.
+
 ## Grafana (Amazon Managed Grafana)
 
 plabfootball 관측 대시보드. **Datadog에서 이관 중** — 신규 지표는 이쪽을 먼저 본다.
