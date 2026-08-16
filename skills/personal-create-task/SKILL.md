@@ -122,21 +122,30 @@ repo_url = '$REPO_URL'
 if repo_url:
     properties['Git 저장소'] = {'url': repo_url}
 
+# 서식은 rules/apis.md §페이지 작성 포맷을 따른다 — h2 yellow_background,
+# h3 gray_background, h2 앞 빈 문단, 구분선·취소선 금지. 아래는 그 규칙을
+# 적용한 형태다.
 payload = {
     'parent': {'database_id': '29241e6165c0801f9529cabf8cad919b'},
     'properties': properties,
     'children': [
         {
             'object': 'block', 'type': 'heading_2',
-            'heading_2': {'rich_text': [{'text': {'content': 'Summary'}}]}
+            'heading_2': {'rich_text': [{'text': {'content': 'Summary'}}],
+                          'color': 'yellow_background'}
         },
         {
             'object': 'block', 'type': 'paragraph',
             'paragraph': {'rich_text': [{'text': {'content': '<SUMMARY>'}}]}
         },
         {
+            'object': 'block', 'type': 'paragraph',
+            'paragraph': {'rich_text': []}
+        },
+        {
             'object': 'block', 'type': 'heading_2',
-            'heading_2': {'rich_text': [{'text': {'content': 'Design Document'}}]}
+            'heading_2': {'rich_text': [{'text': {'content': 'Design Document'}}],
+                          'color': 'yellow_background'}
         },
         {
             'object': 'block', 'type': 'paragraph',

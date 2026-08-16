@@ -30,6 +30,9 @@ session-til이 "빠른 메모", tdr이 "면접용 정제" 역할.
 
 ## Notion DB
 
+**본문 서식은 `rules/apis.md` §페이지 작성 포맷을 따른다** — h2 `yellow_background`,
+h3 `gray_background`, h2 앞 빈 문단, 구분선·취소선 금지.
+
 - **Database:** Technical Decision Records
 - **Database ID:** `2fb41e61-65c0-8110-9a8c-d08cde96fc24`
 - **Data Source ID:** `2fb41e61-65c0-81bb-ba97-000b9a63c13c`
@@ -366,7 +369,7 @@ TDR이 Notion에 저장되었습니다:
 - **Options 테이블은 4열** — Option / Pros / Cons / Cost
 - **메타데이터는 추천 후 확인** — Claude가 내용 기반으로 추천, 사용자 확인
 - **미리보기 필수** — 저장 전 반드시 전문 보여주고 확인 받기
-- **Notion rich_text 2000자 제한** — 긴 내용은 여러 paragraph 블록으로 분할
+- **Notion rich_text 2000자 제한** — rich_text 배열을 나눈다 (`rules/apis.md` §크기 제한). 문단 분할 아님
 
 ## Error Handling
 
@@ -374,5 +377,5 @@ TDR이 Notion에 저장되었습니다:
 |------|------|
 | NOTION_API_KEY 없음 | `~/.zshenv`에서 설정 안내 |
 | 권한 오류 | Integration이 DB에 연결되어 있는지 확인 안내 |
-| rich_text 2000자 초과 | 여러 paragraph 블록으로 분할 |
+| rich_text 2000자 초과 | rich_text 배열 분할 (`rules/apis.md` §크기 제한) |
 | Jira 파싱 실패 | 대화 모드로 전환 제안 |
