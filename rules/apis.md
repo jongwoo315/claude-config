@@ -19,8 +19,46 @@
 
 ### 페이지 작성 포맷
 
-- h2, h3, bullet 사용
-- division line (구분선) 사용 금지
+**모든 Notion 페이지에 적용된다.** 스크랩·TDR·TIL·태스크 본문 전부. 스킬마다
+따로 적지 말고 여기를 따를 것 — 사본을 두면 갈라진다.
+
+| 규칙 | 내용 |
+| --- | --- |
+| 헤딩 | **h2, h3만.** h1 금지, h4 이하 금지 |
+| h2 색 | `"color": "yellow_background"` |
+| h3 색 | `"color": "gray_background"` |
+| 빈 문단 | **h2 앞에만** 하나 (첫 h2 제외). **h3 앞에는 넣지 않는다** |
+| 구분선 | `divider` **금지** |
+| 취소선 | `strikethrough` **금지** |
+| 코드 | 원문에 코드가 있으면 code block으로 살린다 |
+
+```json
+{ "type": "heading_2",
+  "heading_2": { "rich_text": [{"text":{"content":"제목"}}],
+                 "color": "yellow_background" } },
+{ "type": "paragraph", "paragraph": { "rich_text": [] } },   ← h2 앞 빈 문단
+{ "type": "heading_3",
+  "heading_3": { "rich_text": [{"text":{"content":"소제목"}}],
+                 "color": "gray_background" } }
+```
+
+**셸에서 JSON을 직접 조립하지 말 것.** 한글 프로퍼티명과 긴 본문이 섞여 따옴표
+사고가 난다. python으로 payload 파일을 만든 뒤 `--data-binary @file`로 보낸다.
+
+#### 크기 제한 — 페이지가 아니라 **요청 하나**에 걸린다
+
+페이지가 최종적으로 담는 양에는 제한이 없다. 나눠 보내면 얼마든지 쌓인다.
+
+| 대상 | 한도 | 초과하면 |
+| --- | --- | --- |
+| `text.content` (rich_text 객체 하나) | **2000자** | 같은 문단 안에서 **rich_text 객체를 여럿으로 나눈다** (배열 100개까지). 문단을 쪼개지 말 것 — 화면에 없던 줄바꿈이 생긴다 |
+| 배열 요소 (rich_text 등) | 100개 | |
+| 한 요청의 블록 | **1000개** | 페이지를 먼저 만들고 `PATCH /v1/blocks/{page_id}/children`로 이어 붙인다 |
+| 한 요청 페이로드 | **500KB** | 위와 같이 분할 |
+
+2000자는 **서식 규칙이 아니라 직렬화 세부사항이다.** 긴 문단을 눈에 보이게
+쪼갤 이유가 없다. (2026-08-16 공식 문서 확인. 이전 문구는 "넘으면 문단을
+쪼갠다", "블록 100개 초과 시 분할"이었는데 둘 다 틀렸다 — 블록 한도는 1000개다.)
 
 ## Jira API
 

@@ -108,10 +108,9 @@ Claude reads the content and chooses the best section structure based on content
 **Constraints:**
 - Always Korean
 - 간결하되 핵심을 빠뜨리지 않을 것. 코드 스니펫은 가능한 유지.
-- heading2 sections use `yellow_background`
-- heading3 subsections use `gray_background`
-- Always add empty spacer paragraph between heading2 sections
-- **코드 스니펫:** 원본에 코드가 있으면 TL;DR에 code block으로 최대한 포함
+- **서식은 `rules/apis.md` §페이지 작성 포맷을 따른다** — h2 `yellow_background`,
+  h3 `gray_background`, h2 앞 빈 문단, 구분선·취소선 금지, rich_text 2000자.
+  여기 복제하지 않는다 (사본은 한쪽만 고쳐지며 갈라진다).
 - **참고링크:** 페이지 내 참조 URL이 **여러 개** 있을 때만 `참고링크` heading2 섹션을 추가하고 하위에 bookmark 또는 bulleted_list_item으로 URL 나열. URL이 1개뿐이면 URL property에만 유지하고 참고링크 섹션은 생략.
 
 ### Step 5: Preview & Confirm
@@ -234,11 +233,8 @@ TL;DR 블록 맨 끝에 원본 출처 정보를 추가한다.
 ```
 URL이 1개뿐이면 참고링크 섹션 생략 (URL property에만 유지).
 
-**Rules:**
-- Always empty spacer paragraph (`"rich_text": []`) between heading2 sections
-- heading2: `"color": "yellow_background"`
-- heading3: `"color": "gray_background"`
-- rich_text 2000 char limit: split into multiple paragraph blocks if needed
+**Rules:** `rules/apis.md` §페이지 작성 포맷 참조. 위 JSON 예시가 그 규칙을
+적용한 형태다.
 
 **6c. Mark 완료:**
 
@@ -271,4 +267,4 @@ After saving, AskUserQuestion: "다음 페이지로 진행할까요?"
 | No content + no URL | Skip, report |
 | No content + URL fetch fails | Skip, report |
 | Notion API error | Show error, ask "retry or skip?" |
-| rich_text > 2000 chars | Split into multiple paragraph blocks |
+| rich_text > 2000 chars | Split the rich_text array, not the paragraph — see `rules/apis.md` §크기 제한 |

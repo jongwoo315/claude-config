@@ -35,6 +35,8 @@ AI가 대체할 수 없는 **의사결정 과정과 근거**를 기록하는 것
 ## Prerequisites
 
 - `NOTION_API_KEY` 환경변수 설정
+- 본문 서식은 **`rules/apis.md` §페이지 작성 포맷**을 따른다 — h2
+  `yellow_background`, h3 `gray_background`, h2 앞 빈 문단, 구분선·취소선 금지
 
 ## Categories (7개)
 
@@ -427,5 +429,5 @@ TIL이 Notion에 저장되었습니다:
 | 권한 오류 | Integration이 Dev Scraps 페이지에 연결되어 있는지 확인 안내 |
 | 추출 항목 0개 | "이 세션에서 기록할 시니어 관점의 인사이트가 없습니다" 표시 |
 | 기존 페이지 블록 100개 초과 | `next_cursor`로 페이지네이션하여 전체 블록 읽기 |
-| Notion API rich_text 2000자 제한 | 짧은 항목: 200자로 축약. 긴 설명: 문단/함수 단위로 분할하여 별도 블록으로 저장 |
+| Notion API rich_text 2000자 제한 | 배열을 여러 rich_text 객체로 분할 (`rules/apis.md` §크기 제한). 문단을 쪼개지 말 것 |
 | children 100개 초과 | 페이지 생성 후 나머지는 PATCH로 append |

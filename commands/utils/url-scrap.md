@@ -108,16 +108,10 @@ fetch-rendered.sh "<URL>" > "$SCRATCHPAD/page.txt"
 | 코드/라이브러리 | 핵심 요약 → 주요 포인트 → 핵심 코드 |
 | 도구/설정 | 핵심 요약 → 설정 방법 → 주의사항 |
 
-**서식 규칙 (엄수):**
-
-- **h2, h3만 사용.** h1 금지, h4 이하 금지
-- h2 → `"color": "yellow_background"`
-- h3 → `"color": "gray_background"`
-- **h2 섹션 사이에는 빈 문단 하나** (`"rich_text": []`)
-- **h3 사이에는 빈 문단 없음**
-- **취소선 사용 금지** (`strikethrough` 절대 쓰지 않음)
-- 원문에 코드가 있으면 code block으로 최대한 살린다
-- rich_text는 2000자 제한 — 넘으면 문단을 쪼갠다
+**서식은 `rules/apis.md` §페이지 작성 포맷을 따른다** — h2/h3만, h2는
+`yellow_background`, h3는 `gray_background`, h2 앞에만 빈 문단, 구분선·취소선 금지.
+여기 복제하지 않는다: 같은 규칙이 이 파일과 `dev-scraps-tldr.md`에 각각 있었고
+그런 사본은 한쪽만 고쳐지면서 갈라진다.
 
 ### Step 3: 미리보기 + 확인
 
@@ -236,7 +230,7 @@ JSON
 위 예시는 Dev Scraps 기준이다. **Liv Scraps면 `본문 길이` 줄을 반드시 뺀다** — 없는
 프로퍼티를 보내면 400이 난다.
 
-`children`을 함께 보내면 페이지 생성과 본문 작성이 한 번에 끝난다. 블록이 100개를 넘으면
+`children`을 함께 보내면 페이지 생성과 본문 작성이 한 번에 끝난다. 블록이 1000개를 넘으면
 먼저 페이지만 만들고 나머지는 `PATCH /v1/blocks/{page_id}/children`으로 이어 붙인다.
 
 한글 프로퍼티명과 긴 본문이 섞이므로 셸에서 직접 JSON을 조립하지 말 것. python으로
@@ -292,7 +286,7 @@ payload 파일을 만든 뒤 `--data-binary @file`로 보내는 편이 따옴표
 | 기술/비기술 판정이 애매 | 추측하지 말고 AskUserQuestion으로 DB 선택지 제시 |
 | `body.properties.본문 길이 is not a property` | Liv Scraps에 Dev Scraps 스키마를 보냄. 해당 줄 빼고 재시도 |
 | Notion API 4xx | 응답 body를 그대로 보여주고 재시도 여부 확인 |
-| rich_text 2000자 초과 | 문단 분할 |
+| rich_text 2000자 초과 | 배열을 여러 객체로 분할 (`rules/apis.md` §크기 제한) |
 | 블록 100개 초과 | 페이지 생성 후 나머지 append |
 
 ## Notes
