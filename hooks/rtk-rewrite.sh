@@ -80,11 +80,9 @@ elif echo "$FIRST_CMD" | grep -qE '^git\s+show(\s|$)'; then
   REWRITTEN=$(echo "$CMD" | sed 's/^git show/rtk git show/')
 
 # --- GitHub CLI ---
-# gh api: skip rewrite when output is piped or redirected (downstream needs raw JSON)
-elif echo "$FIRST_CMD" | grep -qE '^gh\s+api(\s|$)'; then
-  if ! echo "$CMD" | grep -qE '\||>'; then
-    REWRITTEN=$(echo "$CMD" | sed 's/^gh /rtk gh /')
-  fi
+# gh api is deliberately NOT rewritten: as of rtk 0.45.0 `rtk gh api` is a
+# byte-for-byte passthrough (verified identical up to 235KB), so the rewrite
+# yields 0% savings while re-exposing JSON to any future rtk filter change.
 elif echo "$FIRST_CMD" | grep -qE '^gh\s+(pr|issue|run)(\s|$)'; then
   # Skip RTK when piped/redirected (downstream needs raw output)
   if ! echo "$CMD" | grep -qE '\||>'; then
@@ -136,13 +134,11 @@ elif echo "$FIRST_CMD" | grep -qE '^kubectl\s+(get|logs)(\s|$)'; then
   REWRITTEN=$(echo "$CMD" | sed 's/^kubectl /rtk kubectl /')
 
 # --- Network ---
-elif echo "$FIRST_CMD" | grep -qE '^curl\s+'; then
-  # Skip rewrite if:
-  # - output is piped or redirected (downstream needs raw JSON)
-  # - -u flag is used (basic auth — RTK corrupts auth JSON responses)
-  if ! echo "$CMD" | grep -qE '\||>' && ! echo "$FIRST_CMD" | grep -qE '(^|\s)-u\s'; then
-    REWRITTEN=$(echo "$CMD" | sed 's/^curl /rtk curl /')
-  fi
+# curl is deliberately NOT rewritten: as of rtk 0.45.0 `rtk curl` is a
+# byte-for-byte passthrough for JSON, HTML and plain text (verified identical
+# up to 1.38MB, and `-u` basic auth now works). The rewrite yields 0% savings,
+# so the branch and its pipe/redirect/-u guards were removed rather than kept
+# as dead code that would re-expose output if rtk restores filtering.
 
 # --- pnpm package management ---
 elif echo "$FIRST_CMD" | grep -qE '^pnpm\s+(list|ls|outdated)(\s|$)'; then
