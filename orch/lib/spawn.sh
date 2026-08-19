@@ -5,47 +5,53 @@
 . "$(dirname "${BASH_SOURCE[0]}")/state.sh"
 
 # submit_step <sess> <text> — type a prompt into a live claude session and make
-# sure it actually SUBMITS. Don't trust a fixed delay or the transient "esc to
-# interrupt" marker: resend Enter until the prompt LEAVES the input box (the input
-# line no longer carries our first token). Only signal that holds across banners,
-# slow spawns, and model tiers. Used for both step0 (spawn) and every advance step
-# — an advance send without this loses Enter on a busy TUI and the step sits unsent
-# at the prompt, deadlocking the pipeline (orch waits for an idle that never comes).
+# sure it actually SUBMITS. Don't trust a fixed delay: a startup banner redraw eats
+# an Enter sent too early, the prompt sits in the input box, and @orch_await=working
+# never clears — the pipeline deadlocks waiting for an idle that cannot come.
+#
+# Success is measured from @claude_state, NOT from the pane text. Two pane-text
+# attempts failed in the field and both failed the SAME way — the test could never
+# say "unsent", so exactly one Enter was ever sent and the retry loop was decorative:
+#
+#   1. grep '(❯|>) ' — Claude Code draws the marker as '❯' + U+00A0 (NO-BREAK
+#      SPACE), so a pattern demanding an ASCII space never matched.
+#   2. last '^❯' line still holds our token — a long prompt fills the input box past
+#      the pane height, scrolling its single marker line off the top. capture-pane
+#      only renders the visible pane, so the box is on screen while its marker is
+#      not, and the capture contains no marker at all.
+#
+# The prompt that broke (2) was ~60 lines. Ralph prompts are routinely that long, so
+# this is the normal case, not an edge one. Any refinement of the marker pattern
+# inherits the same defect; the pane simply does not carry the answer.
+#
+# @claude_state is stamped by the plugin's UserPromptSubmit hook — it flips to
+# working at the instant of submission, which is exactly the event being waited on,
+# and it is the same signal the daemon's @orch_await gate already trusts. Comparing
+# @claude_state_at against its pre-send value is what makes this work for an advance
+# step too: the session may already carry a stale working from the previous step, so
+# the state VALUE alone would break out immediately without anything being sent.
 submit_step() {
   local sess="$1" text="$2"
+  local before; before=$(st_get_state_at "$sess")
   $ORCH_TMUX send-keys -t "$sess" -- "$text"
-  local probe="${text%% *}"      # first token — cheap unsent fingerprint
+  $ORCH_TMUX send-keys -t "$sess" C-m
   local j=0
   while [ $j -lt 30 ]; do
-    $ORCH_TMUX send-keys -t "$sess" C-m
     sleep 0.8
-    # Unsent iff the INPUT BOX still holds our token. Two things make that test
-    # trickier than it looks, and getting either wrong is silent:
-    #   - Only the LAST prompt-marker line counts. A submitted prompt stays on
-    #     screen in the transcript rendered with the very same marker, so a plain
-    #     "any line has marker+token" test never goes false and would resend Enter
-    #     all 30 times into a session that is already working.
-    #   - No space after the marker. Claude Code renders '❯' + U+00A0 (NO-BREAK
-    #     SPACE), not an ASCII space. The old pattern '(❯|>) ' therefore never
-    #     matched, every attempt took the `|| break` branch, and the retry loop was
-    #     dead — exactly one Enter was ever sent. When a startup banner redraw ate
-    #     it (seen 2026-08-19) the prompt just sat in the box forever and the
-    #     pipeline deadlocked waiting for an idle that could not come.
-    # Anchor the marker at column 0 so a '>' inside transcript output can't be
-    # mistaken for the input box.
-    $ORCH_TMUX capture-pane -pt "$sess" \
-      | grep -E '^(❯|>)' | tail -1 | grep -qF "$probe" || break
+    [ "$(st_get_state "$sess")" = "working" ] &&
+      [ "$(st_get_state_at "$sess")" != "$before" ] && break
+    $ORCH_TMUX send-keys -t "$sess" C-m
     j=$((j+1))
   done
-  # Log only the unhealthy paths, to the daemon's stderr (stdout here is captured
-  # by spawn_session's $(...) and would end up as the session name). j=0 is the
-  # baseline — one Enter, submitted — so ANY line appearing at all means the TUI
-  # swallowed a keystroke, and that is the whole signal. Without it a 0-retry and a
-  # 29-retry submit look identical in the log, which is why the dead retry loop went
-  # 89 days unnoticed: it only bit when a banner redraw happened to eat the Enter.
+  # Log only the unhealthy paths, to the daemon's stderr (stdout here is captured by
+  # spawn_session's $(...) and would end up as the session name). j=0 is the baseline
+  # — one Enter, submitted — so ANY line appearing at all means the TUI swallowed a
+  # keystroke, and that is the whole signal. Without it a 0-retry and a 29-retry
+  # submit look identical, which is how a dead retry loop survived 89 days: it only
+  # bit when a redraw happened to eat the Enter.
   if [ $j -ge 30 ]; then
-    printf '%s submit %s: UNSENT after %d enters — prompt still in input box\n' \
-      "$(date '+%F %T')" "$sess" "$j" >&2
+    printf '%s submit %s: UNSENT after %d enters — no working transition\n' \
+      "$(date '+%F %T')" "$sess" "$((j+1))" >&2
   elif [ $j -gt 0 ]; then
     printf '%s submit %s: submitted after %d retries\n' \
       "$(date '+%F %T')" "$sess" "$j" >&2
