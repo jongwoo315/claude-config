@@ -19,9 +19,22 @@ submit_step() {
   while [ $j -lt 30 ]; do
     $ORCH_TMUX send-keys -t "$sess" C-m
     sleep 0.8
-    # unsent iff a prompt-marker line ('❯ ' or '> ') still holds our token
+    # Unsent iff the INPUT BOX still holds our token. Two things make that test
+    # trickier than it looks, and getting either wrong is silent:
+    #   - Only the LAST prompt-marker line counts. A submitted prompt stays on
+    #     screen in the transcript rendered with the very same marker, so a plain
+    #     "any line has marker+token" test never goes false and would resend Enter
+    #     all 30 times into a session that is already working.
+    #   - No space after the marker. Claude Code renders '❯' + U+00A0 (NO-BREAK
+    #     SPACE), not an ASCII space. The old pattern '(❯|>) ' therefore never
+    #     matched, every attempt took the `|| break` branch, and the retry loop was
+    #     dead — exactly one Enter was ever sent. When a startup banner redraw ate
+    #     it (seen 2026-08-19) the prompt just sat in the box forever and the
+    #     pipeline deadlocked waiting for an idle that could not come.
+    # Anchor the marker at column 0 so a '>' inside transcript output can't be
+    # mistaken for the input box.
     $ORCH_TMUX capture-pane -pt "$sess" \
-      | grep -F "$probe" | grep -qE '(❯|>) ' || break
+      | grep -E '^(❯|>)' | tail -1 | grep -qF "$probe" || break
     j=$((j+1))
   done
 }
