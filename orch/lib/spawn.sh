@@ -37,6 +37,19 @@ submit_step() {
       | grep -E '^(❯|>)' | tail -1 | grep -qF "$probe" || break
     j=$((j+1))
   done
+  # Log only the unhealthy paths, to the daemon's stderr (stdout here is captured
+  # by spawn_session's $(...) and would end up as the session name). j=0 is the
+  # baseline — one Enter, submitted — so ANY line appearing at all means the TUI
+  # swallowed a keystroke, and that is the whole signal. Without it a 0-retry and a
+  # 29-retry submit look identical in the log, which is why the dead retry loop went
+  # 89 days unnoticed: it only bit when a banner redraw happened to eat the Enter.
+  if [ $j -ge 30 ]; then
+    printf '%s submit %s: UNSENT after %d enters — prompt still in input box\n' \
+      "$(date '+%F %T')" "$sess" "$j" >&2
+  elif [ $j -gt 0 ]; then
+    printf '%s submit %s: submitted after %d retries\n' \
+      "$(date '+%F %T')" "$sess" "$j" >&2
+  fi
 }
 
 # spawn_session <task_id> <dir> <step0> <skip_perms:true|false> ; echoes session name
