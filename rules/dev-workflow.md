@@ -83,17 +83,46 @@ claude는 고아로 살아남아 같은 worktree에 계속 쓴다. 이 상태에
 **한 worktree에 에이전트 2개**가 붙어 서로의 DB·파일을 깨뜨린다 (실제 발생함 — 두 번째 세션이
 같은 DB에 pytest를 돌리면 첫 번째 작업이 오염된다).
 
+**1순위는 워크트리가 더러운지다. 프로세스 검사가 아니다.**
+
 ```bash
-# worktree에 붙은 claude 프로세스 전수 확인
-ps aux | grep "claude --dangerously" | grep -v grep | awk '{print $2}' | while read p; do
-  echo "$p  $(lsof -p $p -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)"
+git -C <worktree> status --porcelain          # 비어 있지 않으면 → 진행 금지
+find <worktree> -newermt '-5 minutes' -not -path '*/.git/*' | head
+```
+
+**더러우면 프로세스가 안 보여도 진행하지 않는다.** 위 `## ⚠️ PR 존재는 완료 신호가 아니다`가
+정의한 완료 조건이 이것이고, 루프는 `orch ls`가 `done`이 된 뒤에도 계속 커밋한다.
+
+```bash
+# 2순위 — 프로세스. 단 이건 있으면 증거지 없다고 무죄가 아니다
+for p in $(pgrep -f '^claude'); do
+  cwd=$(lsof -p "$p" -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
+  case "$cwd" in */.wt/*) echo "$p  $cwd";; esac
 done
+tmux ls 2>/dev/null | grep claude-orch-
 ```
 
 대상 worktree가 cwd인 PID가 있으면 **kill 후에 재 dispatch**한다.
 `orch rm <id>` → 위 확인 → `kill <pid>` → `tmux kill-session -t claude-orch-<id>` → 재 dispatch.
 
 > 자기 자신(main 세션)의 cwd가 repo 루트로 잡히니 **worktree 경로와 정확히 일치하는 것만** 죽일 것.
+
+**⚠️ 프로세스 검사는 한 번 봐서 "없음"이 나와도 없다는 뜻이 아니다.** 2026-08-20 DEV-7910에서
+실측했다 — `orch ls`가 `done`, `claude-orch-DEV-7910` tmux 세션 없음, `pgrep`+`lsof`로 그 워크트리를
+cwd로 잡은 프로세스 0건이었는데 **그 세션은 그 뒤 7분간 커밋 5개를 만들고 푸시했다.** 내가
+`git add` 한 사이에 그쪽이 같은 파일을 커밋해서 내 `git commit`이 `nothing added to commit`으로
+죽었다.
+
+두 가지가 겹친다:
+
+- ralph 루프는 **턴마다 `claude` 프로세스가 새로 뜬다.** 한 프로세스가 오래 사는 게 아니라
+  프로세스의 연속이라, 턴 사이 빈틈에 샘플링하면 0건이 나온다.
+- 옛 명령 `ps aux | grep "claude --dangerously"`는 **첫 턴만 잡는다.** 그 뒤로는
+  `claude --resume <uuid>`로 돈다. 같은 시각에 옛 명령 0건 / `pgrep -f '^claude'` 20건이었다.
+
+**유일하게 신뢰할 수 있는 신호는 워크트리 상태다.** 더러운 트리를 보고도
+"프로세스가 없으니 괜찮다"고 진행하면 안 된다 — 위 사례에서 트리는 ` M tests/test_slack.py`로
+더러웠고, 그게 맞는 신호였다.
 
 **중단된 실행을 재개할 때는 plan에 RESUME 섹션을 추가한다.** 이미 있는 산출물 목록과
 "덮어쓰지 말고 테스트로 검증하라 / 파일 존재 ≠ 통과 기준 충족"을 명시하지 않으면
