@@ -65,6 +65,36 @@ plan → 코드 주석 → 테스트 docstring → 이후 plan 3개다. 같은 r
 **표에 추가할 때 그 말이 이미 나간 repo를 같이 grep한다.** 한 번에 끝나는 일이고,
 안 하면 plan을 읽는 다음 세션이 매번 되살린다.
 
+#### grep은 **한 repo가 아니라 전부**다
+
+2026-08-21에 이 지시를 반쪽만 지킨 것이 드러났다. 채팅에서 `Slack 배선`이라고 써서
+지적받고 확인해 보니:
+
+| 곳 | 배선 |
+| --- | --- |
+| `pf-policy-bot` — 위 표를 쓴 그 repo | **0** (정리 끝남) |
+| `social-backend-fastapi` | 178 |
+| `new-plab-front` | 122 |
+| `plaby` · `jobs` · 기타 | 24 |
+
+**표에 적힌 55곳은 고쳐졌고, 한 번도 안 본 repo에 그 6배가 남아 있었다.** 전부 wiring
+직역이다 (`주입 배선` `훅 배선` `방어 배선` `onComplete→닫기 배선`). 전기 배선 원뜻은 0건.
+
+위치도 그대로 이 절이 말한 재주입 경로다 — `docs/sot/changes/*.md`,
+`docs/superpowers/plans/*.md`, 거기서 옮겨간 코드 주석과 테스트 docstring.
+
+`~/plab`은 16개 repo를 담은 dispatch root라 **한 repo를 고치는 것은 표본이지 처리가
+아니다.** 걸린 말이 나온 repo만 보지 말고 `~/plab` 전체를 센다:
+
+```bash
+cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] && echo "$n  $d"; done | sort -rn
+```
+
+**회사 repo는 세는 것과 고치는 것을 분리한다.** 300곳 치환은 PR 여러 개에 배포 부담이
+붙는 일이라 이 규칙이 시킬 수 있는 범위를 넘는다. 숫자는 여기 적어 두고, 치환은 티켓으로
+따로 잡거나 그 파일을 어차피 건드릴 때 같이 고친다. **`~/.claude`는 내 것이니 즉시 고친다.**
+
 ## 위험 지대는 판단·평가 어휘만이 아니다
 
 **표본이 둘이고 서로 다르게 나온다. 어느 쪽에서 잰 것인지 보고 읽을 것.**
@@ -82,7 +112,7 @@ plan → 코드 주석 → 테스트 docstring → 이후 plan 3개다. 같은 r
 | 걸린 말 | 원어 | 곳 |
 | --- | --- | --- |
 | 비질문 | non-question | 59 |
-| 배선 | wiring | 55 |
+| 배선 | wiring | 55 |  <!-- 이 repo는 이후 0건. 다른 repo에 324곳 — 위 「grep은 한 repo가 아니라 전부다」 -->
 | 단언 | assertion | 30 |
 | 시임 | seam | 30 |
 | 뮤테이션 | mutation | 12 |
