@@ -203,7 +203,7 @@ main은 워크트리 밖이므로 사실은 직접 모은다 (`gh pr view`,
 **파일 목록·증감 줄 수·바뀐 심볼 이름까지다.** 테스트 결과·CI·실패 징후·리뷰 지적사항·PR
 본문 요약은 한 줄도 넣지 않는다. 그것들이 곧 답이라서, 하나라도 새면 그날 숫자는 버려야 한다.
 
-심볼은 `git diff -U0 main...HEAD -- <path> | grep '^@@' | sed 's/.*@@ //'` 로 뽑아 중복을
+심볼은 `git diff -U0 main...HEAD -- <path> | grep '^@@' | sed 's/.*@@ //'`로 뽑아 중복을
 접는다 (`MatchWeatherConfirmationQuerySet ×6`). 마이그레이션·설정·md 처럼 hunk 헤더가 비는
 파일은 그 줄을 생략한다.
 

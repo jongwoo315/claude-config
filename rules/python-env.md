@@ -19,7 +19,7 @@ system Python (`/usr/bin/python3`) 사용 금지.
 python -c "from match.models import Match; ..."
 
 # CORRECT — 먼저 환경 확인 후 실행
-# NOTE: ls -d 는 RTK가 경로명을 삭제하므로 find 사용
+# NOTE: ls -d는 RTK가 경로명을 삭제하므로 find 사용
 find . -maxdepth 1 \( -name "venv" -o -name ".venv" -o -name "env" -o -name ".python-version" \) | cat
 which python && python --version  # 인터프리터 확인
 # pyenv 환경이면 ~/.pyenv/shims/python 이어야 함

@@ -119,7 +119,7 @@ curl -s "https://api.notion.com/v1/blocks/<TOGGLE_ID>/children" \
 - 티켓 제목, 설명, 댓글에서 Context 초안 생성
 
 **Mode 3 - Jira + PR:**
-- Jira 파싱 + `gh pr view <URL>` 로 PR 파싱
+- Jira 파싱 + `gh pr view <URL>`로 PR 파싱
 - Context (Jira) + Decision 힌트 (PR description, 변경 파일) 추출
 
 **Mode 4 - 대화:**

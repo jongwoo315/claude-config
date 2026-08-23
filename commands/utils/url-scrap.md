@@ -36,7 +36,7 @@ description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(�
 
 1. 프롬프트에 **URL만** 있다 (다른 지시문이 붙어 있으면 발동 안 함 — 그건 일반 요청)
 2. 실행 디렉토리가 `~/prv` 계열
-3. URL이 **jira / notion / slack 이 아니다**
+3. URL이 **jira / notion / slack이 아니다**
 
 | URL 종류 | 처리 |
 | --- | --- |

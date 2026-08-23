@@ -8,7 +8,7 @@
 ```bash
 # 기본 쿼리 형식
 # 작은따옴표는 변수가 확장되지 않으므로 큰따옴표를 쓰되, BigQuery 테이블 참조의
-# 백틱은 반드시 \` 로 이스케이프한다 — 안 하면 셸이 명령치환으로 해석해 쿼리가 깨진다.
+# 백틱은 반드시 \`로 이스케이프한다 — 안 하면 셸이 명령치환으로 해석해 쿼리가 깨진다.
 bq query --use_legacy_sql=false --format=json \
   "SELECT * FROM \`$PLAB_BQ_PROJECT.plab.TABLE_NAME\` LIMIT 10"
 

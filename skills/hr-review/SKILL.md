@@ -53,7 +53,7 @@ description: Use when writing 셀프 리뷰(self-review) or 피어 리뷰(peer-r
    - 100+개면 Epic(parent)별로 뭉쳐 **대형 프로젝트 축** 도출. `approximate-count` 엔드포인트로 테마별 카운트.
    - 엔드포인트: `/rest/api/3/search/jql` (deprecated `/search` 금지). `-u $PLAB_WORK_EMAIL:$JIRA_API_TOKEN | jq` (RTK bypass).
 2. **§1 테이블** — 컬럼: 주요 프로젝트(분기/소속팀) / 당초 목표 / **결과(Result=목표 달성 '사실')** / **성과(Impact=조직에 만든 '변화·기여')** / 업무 비중(%) / 참고 / 비고.
-   - **결과 ≠ 성과** 를 반드시 구분. 회고가 "결과"까지라면 셀프리뷰는 "그래서 조직에 뭐가 바뀌었나"를 추가.
+   - **결과 ≠ 성과**를 반드시 구분. 회고가 "결과"까지라면 셀프리뷰는 "그래서 조직에 뭐가 바뀌었나"를 추가.
    - **비중**: 티켓 수는 심하게 왜곡됨(인프라 1건=수주, CS 1건=수시간). 티켓 수 + 실제 투입기간 블렌딩. 보여줄 가치 큰 코어에 가중.
    - 분기(Q1/Q2)는 티켓 created 월 기준.
 3. **§2** 강점/아쉬운 — 실제 사건 기반, 정직하게(성과·실패 모두). **§3** 리더 논의.
@@ -62,9 +62,9 @@ description: Use when writing 셀프 리뷰(self-review) or 피어 리뷰(peer-r
 ## Phase 3 — 피어 리뷰
 피어 폼(예): 정량 0~5+SKIP 5축(**책임·소통·결정** = 함께 일하는 태도 / **동료돕기·신뢰** = 팀 기여) + 리더 대상 3축(팀성과·수평소통·성장지원) + 정성 서술 3개(⑪ 인상적 / ⑫ 성장 제안 / ⑬ 자유). **정성=실명, 정량=익명.**
 
-1. **리뷰어 Slack ID 해석** — `users.list` 페이지네이션 + grep. (제어문자 파싱 에러나면 `tr -d '\000-\037'` 로 sanitize.)
+1. **리뷰어 Slack ID 해석** — `users.list` 페이지네이션 + grep. (제어문자 파싱 에러나면 `tr -d '\000-\037'`로 sanitize.)
 2. **증거 수집 (반기로 시간 필터 필수)**:
-   - **DM**: `conversations.open` → `conversations.history`. ⚠️ `limit=80`은 **개수**지 시간 필터가 아님 → 반드시 `ts >= <반기시작 epoch>` 로 걸러 옛날 사건 배제.
+   - **DM**: `conversations.open` → `conversations.history`. ⚠️ `limit=80`은 **개수**지 시간 필터가 아님 → 반드시 `ts >= <반기시작 epoch>`로 걸러 옛날 사건 배제.
    - **채널**: `search.messages` (user token 필요) `query="from:<@UID> in:<#CHANNEL> after:2026-01-01"`, permalink·ts 확보.
    - 프로젝트 채널(예: 플랩2.0)까지 훑어 활동 파악.
 3. **과거 메모** — 지난 시즌 메모의 이름별 nested 내용까지 읽어 **연속성** 확보("사람은 크게 안 변함"). 강점은 "한결같다", 성장은 "예전보다 나아졌다"로.
@@ -101,7 +101,7 @@ DM/채널에 **라이브 시크릿**(API key, AWS 키, DB 비번, .env 덤프, S
 - Notion 표 셀에 개행 넣으면(예: 프로젝트명 아래 분기), 읽어와 bash `echo|jq` 라운드트립 시 제어문자 에러 → **파일 기반 jq**(`jq ... > f.json; curl --data @f.json`)로 처리. 셀 편집 시 개행 rich_text 요소 **유실 주의**(재부착 필요).
 - Notion 중첩 블록: 사용자가 내용을 템플릿 구조 하위로 옮기면 top-level 스캔이 놓침 → 하위 children까지 재귀 확인.
 - `·`→`,` 치환은 `gsub("\\s*·\\s*"; ", ")` (주변 공백 정리).
-- Jira: `approximate-count` 로 테마별 카운트 빠르게. 순차 curl 많으면 타임아웃 → 배치/타깃.
+- Jira: `approximate-count`로 테마별 카운트 빠르게. 순차 curl 많으면 타임아웃 → 배치/타깃.
 - Slack: `search.messages`는 user token. `users.list` 제어문자는 `tr -d '\000-\037'`.
 
 ## 진행 원칙
