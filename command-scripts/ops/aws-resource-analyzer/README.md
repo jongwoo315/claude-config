@@ -12,7 +12,7 @@ aws-resource-analyzer/
 
 ## 새 프로젝트 추가
 
-`resources/` 에 YAML 파일 생성:
+`resources/`에 YAML 파일 생성:
 
 ```yaml
 project: <project-name>

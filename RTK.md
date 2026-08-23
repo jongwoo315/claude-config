@@ -28,7 +28,7 @@ which rtk             # Verify correct binary
 raw와 바이트 동일(개행 1바이트 차)이고, curl은 1.38MB·gh api는 235KB까지
 truncate도 `{ key: type }` 변환도 없다. `-u` basic auth도 정상이다.
 절감이 0%라 `rtk-rewrite.sh`에서 **두 분기를 아예 뺐다** — curl과 gh api는
-더 이상 rtk를 타지 않으므로 `| jq` 나 `> file` 을 붙일 이유도 없다.
+더 이상 rtk를 타지 않으므로 `| jq` 나 `> file`을 붙일 이유도 없다.
 
 **자동 보호 (rtk-rewrite.sh hook):**
 

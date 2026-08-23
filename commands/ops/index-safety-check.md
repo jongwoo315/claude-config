@@ -72,7 +72,7 @@ git diff production...HEAD -- 'web/*/migrations/*.py'
 
 | 패턴 | 예시 | 위험 |
 |------|------|------|
-| `qs[0]` 슬라이싱 (order_by 없이) | `qs.filter(...)[0]` | `.first()` 와 달리 pk ordering 없음 |
+| `qs[0]` 슬라이싱 (order_by 없이) | `qs.filter(...)[0]` | `.first()`와 달리 pk ordering 없음 |
 | order_by 없는 쿼리 → 순서 의존 로직 | for loop에서 이전 항목과 비교 | optimizer가 순서 바꾸면 로직 깨짐 |
 | `values_list(..., flat=True)` → 순서 의존 소비 | 정렬 가정하에 리스트 처리 | 인덱스 변경 시 순서 보장 안 됨 |
 

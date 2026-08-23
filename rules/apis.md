@@ -166,7 +166,7 @@ curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
 curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
   "$PLAB_GRAFANA_URL/api/dashboards/uid/prod-api-latency" | jq '.dashboard.panels'
 
-# 데이터소스 uid 조회 (아래 ds/query 에 필요)
+# 데이터소스 uid 조회 (아래 ds/query에 필요)
 curl -s -H "Authorization: Bearer $PLAB_GRAFANA_TOKEN" \
   "$PLAB_GRAFANA_URL/api/datasources" | jq -c '[.[]|{name,type,uid}]'
 ```
@@ -200,10 +200,10 @@ AWS_PROFILE=plab aws grafana list-workspace-service-account-tokens \
 ```
 
 이 계열은 AMG가 Grafana 10.4를 지원하며 추가됐다(2024-05). 버전을 외우지 말고 확인할 것 —
-`aws grafana help | grep -c service-account` 가 0이면 CLI가 오래된 것.
+`aws grafana help | grep -c service-account`가 0이면 CLI가 오래된 것.
 
 **갱신 잡은 여전히 boto3를 쓴다.** launchd에서 `aws`가 PATH에 있으리라 가정하지 않고,
-날짜 연산(`expiresAt` 의 `+09:00` 오프셋)이 jq·macOS `date` 양쪽에서 지저분하기 때문이다.
+날짜 연산(`expiresAt`의 `+09:00` 오프셋)이 jq·macOS `date` 양쪽에서 지저분하기 때문이다.
 인터프리터는 `~/.pyenv/versions/jobs-tools/bin/python` (python 3.13.2 + boto3).
 
 ⚠️ **launchd(`zsh -lc`)의 `python3`는 `/usr/bin/python3`(3.9.6)다.** `.zshrc`를 안 읽어

@@ -65,7 +65,7 @@ unclear 시 1st run 기준 (`learn:*-guide` skill "Repeat-Aware Difficulty Rule"
 
 ## Plan 지속화
 
-topic 진행 중 plan/step 리스트는 `<workspace>/<topic>/notes.md` 또는 `<workspace>/notes.md` (flat layout) 에 기록.
+topic 진행 중 plan/step 리스트는 `<workspace>/<topic>/notes.md` 또는 `<workspace>/notes.md` (flat layout)에 기록.
 다음 세션 snapshot 시 이 파일 우선 읽어 resume 정확도 올림.
 
 ### Update 트리거 (Claude 자동 판단)

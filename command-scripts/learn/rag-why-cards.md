@@ -392,7 +392,7 @@ results = vectorstore.similarity_search(query, k=3)
 
 LLM context window가 128K token이면 문서를 최대한 많이 넣을수록 좋을까? 아니다.
 
-**Lost in the Middle 문제:** LLM은 컨텍스트 앞부분과 뒷부분엔 잘 집중하지만 **중간은 무시하는 경향** 이 있다 (Liu et al., 2023).
+**Lost in the Middle 문제:** LLM은 컨텍스트 앞부분과 뒷부분엔 잘 집중하지만 **중간은 무시하는 경향**이 있다 (Liu et al., 2023).
 
 ```
 컨텍스트 구조:
@@ -785,7 +785,7 @@ row = {
 }
 ```
 
-**측정 3축:** quality / cost / latency 를 **한 테이블**에서 비교해야 tradeoff가 보인다.
+**측정 3축:** quality / cost / latency를 **한 테이블**에서 비교해야 tradeoff가 보인다.
 
 ```
 변경              faithfulness  p95(ms)  $/query

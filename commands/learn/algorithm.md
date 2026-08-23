@@ -222,7 +222,7 @@ Review 완료 후 `progress.json`을 업데이트한다.
 
 ## Notes
 
-- 모든 풀이는 `kata/algorithm/[pattern]/` 에 저장
+- 모든 풀이는 `kata/algorithm/[pattern]/`에 저장
 - Java 기준 풀이, Kotlin은 보조 (Python 비교도 포함)
 - context7로 Java Collections/Kotlin stdlib 최신 API 확인
 - 면접에서 "이 문제를 더 최적화할 수 있나요?" 대비 — 항상 follow-up 최적화 논의

@@ -228,7 +228,7 @@ for order in orders:
     print(order.user.name)  # 매번 DB 접근
 ```
 
-`select_related` (FK/OneToOne) 또는 `prefetch_related` (M2M/역방향) 로 해결:
+`select_related` (FK/OneToOne) 또는 `prefetch_related` (M2M/역방향)로 해결:
 
 ```python
 # select_related: JOIN으로 한 번에

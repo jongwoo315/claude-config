@@ -84,7 +84,7 @@ prod 작업이면 **Step 6 confirmation gate에서 더블 확인** 적용.
 
 ### Step 3: Read-only Discovery
 
-mutating 명령 전에 현재 상태 스냅샷. 항상 `describe-*` / `list-*` / `get-*` 만 사용.
+mutating 명령 전에 현재 상태 스냅샷. 항상 `describe-*` / `list-*` / `get-*`만 사용.
 
 ```bash
 # 예: RDS 파라미터 변경 전
