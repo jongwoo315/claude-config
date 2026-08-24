@@ -75,13 +75,14 @@
         ]
       },
       {
-        "matcher": "Skill",
+        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",
             "command": "npx -y ccstatusline@latest --hook"
           }
-        ]
+        ],
+        "matcher": "Skill"
       }
     ],
     "PostToolUse": [
@@ -92,6 +93,15 @@
             "type": "command",
             "command": "/Users/jw/.claude/hooks/docs-plans-date-fix.sh",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/korean-style-lint.sh"
           }
         ]
       },
@@ -188,6 +198,7 @@
         ]
       },
       {
+        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",

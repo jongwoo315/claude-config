@@ -15,8 +15,18 @@
 !/command-scripts/
 !/kimi-tools/
 !/orch/
+!/tools/
 
 
 # 세션 쿠키 — 절대 추적 금지 (public repo)
 cookies.json
 **/cookies.json
+
+# 외부 스킬 심링크 — 내용은 ~/.agents/skills/ 에 있고 repo 밖이다.
+# 저작권 있는 책에서 생성한 스킬이 public repo에 들어가면 안 된다.
+/skills/book-to-skill
+/skills/generative-ai-with-langchain
+
+# 파이썬 바이트코드
+__pycache__/
+*.pyc

@@ -1,0 +1,16 @@
+lint.py — JangHyun-bin/korean-report-skills 에서 가져왔다.
+https://github.com/JangHyun-bin/korean-report-skills
+Licensed under the Apache License, Version 2.0.
+http://www.apache.org/licenses/LICENSE-2.0
+
+로컬 수정 (원본과 다른 점):
+  1. RULE_LEFT_HEADERS / RULE_SUGGEST_HEADERS 에 "쓰지 말 것" / "대신" 추가
+  2. TABLE 을 ~/.claude/rules/korean-style.md 로 (원본 substitutions.md 안 씀)
+  3. 이탤릭 표기 `말 *(원어)*` 에서 `*` 잔재 제거
+  4. split_left 에 " / " 구분자 추가
+  5. ASCII 패턴은 \b 단어 경계 regex 로 (arm 이 alarm/armed/warm 에 걸리던 것)
+  6. ASCII 규칙은 그 줄에 한글이 있을 때만 발동 (영어 문서 오탐 제거)
+  7. 동음이의 행(발화 x2, arm x2)이 rule_id 를 다투지 않게 색인 부여
+
+원본의 substitutions.md(치환표 118행)는 가져오지 않았다 — 보고서체 강제라
+이 저장소의 rules/korean-style.md 와 방향이 반대다.
