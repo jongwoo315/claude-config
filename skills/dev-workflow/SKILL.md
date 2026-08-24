@@ -34,7 +34,7 @@ fi
 ```
 
 **모드별 레이어 — 파이프라인·게이트·실행 모드는 동일하고 아래만 치환된다.**
-권위는 `~/.claude/rules/dev-workflow.md`. 이 표와 어긋나면 rules가 이긴다.
+권위는 `~/.claude/rules/dev-workflow.md`. 이 표와 어긋나면 rules를 따른다.
 
 | 레이어 | work (`~/plab`, `~/work`) | personal (`~/prv`) |
 | --- | --- | --- |
@@ -288,7 +288,7 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   legitimately N/A). A promise the loop can fib is only as good as this read.
 - **판단 로그 — plan의 통과 기준과 대조하고, 판정은 jw가 쓴다. 사실은 네가, 판단은 jw가.**
   **정본은 `rules/dev-workflow.md`의 "판단 로그" 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
-  이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules가 이긴다.
+  이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules를 따른다.
   **Fires on the STATE, not the notification** — whenever you have just established that a
   ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch
   completion notification is one path; running `orch ls` yourself (which the block above tells
