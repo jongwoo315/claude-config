@@ -269,6 +269,7 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 | A와 B 사이의 격차 | the gap between A and B | 두 문장으로 풀어 쓴다 |
 | 확장이 안 된다 | doesn't scale | **못 늘린다**, **안 커진다** |
 | 반감기가 온다 | half-life is one release | **값이 반으로 준다** |
+| 성질 *(어떤 성질/그 성질)* | property, characteristic | 그 자리에서 **뜻을 직접 말한다** |
 
 `옹호`를 원뜻으로 쓰는 것은 정상 — *"그 정책을 옹호했다"* ○.
 
