@@ -165,6 +165,28 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 
 ## GATE 1 — Kickoff Approval (the one synchronous gate)
 
+This gate has **two beats**: prediction first, then approval. Prediction must come before the
+plan's verification detail is discussed — see `rules/portfolio-judgment.md` §착수 전 예측.
+
+### Beat 1 — 착수 전 예측 (plain message, NOT AskUserQuestion)
+
+Emit the plan's step list and nothing else — no 통과 기준, no 실패 징후, no risk commentary.
+Those are the answer.
+
+```
+<ID> <제목>
+plan 단계
+  1 <단계 요약>
+  2 ...
+
+착수 전 예측 — 이 plan대로 짜면 어디가 깨질 것 같나? 3개. (건너뛰려면 `skip`)
+```
+
+Record the reply verbatim. Do **not** suggest candidates, rank them, or react to them — the
+whole value of the metric is that the choosing is jw's. `skip` is a valid answer.
+
+### Beat 2 — Approval
+
 **AskUserQuestion:**
 ```
 Tier: [X] — [one-line rationale]
@@ -178,7 +200,20 @@ Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
 > - adjust — plan/tier 수정 후 다시 확인
 > - cancel — worktree 정리 후 중단
 
-- **go** → create ticket (A2 deferred creation if not yet made), proceed to Phase B.
+- **go** → append the Beat 1 answer to the plan file, commit it, create ticket
+  (A2 deferred creation if not yet made), proceed to Phase B.
+
+  ```markdown
+  ## 착수 전 예측
+
+  - 1. <키워드 + 한 줄>
+  - 2. ...
+  - 3. ...
+  ```
+
+  `skip`이면 `## 착수 전 예측\n\nskip` 한 줄. **빈 절로 두지 말 것.**
+  Commit it before dispatch — the git timestamp is what makes the number un-fakeable, and the
+  headless loop must not be the one writing this section.
 - **adjust** → edit plan or tier, re-present this gate.
 - **cancel** → `git worktree remove --force <worktree>`, stop.
 
