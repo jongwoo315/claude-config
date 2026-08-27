@@ -1730,6 +1730,31 @@
         "date": "2026-08-24",
         "track": "agent",
         "topic": "planning"
+      },
+      {
+        "date": "2026-08-25",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-08-25",
+        "track": "agent",
+        "topic": "reflexion"
+      },
+      {
+        "date": "2026-08-26",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-08-26",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-08-27",
+        "track": "rag",
+        "topic": "reranking"
       }
     ]
   },
@@ -1737,11 +1762,11 @@
     "current_streak": 0,
     "longest_streak": 4,
     "today": {
-      "date": "2026-08-24",
+      "date": "2026-08-27",
       "type": "explain",
-      "topic": "fastapi-lifespan",
-      "track": "fastapi",
-      "description": "fastapi lifespan — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
+      "topic": "reranking",
+      "track": "rag",
+      "description": "reranking — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
       "xp": 30,
       "completed": false,
       "source": "daily_quest"
