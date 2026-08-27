@@ -268,6 +268,8 @@ curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
 이어서 `superpowers:writing-plans`로 plan을 작성한다 (질문 없이 진행).
 plan에는 **통과 기준 · 이번에 안 하는 것 · 실패 징후** 3줄이 반드시 들어간다
 (`rules/portfolio-judgment.md`) — Kickoff 게이트의 승인 대상이다.
+실패 징후가 수치면 **임계값과 방향을 세 구간으로** 적는다
+(`< X 확정 / > Y 정상 / 사이면 재측정`). 방향만 적으면 PR 게이트에서 못 읽는다.
 ```
 
 ## Note: PR 생성 시 vs PR Merge 시
