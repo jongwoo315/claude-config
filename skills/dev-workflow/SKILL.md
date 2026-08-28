@@ -1,6 +1,6 @@
 ---
 name: dev-workflow
-description: Use when starting any development task — after parsing external input (Slack, Notion, Jira) or when user requests a feature, bugfix, or refactoring. Autonomous pipeline from parse to PR with two human gates (kickoff approval + async PR review). Triggers on development requests, parsed inputs, or explicit workflow invocation.
+description: Use when starting any development task — after parsing external input (Slack, Notion, Jira) or when user requests a feature, bugfix, or refactoring. Autonomous pipeline from parse to PR with two human gates (kickoff approval + post-review judgment, then async PR review). Triggers on development requests, parsed inputs, or explicit workflow invocation.
 ---
 
 # Development Workflow (Autonomous)
@@ -15,7 +15,8 @@ is `/ralph-loop:ralph-loop` (TDD inside each iteration).
 
 **The two gates (only synchronous human touches):**
 1. **Kickoff** — approve the auto-generated plan (go / adjust / cancel).
-2. **PR review** — async, on GitHub. Review the PR the loop created; merge is a human call.
+2. **GATE 2** — 두 절이다. **G2a 판단 로그**는 Phase C 종료 직후 그 자리에서 분 단위로 끝나고,
+   **G2b PR 리뷰·머지**는 비동기다 (GitHub, 며칠 걸려도 됨).
 
 Everything between — parse, ticket, worktree, brainstorm, explore, plan, TDD implementation,
 verification, commit, PR creation, and then an independent review pass (Phase C) — is unattended.
@@ -400,19 +401,28 @@ Critical/Important는 **지적 하나당 커밋 하나**로 고쳐 push되고, �
 
 ---
 
-## GATE 2 — PR Review (async) + ticket refine
+## GATE 2 — 판단 로그(동기) → PR 리뷰(비동기)
 
-Phase C가 끝났다. 사람이 판정할 차례 — 비동기, 세션이 기다리지 않는다.
+Phase C가 끝났다. **성질이 다른 두 절이고, 섞으면 앞의 것이 뒤의 것에 딸려 간다.**
+
+| 절 | 언제 | 걸리는 시간 | 입력 |
+| --- | --- | --- | --- |
+| **G2a 판단 로그** | C1 재확인 직후 그 자리 | 분 | 리뷰 파일 + 사실 블록 |
+| **G2b PR 리뷰·머지** | jw가 앉을 때 | 며칠 가능 | GitHub diff, CI |
+
+G2a를 뒤로 밀면 안 되는 이유 — 트리거가 상태(`orch done` + PR 열림 + 워크트리 clean)이고
+그 상태는 C1에서 확정된다. 그리고 rules가 경고하는 대로 **사실은 몇 분 만에 낡는다.**
+G2b를 기다리면 jw가 자리에 없는 동안 로그가 통째로 빠진다 (#9·#10은 PR에서 판정까지 6일).
+
+### G2a. 진입 직후 — 판단 로그와 티켓 refine (동기, 분 단위)
+
+**diff를 읽고 나서 쓰는 게 아니다.** 판단 4칸이 전부 아래 블록만 보고 채워진다 — 기준은
+plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판단을 내리는 곳이 아니라 대조하는
+곳이다. G2b의 diff 리뷰는 프로덕션 직전 두 번째 안전망이지 이 판정의 입력이 아니다.
 
 - `docs/plans/<ID>-MMDD-review-<topic>.md`를 먼저 읽는다. 무인 리뷰가 무엇을 잡았고 무엇을
   `push-back`으로 넘겼는지가 여기 있다. **`push-back`·`won't-fix` 행이 사람이 볼 첫 자리다** —
   무인 세션이 "안 고치기로 한 것"이 유일하게 검토가 필요한 결정이다.
-- Review the PR diff on GitHub. Merge = human call. (Kickoff gate already approved the plan; PR
-  review is the second safety net before production.)
-- **Verify the loop's Pre-PR output, not just the diff.** Pre-PR checks are a completion-*promise*,
-  not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
-  the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
-  legitimately N/A). A promise the loop can fib is only as good as this read.
 - **판단 로그 — plan의 통과 기준과 대조하고, 판정은 jw가 쓴다. 사실은 네가, 판단은 jw가.**
   **정본은 `rules/judgment-log.md`의 `## 판단 로그` 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
   이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules를 따른다.
@@ -436,7 +446,8 @@ Phase C가 끝났다. 사람이 판정할 차례 — 비동기, 세션이 기다
   **무엇을 달성했어야 하는지** 없이 판정하게 된다.
 
   파이프라인 문맥에서 추가로 지킬 것:
-  - **Order: judgment prompt BEFORE ticket refine.** Judgment while the diff is fresh; refine is admin.
+  - **Order: 판단 로그가 G2a의 첫 산출물이다.** 리뷰 파일 읽기만 앞선다 — 그건 사본이 아니라
+    입력이라서다 (`리뷰 처리` 줄과 `놓친 것` 칸이 거기서 나온다). 티켓 refine은 뒤, G2b는 그 다음.
   - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
     dev-workflow entry, list PRs created since the last logged row and offer a batch fill.
     **`--author @me` 쓰지 말 것** — `@me`는 `gh`의 *현재 활성 계정*으로 풀리는데 이 맥에는
@@ -456,6 +467,19 @@ Phase C가 끝났다. 사람이 판정할 차례 — 비동기, 세션이 기다
   acceptable, refine is best-effort.
 
 This is the ONLY place ticket fields get asked — post-facto, non-blocking (point 4).
+refine은 판단이 없는 행정이라 성질은 Phase에 가깝다. 여기 있는 이유는 트리거가 판단 로그와
+같은 상태(orch 완료)라서지 사람이 고를 것이 있어서가 아니다.
+
+### G2b. 그 뒤 — PR 리뷰와 머지 (비동기, 며칠 걸려도 됨)
+
+세션이 기다리지 않는다. G2a가 끝났으면 여기서 멈춰도 기록은 이미 남아 있다.
+
+- Review the PR diff on GitHub. Merge = human call. (Kickoff gate already approved the plan; PR
+  review is the second safety net before production.)
+- **Verify the loop's Pre-PR output, not just the diff.** Pre-PR checks are a completion-*promise*,
+  not a hard gate — nothing forced the loop to prove them. Before merge, confirm in the PR/CI that
+  the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
+  legitimately N/A). A promise the loop can fib is only as good as this read.
 
 **여기서 워크트리를 지우지 않는다.** PR이 열려 있는 동안은 살려 둔다 — 리뷰 피드백이 같은
 브랜치에 후속 커밋을 요구하고, 기존 워크트리를 다시 쓰면 재설치(venv 심볼릭 링크, 의존성)가
@@ -483,13 +507,12 @@ gh pr view <n> --json state,mergedAt,headRefName,mergeCommit
 **`state`가 `MERGED`인 것만 정리한다.** `CLOSED`는 머지가 아니다 — 반려돼 다시 손볼 브랜치를
 지우면 작업이 사라진다. 둘의 차이는 `mergedAt`이 `null`인지로도 갈린다.
 
-### D2. 판단 로그가 비었으면 여기가 마지막 기회다
+### D2. 워크트리
 
-`~/.claude/judgment-log.md`에 그 PR 번호 행이 있나 본다. 없으면 **워크트리를 지우기 전에**
-GATE 2의 판단 로그를 먼저 띄운다 (`rules/judgment-log.md`가 정본). 워크트리가 사라지면
-`git -C <worktree> diff --stat`로 모으던 사실 줄을 못 채운다.
-
-### D3. 워크트리
+**지우기 전에 `~/.claude/judgment-log.md`에 그 PR 행이 있나 본다.** 없으면 지우지 말고 그
+사실만 보고한다 — 워크트리가 `git diff --stat`로 모으던 사실 줄의 유일한 출처다. 채우는
+것은 GATE 2 G2a의 catch-up이 하지 **이 자리가 아니다**: 머지된 PR은 rules의 상태 트리거를
+만족하지 않고(`PR이 열려 있고`), 무엇보다 `반려`가 죽어 남는 행동이 통과 누르기뿐이 된다.
 
 ```bash
 git -C <worktree> status --porcelain                    # 비어야 한다
@@ -502,7 +525,7 @@ git worktree prune
 **둘 중 하나라도 비어 있지 않으면 멈추고 그 사실을 보고한다.** 지우지 말 것 — 커밋 안 된
 변경이나 안 올라간 커밋은 머지된 PR에 없는 것이고, 워크트리가 유일한 사본이다.
 
-### D4. orch 태스크와 tmux 세션
+### D3. orch 태스크와 tmux 세션
 
 ```bash
 tmux kill-session -t claude-orch-<ID>        2>/dev/null
@@ -514,7 +537,7 @@ orch rm <ID>; orch rm <ID>-review
 `done` 태스크를 **전부** 지워서 아직 머지 안 된 다른 티켓의 행까지 날아간다. 티켓 단위 정리는
 위 네 줄이다.
 
-### D5. 티켓과 브랜치
+### D4. 티켓과 브랜치
 
 | 곳 | 처리 |
 | --- | --- |
