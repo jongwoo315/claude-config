@@ -103,8 +103,10 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   Story Points `3`, Assignee @me, Start today.
   *(Parent + Labels are placeholders — user refines post-merge.)*
 - **No ticket, personal mode:** invoke `personal-setup-work` headless: title from parse/brainstorm,
-  `상태`=진행 중, `작업일.start`=오늘, `Git 저장소`, `Git 브랜치`까지 채운다. **컬럼을 비워두지 않는다** —
-  `PR`만 Phase B에서 채워진다. (`작업일`은 date range: 머지 후 `end` 추가 시 `start`를 함께 보내야 안 지워진다.)
+  **`상태`=시작 전**, `프로젝트`, `Git 저장소`, `Git 브랜치`, `선행 작업`. **컬럼을 비워두지 않는다.**
+  **`상태`=진행 중과 `작업일.start`는 여기가 아니라 GATE 1 `go`다** — §티켓 프로퍼티의 Notion 표가
+  생성과 착수를 나눠 놓은 그대로다. `cancel`이면 착수한 적이 없어야 한다.
+  (`작업일`은 date range: 머지 후 `end` 추가 시 `start`를 함께 보내야 안 지워진다.)
 - Branch: work `feature/DEV-XXXX-<subject>` · **personal `feat/<NN>-<subject>`** (버그면 `fix/`).
   티켓이 없으면 `feature/<topic>` / `feat/<topic>`.
 - **Announce** the defaults used (text, not a question).
@@ -219,7 +221,23 @@ Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
 > - cancel — worktree 정리 후 중단
 
 - **go** → append the Beat 1 answer to the plan file, commit it, create ticket
-  (A2 deferred creation if not yet made), proceed to Phase B.
+  (A2 deferred creation if not yet made), **티켓을 작업 중 상태로 옮긴다**, proceed to Phase B.
+
+  **상태 전이가 A2가 아니라 여기인 이유** — A2에서는 티켓이 아직 없을 수 있고(생성이 `go`로
+  미뤄진다), `cancel`이면 옮기지 말아야 한다. 두 경우 다 여기서만 갈린다.
+
+  | 모드 | 처리 |
+  | --- | --- |
+  | work (Jira) | `In Dev`로 전이. **`In Progress`가 아니다** — DEV 워크플로의 작업 상태 이름은 `In Dev`다. 전이 방법은 `rules/apis.md` §상태 전이 (id 하드코딩 금지) |
+  | personal (Notion) | `상태`=진행 중 + `작업일.start`=오늘. A2는 `시작 전`으로만 만들어 둔다 |
+
+  **두 모드가 같은 자리에서 같은 일을 한다.** 생성(A2)과 착수(`go`)를 가르는 것이 규칙이고,
+  Jira·Notion 어느 쪽도 예외가 아니다.
+
+  **기존 티켓(A1이 물어온 것)도 똑같이 옮긴다.** A2의 `skip ticket creation`은 생성을
+  건너뛴다는 뜻이지 상태를 그대로 둔다는 뜻이 아니다 — 여기가 실제로 빠져 있던 자리다.
+  이미 `In Dev`면 아무것도 안 한다. 전이 경로가 없으면 그 사실만 보고하고 진행한다
+  (하드 실패 금지 — 워크플로는 프로젝트마다 다르다).
 
   ```markdown
   ## 착수 전 예측
@@ -542,7 +560,7 @@ orch rm <ID>; orch rm <ID>-review
 | 곳 | 처리 |
 | --- | --- |
 | Notion (`~/prv`) | `상태`=완료, `작업일.end`=오늘. ⚠ `작업일`은 date range — 현재 `start`를 조회해 `{start, end}`로 PATCH (§티켓 프로퍼티) |
-| Jira (`~/plab`·`~/work`) | transition → `Done`. A2에서 기본값으로 만든 필드가 아직 그대로면 여기서 같이 refine |
+| Jira (`~/plab`·`~/work`) | `Done`으로 전이 (`rules/apis.md` §상태 전이). 팀이 배포 전 단계를 쓰면 `Ready to Deploy`가 더 맞다 — 관례를 따를 것. A2 기본값이 아직 그대로면 여기서 같이 refine |
 | 로컬 브랜치 | `git branch -d <branch>` — 머지됐으므로 `-d`로 지워진다. `-D`가 필요하면 안 머지된 것이니 멈춘다 |
 | origin 브랜치 | 건드리지 않는다. GitHub의 auto-delete가 한다 |
 
@@ -623,16 +641,20 @@ Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 refine.)*
 
 **Story Points는 두 필드 모두 설정:** `customfield_10016` + `customfield_10031`
 
+**상태는 생성 시 지정하지 않는다** — 프로젝트 기본값(`To Do`)으로 만들어지고, 그 뒤
+transition으로 옮긴다. 파이프라인이 옮기는 자리는 둘: GATE 1 `go`에서 `In Dev`,
+Phase D에서 `Done`. **`In Progress`라는 상태는 이 워크플로에 없다.**
+
 ### Notion (`~/prv`)
 
 DB `29241e61-65c0-801f-9529-cabf8cad919b` (프로젝트 진행). Jira 대신 이쪽을 갱신한다.
 
-| 시점 | 채울 컬럼 |
-| ---- | --------- |
-| 태스크 생성 | `태스크`, `프로젝트`, `상태`=시작 전, `Git 저장소`, `선행 작업` |
-| **착수** | `상태`=진행 중, `작업일.start`=오늘, `Git 브랜치` |
-| PR 생성 직후 | `PR` |
-| 머지 후 | `상태`=완료, `작업일.end`=오늘 |
+| 시점 | 파이프라인 위치 | 채울 컬럼 |
+| ---- | --- | --------- |
+| 태스크 생성 | **A2** | `태스크`, `프로젝트`, `상태`=시작 전, `Git 저장소`, `Git 브랜치`, `선행 작업` |
+| **착수** | **GATE 1 `go`** | `상태`=진행 중, `작업일.start`=오늘 |
+| PR 생성 직후 | Phase B | `PR` |
+| 머지 후 | **Phase D** | `상태`=완료, `작업일.end`=오늘 |
 
 **컬럼을 비워두지 않는다.** 착수도 안 바꾸고 끝에 몰아서 완료 처리하지 않는다.
 
