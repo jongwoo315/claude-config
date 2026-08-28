@@ -266,5 +266,6 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "normal",
+  "remoteControlAtStartup": false,
   "agentPushNotifEnabled": true
 }
