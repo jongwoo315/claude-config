@@ -11,11 +11,6 @@
 전체 테스트 통과. 무인 실행에서 쓰는 구체 명령(백그라운드+timeout, `BOOT_OK`, 무테스트 시
 명시)은 `dev-workflow` 스킬의 Pre-PR 블록이 정본이다.
 
-## Git Commit Preferences
-
-- Keep commit messages clean and concise
-- Use korean when creating commit messages
-
 ## 기술 결정 기록
 
 - 프레임워크, 라이브러리, 아키텍처 등 A vs B 선택 시 **"왜 A를 선택했는지"** 근거를 반드시 명시할 것
