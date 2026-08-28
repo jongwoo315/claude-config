@@ -1,6 +1,6 @@
 # claude-config
 
-Personal Claude Code configuration — global instructions, rules, hooks, skills, and tooling. This directory is itself the git repo ([`jongwoo315/claude-config`](https://github.com/jongwoo315/claude-config), private), synced across machines.
+Personal Claude Code configuration — global instructions, rules, hooks, skills, and tooling. This directory is itself the git repo ([`jongwoo315/claude-config`](https://github.com/jongwoo315/claude-config), public since 2026-07-29), synced across machines. Credentials live in `~/.zshenv` and are never committed.
 
 ## Layout
 
@@ -13,6 +13,36 @@ Personal Claude Code configuration — global instructions, rules, hooks, skills
 | `orch/` | tmux Claude orchestrator (see below) |
 | `docs/plans/` | Design docs and implementation plans |
 | `kimi-tools/` | Kimi K2 delegation CLIs (token saving) |
+
+## What's measured here
+
+Most of this repo is configuration. Three files are not — they hold measurements
+that were run to settle a question, and they are kept mainly because each one
+recorded a hypothesis being overturned.
+
+| File | How it was measured | Result |
+| --- | --- | --- |
+| [`rules/korean-style.md`](rules/korean-style.md) | Same prompts run with and without the rule loaded; coined-term rate per 10k characters | 3.0 → 0.78. One term family went from 5 variants to 0. A full sweep of one repo found 194 occurrences across 7 terms. |
+| [`RTK.md`](RTK.md) | Byte-for-byte diff of a token-saving CLI proxy's output against the raw command, per subcommand | Two subcommands saved **0%** — output was byte-identical up to 1.38MB, so they were removed from the rewrite hook. Others were real: 186 → 20 bytes, 274 → 89 bytes. |
+| [`judgment-log.md`](judgment-log.md) | Per-PR record written in two passes — prediction before reading the diff, evidence after — so the hit rate can't be filled in retroactively | 4 PRs logged. Every factual cell carries its source, because a loop's own PR body is not independent evidence of its own tests passing. |
+
+Each of the three overturned the assumption that prompted it:
+
+- The style rule was written on the assumption that terse output causes bad
+  coinages. The **more** compressed arm scored *lower* (2.07 vs 5.57 per 10k) —
+  the cause is translation, not compression. A 12-question probe then suggested
+  technical vocabulary was safe; the 194-occurrence repo sweep found the exact
+  opposite, and every flagged term was technical.
+- The proxy was assumed to save tokens everywhere. Measuring each subcommand
+  separately is what found the two that saved nothing, and an upstream issue's
+  stated cause (locale) did not reproduce.
+- The judgment log's format changed after the fact that a fixed 7-line checklist
+  left 4 lines blank on every entry, while the numbers that actually decided the
+  call had no column and ended up in prose.
+
+Absolute figures without a comparison are not treated as results here — a
+measurement with no baseline is recorded as "no baseline yet, this is the first",
+not as a pass.
 
 ## orch — tmux Claude orchestrator
 
