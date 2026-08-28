@@ -20,6 +20,8 @@ is `/ralph-loop:ralph-loop` (TDD inside each iteration).
 Everything between — parse, ticket, worktree, brainstorm, explore, plan, TDD implementation,
 verification, commit, PR creation, and then an independent review pass (Phase C) — is unattended.
 The loops run detached via `orch`, so the main session stays free to fan out more tasks in parallel.
+머지된 뒤의 정리(워크트리·orch 세션·티켓)는 **Phase D**가 맡고, 이것도 게이트가 아니다 —
+머지를 보는 세션이 없어서 트리거가 이벤트가 아니라 상태 확인이다.
 
 ## Mode Detection
 
@@ -88,6 +90,10 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 - Slack URL → `parse:slack`
 - Multiple URLs → run multiple parsers. Each writes `docs/plans/*-input.md`.
 - No URL → use the user's direct task description.
+
+**같이 하는 것 — 머지된 워크트리 스윕 (Phase D catch-up).** 이 repo의 `git worktree list`를 훑어
+브랜치의 PR이 `MERGED`인 것을 찾는다. 있으면 정리할지 한 번 묻고 지나간다. **막지 말 것** —
+답이 없으면 그냥 새 티켓을 계속한다. 머지는 어느 세션도 못 보므로 이 스윕이 유일한 회수 경로다.
 
 ### A2. Ticket + branch (default fields, no ask)
 - **Existing ticket (from A1):** reuse key. Create branch, skip ticket creation.
@@ -451,15 +457,73 @@ Phase C가 끝났다. 사람이 판정할 차례 — 비동기, 세션이 기다
 
 This is the ONLY place ticket fields get asked — post-facto, non-blocking (point 4).
 
-**Worktree cleanup — manual, user-initiated. Do NOT auto-remove on merge.** Keep the worktree
-live until the PR is fully closed: review feedback often needs follow-up commits pushed to the
-same branch, and reusing the existing worktree avoids re-setup (venv symlink, deps). Remove only
-when the user explicitly says so:
+**여기서 워크트리를 지우지 않는다.** PR이 열려 있는 동안은 살려 둔다 — 리뷰 피드백이 같은
+브랜치에 후속 커밋을 요구하고, 기존 워크트리를 다시 쓰면 재설치(venv 심볼릭 링크, 의존성)가
+없다. 정리는 머지된 뒤 **Phase D**가 한다.
+
+---
+
+## Phase D — 머지 후 정리 (워크트리 · orch · 티켓)
+
+PR이 머지됐다. 남은 것은 정리뿐이고, 여기는 dispatcher 세션(main)에서 한다.
+
+**트리거가 이벤트가 아닌 이유 — 머지를 보는 세션이 없다.** CodePipeline이나 동료가 누르고,
+그때 이 파이프라인은 이미 끝나 있다. 그래서 트리거는 **상태 확인** 둘이다:
+
+- jw가 말한다 — `<ID> 머지됐어` · `정리해`
+- **catch-up 스윕** — 다음 dev-workflow 진입(A1) 때 `.wt/` 아래 워크트리를 훑어 PR이
+  `MERGED`인 것을 찾는다. 있으면 정리 여부를 한 번 묻고 지나간다. best-effort, 막지 말 것.
+
+### D1. 머지 확인 — 추측 금지
+
 ```bash
-git -C <worktree> status --porcelain   # must be empty (loop committed everything)
-git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are untracked
+gh pr view <n> --json state,mergedAt,headRefName,mergeCommit
+```
+
+**`state`가 `MERGED`인 것만 정리한다.** `CLOSED`는 머지가 아니다 — 반려돼 다시 손볼 브랜치를
+지우면 작업이 사라진다. 둘의 차이는 `mergedAt`이 `null`인지로도 갈린다.
+
+### D2. 판단 로그가 비었으면 여기가 마지막 기회다
+
+`~/.claude/judgment-log.md`에 그 PR 번호 행이 있나 본다. 없으면 **워크트리를 지우기 전에**
+GATE 2의 판단 로그를 먼저 띄운다 (`rules/judgment-log.md`가 정본). 워크트리가 사라지면
+`git -C <worktree> diff --stat`로 모으던 사실 줄을 못 채운다.
+
+### D3. 워크트리
+
+```bash
+git -C <worktree> status --porcelain                    # 비어야 한다
+git -C <worktree> log --oneline @{u}..HEAD              # 안 올라간 커밋 0이어야 한다
+git worktree remove --force <worktree>                  # --force: docs/plans·venv 심볼릭 링크가 untracked
+git worktree prune
 # fallback: rm -rf <worktree> && git worktree prune
 ```
+
+**둘 중 하나라도 비어 있지 않으면 멈추고 그 사실을 보고한다.** 지우지 말 것 — 커밋 안 된
+변경이나 안 올라간 커밋은 머지된 PR에 없는 것이고, 워크트리가 유일한 사본이다.
+
+### D4. orch 태스크와 tmux 세션
+
+```bash
+tmux kill-session -t claude-orch-<ID>        2>/dev/null
+tmux kill-session -t claude-orch-<ID>-review 2>/dev/null
+orch rm <ID>; orch rm <ID>-review
+```
+
+`orch rm`은 큐 파일만 지운다 — tmux 세션은 따로 죽여야 한다. **`orch clean`을 쓰지 말 것:**
+`done` 태스크를 **전부** 지워서 아직 머지 안 된 다른 티켓의 행까지 날아간다. 티켓 단위 정리는
+위 네 줄이다.
+
+### D5. 티켓과 브랜치
+
+| 곳 | 처리 |
+| --- | --- |
+| Notion (`~/prv`) | `상태`=완료, `작업일.end`=오늘. ⚠ `작업일`은 date range — 현재 `start`를 조회해 `{start, end}`로 PATCH (§티켓 프로퍼티) |
+| Jira (`~/plab`·`~/work`) | transition → `Done`. A2에서 기본값으로 만든 필드가 아직 그대로면 여기서 같이 refine |
+| 로컬 브랜치 | `git branch -d <branch>` — 머지됐으므로 `-d`로 지워진다. `-D`가 필요하면 안 머지된 것이니 멈춘다 |
+| origin 브랜치 | 건드리지 않는다. GitHub의 auto-delete가 한다 |
+
+정리 끝나면 한 줄로 보고한다 — `<ID> 정리 완료: 워크트리 · orch 2건 · 티켓 완료`.
 
 ---
 
@@ -501,6 +565,9 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
 - **Phase C는 별도 orch 세션이다.** 구현 세션에 리뷰를 얹지 말 것 — 자기 코드를 같은
   컨텍스트가 리뷰하면 놓친 것을 또 놓친다. `orch pipe`도 안 된다 (`submit_step`이 같은 tmux
   세션에 다음 step을 밀어넣는다). `ORCH_TASK_ID=<ID>-review orch add`로 새로 띄운다.
+- **정리는 머지 뒤에만 (Phase D).** PR이 열려 있는 동안 워크트리를 지우지 않는다 — 리뷰 후속
+  커밋이 같은 브랜치로 간다. 그리고 `CLOSED`는 머지가 아니다: `state == MERGED`를 확인하고 지운다.
+  `orch clean`은 티켓 단위 정리에 쓰지 않는다 (다른 티켓의 `done` 행까지 지운다).
 - **무인 세션은 GitHub에 게시하지 않는다.** 리뷰 결과도, 리뷰 코멘트도, approve/request-changes도.
   게시는 사람 확인을 받는 행위이고 그 자리는 `ops:github-pr-review`뿐이다.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
