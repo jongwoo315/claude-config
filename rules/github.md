@@ -55,10 +55,19 @@ CURRENT_GH_USER=$(gh api user -q '.login' 2>/dev/null)
    - 여러 파일을 한 번에 하는 경우에는 수정된 부분에 있어서 관련된 부분을 묶어 함께 commit 한다.
 5. commit 메시지는 **한글로** 작성한다.
 
-**무인 실행(ralph loop)에서 4번을 읽는 법.** plan 한 단계를 TDD로 끝낸 것이 한 커밋이다 —
-impl + test + 그 단계가 건드린 파일이 함께 간다. 한 단계에서 나온 변경을 파일별로 쪼개면
-테스트가 깨진 중간 커밋이 생겨 오히려 규칙 4의 취지에 어긋난다. **단계가 여럿이면 커밋도
-여럿이다.** Phase C 리뷰 세션의 "지적 하나당 커밋 하나"가 같은 규칙의 더 좁은 적용이다.
+**무인 실행(ralph loop)에서 4번을 읽는 법 — 커밋 단위는 plan의 `Task` 하나다.**
+plan 파일 하나에 커밋이 여럿 나온다:
+
+```
+plan 파일 (docs/plans/<ID>-MMDD-plan-<topic>.md)
+  Task 1  ->  커밋 1   (impl + test + 그 Task가 건드린 파일)
+  Task 2  ->  커밋 2
+  Task 3  ->  커밋 3
+```
+
+Task 아래로 파일별로 더 쪼개면 impl만 있고 test 없는 커밋, 또는 그 반대가 생겨 **테스트가
+깨진 중간 커밋**이 남는다 — 규칙 4의 취지에 역행한다. Phase C 리뷰 세션의 "지적 하나당 커밋
+하나"가 같은 규칙의 더 좁은 적용이다.
 
 **`feature` vs `feat`.** 커밋 접두사는 위 표의 `feature`, 브랜치는 `feat/<NN>-<subject>`.
 다른 자리라 충돌이 아니다. `dev-workflow` 스킬의 PR 제목 `[DEV-XXXX] type: 설명`에서
