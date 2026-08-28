@@ -16,6 +16,12 @@ task_create() {
     *DEV-[0-9]*) base="DEV-${slug#*DEV-}" ;;
     *)           base="$slug" ;;
   esac
+  # Explicit id override. Needed when two tasks share one worktree and must stay
+  # tellable apart — the review session dispatched into the implementation's
+  # worktree would otherwise land on the collision path below and be labelled
+  # `<id>-1`, which says nothing about what it is. With the override it is
+  # `<id>-review` everywhere: queue file, tmux session, picker label.
+  base="${ORCH_TASK_ID:-$base}"
   # Bare base in the common case; a numeric suffix is appended ONLY on a real
   # collision (re-dispatch of the same ticket), so ids stay clean and stable and
   # done-task files no longer inflate the counter.

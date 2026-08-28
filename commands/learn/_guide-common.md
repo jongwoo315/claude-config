@@ -1,28 +1,30 @@
-# Guide Mode (Dojo Lab Night Coding)
+# Guide 커맨드 공통 규칙
 
-JW가 Claude Code에서 다음 alias 메시지 보낼 때 → guide mode 진입. 해당 `learn:*-guide` skill 호출.
+`/learn:rag-guide` · `/learn:airflow-guide` · `/learn:prompt-guide` · `/learn:agent-guide` ·
+`/learn:spring-guide` · `/learn:spring-data-pipeline-guide` 가 공유하는 진행 규칙.
+각 guide 커맨드는 자기 토픽 목록과 done 조건만 갖고, 진행 방식은 이 파일을 따른다.
 
-| Alias 입력          | 호출 skill              | 작업 디렉토리           |
-| ------------------- | ----------------------- | ----------------------- |
-| `rag guide ...`     | `learn:rag-guide`       | `~/prv/dojo-lab/rag/`   |
-| `airflow guide ...` | `learn:airflow-guide`   | `~/prv/dojo-lab/airflow/` |
-| `prompt guide ...`  | `learn:prompt-guide`    | `~/prv/dojo-lab/prompt/` |
-| `agent guide ...`   | `learn:agent-guide`     | `~/prv/dojo-lab/agent/` |
+| 커맨드 | 작업 디렉터리 |
+| --- | --- |
+| `/learn:rag-guide` | `~/prv/dojo-lab/rag/` |
+| `/learn:airflow-guide` | `~/prv/dojo-lab/airflow/` |
+| `/learn:prompt-guide` | `~/prv/dojo-lab/prompt/` |
+| `/learn:agent-guide` | `~/prv/dojo-lab/agent/` |
 
-## Bare alias 규칙
+## 인자 없이 호출했을 때 — kickoff
 
-`rag guide`, `airflow guide`, `prompt guide`, `agent guide` 단독 입력 (subtopic 없음) → 바로 코딩 단계 진입 금지. 먼저 **kickoff** 출력:
+subtopic 없이 호출되면 바로 코딩 단계 진입 금지. 먼저 **kickoff** 출력:
 
 1. 가이드 family 전체 그림 (간결한 토픽 bullet 또는 prerequisite 맵)
 2. workspace 경로
 3. 현재 진행 상태 (workspace 실제 파일 기반 snapshot — 아래 "Snapshot 깊이 규칙" 적용)
 4. 권장 다음 build 단계 (아래 "Not done 시 next step 규칙" 적용)
 
-좁은 subtopic 동반 시 (예: `rag guide chunking`) → 곧바로 오늘 artifact + 첫 코딩 단계.
+좁은 subtopic 동반 시 (예: `/learn:rag-guide chunking`) → 곧바로 오늘 artifact + 첫 코딩 단계.
 
 ## Snapshot 깊이 규칙
 
-bare alias kickoff 시 dir 나열에 그치지 말 것. 반드시:
+kickoff 시 dir 나열에 그치지 말 것. 반드시:
 
 1. workspace 안 실제 코드 파일 **읽기** (test, impl, data sample)
 2. test ↔ implementation gap 검사 (import 존재? 함수 시그니처 매치? test stub `...` 개수?)
@@ -114,7 +116,7 @@ step N
 
 ## Top-Down Mode (기본 적용)
 
-모든 `* guide` 세션은 top-down 구조로 진행. guide 문서를 순서대로 다 배우는 bottom-up이 아니라, **작동하는 시스템을 먼저 만들고 왜 그렇게 만들었는지 설명 가능해지는 것**이 목표.
+모든 guide 세션은 top-down 구조로 진행. guide 문서를 순서대로 다 배우는 bottom-up이 아니라, **작동하는 시스템을 먼저 만들고 왜 그렇게 만들었는지 설명 가능해지는 것**이 목표.
 
 매크로 루프 (프로젝트 단위):
 
@@ -138,8 +140,10 @@ step N
 
 ## Why-card과 구분
 
-`xxx guide` → build 중심. `xxx why` / `xxx why-cards` → 설명 중심 (`learn:*-why-cards` skill). 혼동 금지.
+guide 커맨드 → build 중심. `learn:*-why-cards` → 설명 중심. 혼동 금지.
 
 ## Origin
 
-SOUL.md (Hermes Dojo bot) "Guide Mode" 섹션의 Claude Code adapt 버전. Telegram bot 트리거 → CLI 메시지 트리거 변환.
+SOUL.md (Hermes Dojo bot) "Guide Mode" 섹션의 Claude Code adapt 버전.
+2026-08-28 `rules/guide-mode.md`에서 옮겨 왔다 — 평문 alias(`rag guide ...`)를 없애면서
+항상 로드될 이유가 사라졌다.

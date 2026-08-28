@@ -101,7 +101,7 @@ jw가 만든 결과물(글/코드/기획)을 리뷰한다 — 논리 허점, 구
 
 ## Done 기준 (마일스톤 단위)
 
-`rules/guide-mode.md`의 generic 4축 재사용:
+`commands/learn/_guide-common.md`의 generic 4축 재사용:
 1. 산출물 존재 — 그 마일스톤이 요구한 결과물이 실제로 있다
 2. 검증 가능 — 실행/재현/설명 가능한 형태
 3. 관찰 산출물 — `notes.md`에 최소 1개 기록

@@ -63,7 +63,7 @@ NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/expor
 docs/plans/MMDD-design-<short-topic>.md
 ```
 
-**파일명 규칙은 `rules/dev-workflow.md`의 `## docs/plans 파일 규칙`을 따른다** —
+**파일명 규칙은 `dev-workflow` 스킬의 `## docs/plans 파일 규칙`을 따른다** —
 날짜는 `MMDD`(YYMMDD 아님), **type이 topic보다 앞**. 티켓 ID 확정 후
 `<ID>-MMDD-design-<short-topic>.md`로 rename.
 

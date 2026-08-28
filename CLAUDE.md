@@ -1,12 +1,15 @@
 # Custom Instructions
 
-## Pre-PR 필수 체크리스트
+## 개발 작업
 
-PR 생성 전 반드시 완료할 것 (skip 불가):
+- 개발 작업(기능·버그·리팩터링) 시작 → **`dev-workflow` 스킬**. 파이프라인·게이트·orch 운용·
+  티켓 프로퍼티·`docs/plans` 파일 규칙이 전부 거기 있다.
+- **판단 기록은 `rules/judgment-log.md`** — 판단 로그(PR 게이트)와 문제 발견(상시). 스킬을
+  호출하지 않아도 발동하므로 rules에 둔다.
 
-1. **환경변수 점검**: `.env.example` 대비 실제 `.env` diff → 이번 작업에서 추가된 키가 누락 없는지 확인
-2. **로컬 서버 기동**: 서버 정상 구동 확인
-3. **전체 테스트 실행**: 전체 테스트 suite 통과 확인
+**Pre-PR 필수 체크 (skip 불가):** 환경변수 점검(`.env.example` 대비 diff) · 로컬 서버 기동 ·
+전체 테스트 통과. 무인 실행에서 쓰는 구체 명령(백그라운드+timeout, `BOOT_OK`, 무테스트 시
+명시)은 `dev-workflow` 스킬의 Pre-PR 블록이 정본이다.
 
 ## Git Commit Preferences
 

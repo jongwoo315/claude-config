@@ -18,8 +18,8 @@ is `/ralph-loop:ralph-loop` (TDD inside each iteration).
 2. **PR review** — async, on GitHub. Review the PR the loop created; merge is a human call.
 
 Everything between — parse, ticket, worktree, brainstorm, explore, plan, TDD implementation,
-verification, commit, PR creation — is unattended. The loop runs detached via `orch`, so the main
-session stays free to fan out more tasks in parallel.
+verification, commit, PR creation, and then an independent review pass (Phase C) — is unattended.
+The loops run detached via `orch`, so the main session stays free to fan out more tasks in parallel.
 
 ## Mode Detection
 
@@ -33,17 +33,28 @@ else
 fi
 ```
 
-**모드별 레이어 — 파이프라인·게이트·실행 모드는 동일하고 아래만 치환된다.**
-권위는 `~/.claude/rules/dev-workflow.md`. 이 표와 어긋나면 rules를 따른다.
+**적용 범위: 모든 개발 작업.** `~/plab`·`~/work` 업무든 `~/prv` 개인 프로젝트든 예외 없다.
+디렉터리에 따라 **레이어만 치환**하고 파이프라인·게이트·실행 모드는 동일하다.
+**이 표가 정본이다.**
 
 | 레이어 | work (`~/plab`, `~/work`) | personal (`~/prv`) |
 | --- | --- | --- |
-| 티켓 ID | `DEV-XXXX` (Jira) | `#NN` — **prefix 없음.** `DEV-`는 Jira 형식이라 쓰면 로그에서 구분 불가 |
+| 티켓 시스템 | Jira (`DEV-XXXX`) | Notion 프로젝트 진행 DB `29241e61-65c0-801f-9529-cabf8cad919b` (`#NN`) |
+| 티켓 ID | `DEV-XXXX` | `#NN` — **prefix 없음.** `DEV-`는 Jira 형식이라 쓰면 로그에서 구분 불가 |
+| 티켓 스킬 | `setup-work` | `personal-setup-work` |
 | 브랜치 | `feature/DEV-XXXX-<subject>` | `feat/<NN>-<subject>` (버그면 `fix/`) |
 | worktree | `~/plab/.wt/DEV-XXXX-<subject>` | `~/prv/.wt/<NN>-<subject>` |
-| GitHub 계정 | `kimwoz` | `jongwoo315` |
-| PR 승인 | 리뷰어 approve | 1인 레포라 **self-review는 `--comment`만** — `--approve`·`--request-changes` 둘 다 GitHub이 거부 |
-| 티켓 필드 | Jira Priority/SP/Labels/Parent | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` |
+| GitHub 계정 / 커밋 이메일 | `kimwoz` / `$PLAB_WORK_EMAIL` | `jongwoo315` / `jongwoo315@gmail.com` |
+| PR 승인 | 리뷰어 approve | 1인 레포라 **self-review는 `--comment`만** — `--approve`·`--request-changes` 둘 다 GitHub이 거부한다 (`Can not request changes on your own pull request`). merge 차단 안전망이 없으므로 미해결 Critical은 사람이 기억해야 한다 |
+| 티켓 필드 갱신 | Jira Priority/SP/Labels/Parent | Notion `상태`·`작업일`·`Git 저장소`·`Git 브랜치`·`PR` **전부** |
+
+**실행 모드는 양쪽 동일 — orch detached ralph-loop, 예외 없음.** `~/prv`가 학습·포트폴리오
+목적이라고 해서 대화형으로 내려오지 않는다. 과정 경험이 아니라 **검증 기준을 정하는 능력**이
+산출물이기 때문이다 (`rules/portfolio-judgment.md`). 사람의 개입은 Kickoff(plan 승인)와
+PR 리뷰 두 지점뿐이다.
+
+**`~/prv`에서 plan이 오히려 더 중요해진다.** 통과 기준·이번에 안 하는 것·실패 징후가 plan에
+없으면 ralph는 "동작하는 코드"만 만들고 끝난다. Kickoff 게이트에서 이 3줄을 반드시 확인할 것.
 
 ⚠️ **worktree를 모드에 맞는 주차장에 만들 것.** `~/prv` 프로젝트를 `~/plab/.wt/`에 두면
 디렉터리 기반 계정 규칙이 `kimwoz`로 해석돼 개인 레포 접근이 404로 실패한다 (실제 발생함).
@@ -137,7 +148,7 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   brainstorm flags unknowns. Focused scope per agent, structured output. Else skip.
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/<ID>-MMDD-plan-<short-topic>.md`
   (`<ID>` = `DEV-XXXX` 또는 `<NN>`. 날짜는 **`MMDD`**, **type이 topic보다 앞**.
-  전체 규칙은 `rules/dev-workflow.md`의 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
+  전체 규칙은 이 파일 아래 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
   this file, **all execution detail must live in the plan**: TDD task breakdown, a **Pre-PR checks**
   section (embed the canonical block from Phase B verbatim), a **Done criteria** section, and the
   PR-creation step (personal mode: include the "update Notion PR property" step). Plan header
@@ -247,9 +258,11 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 > 1. New env vars: `git diff main...HEAD` added lines matching `os\.environ\.get|os\.getenv|process\.env\.` — log any found.
 > 2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Background + timeout + curl the port + kill. Never bare `runserver` (hangs the loop till ORCH_STUCK_SECS). Django → `source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver`; CDK → `cdk synth` (no server); Zappa/Lambda Django → same background+timeout with `PYENV_VERSION=<env> --settings=<app>.settings.local`; CLI/library → smoke-run the entrypoint (it must self-terminate); else project-specific.
 > 3. Full test suite green (show pass/fail). If no runner: state `no tests — skipped`, do not silently pass.
-> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (설계 문서를 추적하는 repo면 `docs/plans/`도 포함 — repo 관행을 따를 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property); 마지막으로 방금 만든 PR에 `pr-review-toolkit:review-pr` 실행 — 지적사항은 추가 커밋으로 얹는다 (리뷰만 하고 GitHub에 코멘트는 게시하지 않는다; 게시가 필요하면 사람이 `ops:github-pr-review`를 돌린다).
+> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (설계 문서를 추적하는 repo면 `docs/plans/`도 포함 — repo 관행을 따를 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property). **PR을 만들면 이 루프는 끝난다** — 여기서 `pr-review-toolkit:review-pr`을 돌리지 말 것. 그 리뷰는 Phase C의 별도 세션이 맡는다. 여기서 돌리면 (a) 자기가 쓴 코드를 같은 컨텍스트가 리뷰하고 (b) PR 생성 후에도 커밋이 계속 얹혀 `orch ls`의 `done`이 완료를 뜻하지 않게 된다 (실측: PR 후 8분 이상 지속).
 >
 > 내장 `/code-review`를 여기 쓰지 말 것. 품질은 더 낫지만(다각도 finder + 후보별 독립 검증 CONFIRMED/PLAUSIBLE/REFUTED + failure_scenario 강제) **사람이 직접 치는 커맨드라 available-skills에 없다** — 헤드리스 세션에서 확인함. ralph가 호출하면 없는 스킬을 찾다 끝난다.
+>
+> 커밋 전 `superpowers:requesting-code-review`는 그대로 둔다 — 그건 커밋하기 전 자기 점검이고, Phase C는 커밋된 diff 전체를 새 컨텍스트가 다시 보는 것이라 겹치지 않는다.
 
 **Dispatch (into the A3 worktree — session starts already on the branch, so no checkout needed):**
 ```bash
@@ -274,12 +287,41 @@ jq -r '.session' ~/.claude/orch/queue/task-<id>.json   # id와 정확히 일치�
 ⚠️ **`orch rm`은 claude 프로세스를 죽이지 않는다.** 큐 항목과 tmux 세션만 정리한다. 세션이
 사라져도 claude는 고아로 살아남아 같은 worktree에 계속 쓰므로, 그대로 재 dispatch하면
 **한 worktree에 에이전트 2개**가 붙는다 (실제 발생 — 둘이 같은 DB에 pytest를 돌려 서로를 깨뜨린다).
-재 dispatch 전 반드시:
+**1순위는 워크트리가 더러운지다. 프로세스 검사가 아니다.**
+
 ```bash
-ps aux | grep "claude --dangerously" | grep -v grep | awk '{print $2}' | while read p; do
-  echo "$p  $(lsof -p $p -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)"
-done   # worktree 경로와 정확히 일치하는 PID만 kill. main 세션은 repo 루트라 걸리지 않는다
+git -C <worktree> status --porcelain          # 비어 있지 않으면 → 진행 금지
+find <worktree> -newermt '-5 minutes' -not -path '*/.git/*' | head
 ```
+
+**더러우면 프로세스가 안 보여도 진행하지 않는다.** 완료 조건은
+`rules/judgment-log.md`의 `## 완료 신호`가 정의한 것이고, 루프는 `orch ls`가 `done`이 된
+뒤에도 계속 커밋한다.
+
+```bash
+# 2순위 — 프로세스. 단 이건 있으면 증거지 없다고 무죄가 아니다
+for p in $(pgrep -f '^claude'); do
+  cwd=$(lsof -p "$p" -a -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
+  case "$cwd" in */.wt/*) echo "$p  $cwd";; esac
+done
+tmux ls 2>/dev/null | grep claude-orch-
+```
+
+대상 worktree가 cwd인 PID가 있으면 **kill 후에 재 dispatch**한다.
+`orch rm <id>` → 위 확인 → `kill <pid>` → `tmux kill-session -t claude-orch-<id>` → 재 dispatch.
+
+> 자기 자신(main 세션)의 cwd가 repo 루트로 잡히니 **worktree 경로와 정확히 일치하는 것만** 죽일 것.
+
+⚠️ **프로세스 검사는 한 번 봐서 "없음"이 나와도 없다는 뜻이 아니다.** 2026-08-20 DEV-7910에서
+실측했다 — `orch ls`가 `done`, tmux 세션 없음, `pgrep`+`lsof`로 그 워크트리를 cwd로 잡은
+프로세스 0건이었는데 **그 세션은 그 뒤 7분간 커밋 5개를 만들고 푸시했다.** 두 가지가 겹친다:
+
+- ralph 루프는 **턴마다 `claude` 프로세스가 새로 뜬다.** 프로세스의 연속이라 턴 사이 빈틈에
+  샘플링하면 0건이 나온다.
+- 옛 명령 `ps aux | grep "claude --dangerously"`는 **첫 턴만 잡는다.** 그 뒤로는
+  `claude --resume <uuid>`로 돈다. 같은 시각에 옛 명령 0건 / `pgrep -f '^claude'` 20건이었다.
+
+**유일하게 신뢰할 수 있는 신호는 워크트리 상태다.**
 
 **중단된 실행을 재개할 때는 plan에 `## RESUME` 섹션을 추가한다** — 이미 있는 산출물 목록 +
 "덮어쓰지 말고 테스트로 검증하라, 파일 존재 ≠ 통과 기준 충족". 없으면 처음부터 다시 만들거나
@@ -289,8 +331,9 @@ done   # worktree 경로와 정확히 일치하는 PID만 kill. main 세션은 r
   line — fix the plan, not the running session.
 - Substitute the real absolute worktree path (no generic prompt).
 - **Main session is now free.** Announce:
-  > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 완료되면 PR이 GitHub에
-  > 생성됩니다 — 리뷰는 편할 때 하시면 됩니다. 다른 작업을 바로 시작하셔도 됩니다."
+  > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 구현이 끝나 PR이 뜨면
+  > 무인 리뷰 세션(`<ID>-review`)을 이어서 띄웁니다 — 그게 끝난 뒤에 보시면 됩니다.
+  > 다른 작업을 바로 시작하셔도 됩니다."
 - Do NOT talk to the orch session. Its only output is the worktree commit + PR.
 - **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
   welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
@@ -300,12 +343,17 @@ done   # worktree 경로와 정확히 일치하는 PID만 kill. main 세션은 r
 
 ---
 
-## GATE 2 — PR Review (async) + ticket refine
+## Phase C — Review Dispatch (두 번째 orch 세션)
 
-The loop created the PR. Review is asynchronous — no session waiting.
+구현 세션이 멈춘 것을 확인한 뒤, main이 **리뷰 전용 세션**을 같은 워크트리에 dispatch한다.
+main은 dispatch만 하고 다시 free. 이 단계는 사람 게이트가 아니다.
 
-⚠️ **PR이 떴다고 루프가 끝난 게 아니다.** 루프는 PR 생성 후에도 Pre-PR 단계의 자기 코드 리뷰를
-돌려 지적사항을 추가 커밋으로 얹는다 (실측: PR 생성 후 8분 이상 계속 작업). **리뷰를 시작하기 전에**:
+**왜 별도 세션인가.** 구현 세션이 자기 코드를 리뷰하면 놓친 것을 또 놓친다 — Pre-PR 안의
+`pr-review-toolkit:review-pr`이 이미 그렇게 돌고, 그 결과는 흔적 없이 추가 커밋으로만 남는다.
+`orch pipe`도 답이 아니다: 다음 step을 **같은 tmux 세션에 밀어넣으므로**(`lib/spawn.sh`의
+`submit_step`) 구현 컨텍스트를 그대로 물고 리뷰하게 된다. 새 `orch add`여야 컨텍스트가 새것이다.
+
+### C1. 착수 조건 — 구현 세션이 정말 멈췄나
 
 ```bash
 orch ls                                          # done 이어야 함. running 이면 대기
@@ -313,8 +361,46 @@ git -C <worktree> status --porcelain             # 비어야 함
 git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않는지
 ```
 
-`running` 중에 리뷰하면 도중에 커밋이 얹혀 리뷰 대상이 어긋난다.
+⚠️ **PR이 떴다고 루프가 끝난 게 아니다.** 루프는 PR 생성 후에도 자기 코드 리뷰를 돌려
+지적사항을 추가 커밋으로 얹는다 (실측: PR 생성 후 8분 이상 계속 작업). 더러운 트리에
+dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의 **고아 프로세스 확인**을 그대로
+거칠 것. 전체 판정 기준은 `rules/judgment-log.md`의 `## 완료 신호`.
 
+### C2. Dispatch
+
+```bash
+ORCH_TASK_ID="<ID>-review" orch add <워크트리 절대경로> "<아래 quote-safe 한 줄>"
+```
+
+`ORCH_TASK_ID`가 없으면 id 충돌 경로로 빠져 `<ID>-1`이 되고, 그 라벨은 이게 구현인지 리뷰인지
+말해주지 않는다. 큐 파일·tmux 세션(`claude-orch-<ID>-review`)·picker 라벨이 전부 id를 미러하므로
+이 하나로 체인 전체가 맞는다.
+
+**리뷰 한 줄 — Phase B와 같은 quote-safe 규칙** (따옴표·아포스트로피·`; & | $ ( ) < >`·개행 금지,
+completion-promise는 공백 없는 단일 토큰). 상세는 전부 지시 파일에 있다:
+
+```
+/ralph-loop:ralph-loop Read /Users/jw/.claude/skills/dev-workflow/review-prompt.md and follow it exactly for the open PR on this branch. You are already in the worktree on the feature branch, so never switch branches, never create a worktree, and never use AskUserQuestion. Never post anything to GitHub. --completion-promise REVIEW_DONE --max-iterations 15
+```
+
+### C3. 산출물
+
+`docs/plans/<ID>-MMDD-review-<short-topic>.md` — 지적 표(심각도·위치·내용·처리)와 plan 대조 표.
+Critical/Important는 **지적 하나당 커밋 하나**로 고쳐 push되고, 안 고친 것은 `push-back` /
+`defer` / `won't-fix`로 이유가 남는다. **GitHub에는 아무것도 안 올라간다** — 게시는
+`ops:github-pr-review`가 사람 확인을 받고 하는 일이다.
+
+리뷰 세션이 `done`이 되면 다시 C1의 세 줄로 멈춤을 확인하고 GATE 2로 넘어간다.
+
+---
+
+## GATE 2 — PR Review (async) + ticket refine
+
+Phase C가 끝났다. 사람이 판정할 차례 — 비동기, 세션이 기다리지 않는다.
+
+- `docs/plans/<ID>-MMDD-review-<topic>.md`를 먼저 읽는다. 무인 리뷰가 무엇을 잡았고 무엇을
+  `push-back`으로 넘겼는지가 여기 있다. **`push-back`·`won't-fix` 행이 사람이 볼 첫 자리다** —
+  무인 세션이 "안 고치기로 한 것"이 유일하게 검토가 필요한 결정이다.
 - Review the PR diff on GitHub. Merge = human call. (Kickoff gate already approved the plan; PR
   review is the second safety net before production.)
 - **Verify the loop's Pre-PR output, not just the diff.** Pre-PR checks are a completion-*promise*,
@@ -322,7 +408,7 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
   the test suite actually ran green and the server boot printed `BOOT_OK` (or the check was
   legitimately N/A). A promise the loop can fib is only as good as this read.
 - **판단 로그 — plan의 통과 기준과 대조하고, 판정은 jw가 쓴다. 사실은 네가, 판단은 jw가.**
-  **정본은 `rules/dev-workflow.md`의 "판단 로그" 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
+  **정본은 `rules/judgment-log.md`의 `## 판단 로그` 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
   이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules를 따른다.
   **Fires on the STATE, not the notification** — whenever you have just established that a
   ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch
@@ -402,8 +488,108 @@ git worktree remove --force <worktree>  # --force: docs/plans + venv symlink are
 - **Scope Guard holds:** infra / non-PR deploys route to infra-workflow. Never loop those.
 - **Main = pure dispatcher, always.** Every ticket dispatches to its own orch ralph session. Main
   runs ticket work in no case. Never collapse a batch into main-session hand-execution.
+- **일시 에러도 지속되면 하드로 친다.** 429·529가 계속 뜨면서 **20분간 커밋·파일 변경이 0이면
+  하드 에러와 동일하게 중단**. 무인 루프에서는 기다리는 것과 스핀하는 것이 구분되지 않는다 —
+  화면을 보는 사람이 없고, 루프는 실패한 턴 뒤에 프롬프트를 다시 밀어넣는다. 서버 과부하 하나가
+  반복 예산을 통째로 태우는데 picker는 `working`으로 보인다 (2026-08-06 #89에서 24분 무진전,
+  사람이 화면을 봐서야 발견). **이건 plan 텍스트일 뿐 강제 장치가 아니다** — 모델이 스스로
+  시간을 재야 한다. 확실히 잡으려면 orch 데몬이 `@claude_state_at`과 워크트리 mtime으로 stuck
+  판정을 해야 한다 (미구현).
+- **Batch/parallel — 복수 티켓 병렬 요청**("all parallel", "run X,Y,Z")은 티켓별 독립 orch 세션
+  dispatch가 **기본값**. 단일 main 세션 hand-execution으로 합치려면 **먼저 AskUserQuestion 확인**
+  (조용히 합치기 금지). 티켓별 worktree 유지, main은 free로 남아 sibling 티켓 dispatch 계속.
+- **Phase C는 별도 orch 세션이다.** 구현 세션에 리뷰를 얹지 말 것 — 자기 코드를 같은
+  컨텍스트가 리뷰하면 놓친 것을 또 놓친다. `orch pipe`도 안 된다 (`submit_step`이 같은 tmux
+  세션에 다음 step을 밀어넣는다). `ORCH_TASK_ID=<ID>-review orch add`로 새로 띄운다.
+- **무인 세션은 GitHub에 게시하지 않는다.** 리뷰 결과도, 리뷰 코멘트도, approve/request-changes도.
+  게시는 사람 확인을 받는 행위이고 그 자리는 `ops:github-pr-review`뿐이다.
 - **External skill transitions overridden:** brainstorming/writing-plans self-transitions are
   ignored; the next step is always this file's phase order.
+
+## 티켓 프로퍼티
+
+### Jira (`~/plab`, `~/work`)
+
+**이 파이프라인 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 refine.
+기본값 — Issue Type `Dev`, Parent `DEV-3637`, Labels `Backend`, Priority `Medium (3)`,
+Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 refine.)*
+
+**파이프라인 밖에서 단독 티켓 생성 시:** 아래 5개를 **AskUserQuestion으로 확인**.
+
+| 필드         | 선택지                                                                                        |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| Issue Type   | Dev / Task / Story / Bug / Incident / Epic                                                    |
+| Parent       | DEV-3637 / Epic 또는 "없음"                                                                   |
+| Labels       | `Backend` / `Frontend` / `개발요청` / `26_2Q` (multiSelect, 최대 4개 선택지 제한) — 상황에 맞게 조합 |
+| Priority     | Critical / High / Medium / Low / Lowest                                                       |
+| Story Points | 1 / 2 / 3 / 5 / 8 / 13                                                                       |
+
+**자동 설정 (2개):**
+
+| 필드       | 값                                            | Custom Field ID      |
+| ---------- | --------------------------------------------- | -------------------- |
+| Assignee   | `712020:a7dec654-3a3b-432d-a825-9a38531ddc78` | `assignee.accountId` |
+| Start Date | 오늘 날짜                                     | `customfield_10015`  |
+
+**Story Points는 두 필드 모두 설정:** `customfield_10016` + `customfield_10031`
+
+### Notion (`~/prv`)
+
+DB `29241e61-65c0-801f-9529-cabf8cad919b` (프로젝트 진행). Jira 대신 이쪽을 갱신한다.
+
+| 시점 | 채울 컬럼 |
+| ---- | --------- |
+| 태스크 생성 | `태스크`, `프로젝트`, `상태`=시작 전, `Git 저장소`, `선행 작업` |
+| **착수** | `상태`=진행 중, `작업일.start`=오늘, `Git 브랜치` |
+| PR 생성 직후 | `PR` |
+| 머지 후 | `상태`=완료, `작업일.end`=오늘 |
+
+**컬럼을 비워두지 않는다.** 착수도 안 바꾸고 끝에 몰아서 완료 처리하지 않는다.
+
+⚠️ **`작업일`은 date range다.** 머지 후 `end`를 넣을 때 기존 `start`를 같이 보내지 않으면
+시작일이 지워진다. 반드시 현재 값을 조회한 뒤 `{start, end}` 형태로 PATCH할 것.
+
+**Notion `ID`는 prefix가 없다** — `{"prefix": null, "number": 86}`. `#86`으로 표기하고
+`DEV-86`으로 쓰지 않는다. `DEV-`는 Jira 티켓 형식이라 로그에서 둘을 구분할 수 없게 된다.
+
+**실제 프로퍼티는 10개뿐이다:** `태스크`(title) · `상태`(select) · `프로젝트`(select) ·
+`ID`(unique_id, 읽기 전용) · `작업일`(date range) · `Git 저장소`(url) · `Git 브랜치`(url) ·
+`PR`(url) · `선행 작업`(relation) · `후속 작업`(relation). **`생성일`은 존재하지 않는다.**
+
+## docs/plans 파일 규칙
+
+**날짜 포맷:** `MMDD` 사용 (예: `0320`). `YYYY-MM-DD`, `YYMMDD` 사용 금지.
+
+**파일명 컨벤션:** 티켓 ID를 prefix, 날짜 뒤, **type(suffix) 먼저, topic 마지막**.
+
+- 티켓 있을 때: `DEV-XXXX-MMDD-<type>-<short-topic>.md`
+- 티켓 없을 때: `MMDD-<type>-<short-topic>.md`
+
+**이유:** VSCode narrow pane (1/3 너비)에서 topic이 truncate되어도 ticket/date/type은 보임. 파일 역할 한눈에 파악 가능.
+
+**Topic 제약:** ≤20자, ≤4단어. 중복어 축약 (verification→verify, rotation→rotate, management→mgmt).
+
+| type           | 용도                 | 생성 시점               |
+| -------------- | -------------------- | ----------------------- |
+| `input`        | 파싱된 외부 컨텍스트 | parse:jira/notion/slack |
+| `design`       | 브레인스토밍 결과    | brainstorming           |
+| `plan`         | 구현 계획            | writing-plans           |
+| `ticket-info`  | Jira 티켓 정보       | setup-work              |
+| `work-info`    | Notion 태스크 정보   | personal-setup-work     |
+| `review`       | 무인 리뷰 결과 + 처리 | Phase C 리뷰 세션        |
+
+**예시:**
+
+- `DEV-3384-0316-design-location-storage.md`
+- `DEV-3531-0324-input-sensitive-data.md`
+- `DEV-4833-0622-input-pw-verify.md`
+- `0330-design-plabthon26-ideas.md` (티켓 없음)
+
+**Rename 시점:** setup-work / personal-setup-work에서 티켓 ID가 확정된 후 (신규 생성 또는 기존 티켓 연결 모두 포함), `docs/plans/`의 관련 파일을 `DEV-XXXX-MMDD-<type>-<short-topic>.md`로 rename
+
+**경로 참조:** Jira/Notion에 docs/plans 경로를 기록할 때 절대 경로 사용.
+
+- `<repo-root>/docs/plans/...` (`repo-root` = `$(git rev-parse --show-toplevel)`)
 
 ## Entry Points
 
