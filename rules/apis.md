@@ -100,6 +100,33 @@ curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
   | jq .
 ```
 
+### 상태 전이 (transition)
+
+**status를 PUT으로 못 바꾼다.** `POST /rest/api/3/issue/{key}/transitions`에 **transition id**를
+보내야 한다. 그리고 **id를 하드코딩하지 말 것** — 같은 목표 상태로 가는 transition이 여럿이고
+(`In Dev`로 가는 길이 `71`·`121` 둘), 어느 것이 뜨는지는 **그 이슈의 현재 상태**에 달렸다.
+목표 상태명으로 매번 조회한다.
+
+```bash
+jira_move() {   # $1=이슈 키, $2=목표 상태명
+  local id
+  id=$(curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" \
+        "https://$PLAB_JIRA_HOST/rest/api/3/issue/$1/transitions" \
+        | jq -r --arg s "$2" '.transitions[] | select(.to.name==$s) | .id' | head -1)
+  [ -n "$id" ] || { echo "transition 없음: $1 -> $2 (현재 상태에서 갈 수 없다)" >&2; return 1; }
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+    -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" -H 'Content-Type: application/json' \
+    -d "{\"transition\":{\"id\":\"$id\"}}" \
+    "https://$PLAB_JIRA_HOST/rest/api/3/issue/$1/transitions"   # 204면 성공
+}
+```
+
+**DEV 프로젝트 상태 (2026-08-28 실측):** `To Do` · `In Dev` · `Ready to Deploy` · `Done` ·
+`Stashed`. **`In Progress`는 없다** — 작업 중 상태의 이름은 `In Dev`다.
+
+`transition 없음`이 뜨면 현재 상태에서 목표로 가는 길이 없는 것이다. 하드 실패시키지 말고
+그 사실만 보고할 것 — 워크플로는 프로젝트마다 다르고 바뀐다.
+
 ### 본문 작성 포맷 (ADF)
 
 description·댓글 모두 ADF(Atlassian Document Format)다. 위 §Notion 페이지 작성
