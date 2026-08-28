@@ -63,7 +63,7 @@ Brainstorming 완료 후 개인 프로젝트 작업 환경을 설정합니다:
 
 태스크 생성/확인 후, 기존 `docs/plans/` 파일에 태스크 ID를 추가:
 
-**파일명 규칙은 `rules/dev-workflow.md`의 `## docs/plans 파일 규칙`을 따른다** —
+**파일명 규칙은 `dev-workflow` 스킬의 `## docs/plans 파일 규칙`을 따른다** —
 `MMDD-<type>-<short-topic>.md` → `<NN>-MMDD-<type>-<short-topic>.md`.
 날짜는 `MMDD`(YYMMDD 아님), **type이 topic보다 앞**.
 

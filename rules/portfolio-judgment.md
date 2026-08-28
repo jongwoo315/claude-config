@@ -6,7 +6,7 @@
 **적용 안 함:** 업무 레포(`~/work`, `~/plab`), alchemist factory study 레포(읽기 전용).
 
 **`dev-workflow`와의 관계:** `dev-workflow`는 업무·개인 구분 없이 **모든** 개발 작업에
-적용된다(`rules/dev-workflow.md`). 이 문서는 그 위에 `~/prv` 전용으로 얹히는 판단 규율이지
+적용된다(`dev-workflow` 스킬). 이 문서는 그 위에 `~/prv` 전용으로 얹히는 판단 규율이지
 대체재가 아니다. 둘 다 적용된다.
 
 ## 원칙
@@ -108,7 +108,7 @@ plan 단계
 `착수 전 예측: skip`이라고 적는다 — 빈칸으로 두지 말 것.
 
 PR 게이트는 이걸 **대조만** 한다. 거기서 다시 묻지 않는다
-(`rules/dev-workflow.md` §판단 로그).
+(`rules/judgment-log.md` §판단 로그).
 
 ## 범위를 줄일 때
 

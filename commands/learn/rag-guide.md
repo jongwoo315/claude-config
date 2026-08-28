@@ -3,6 +3,9 @@ name: rag-guide
 description: RAG guided coding sessions for AI/LLM engineer training. Focuses on building chunking, retrieval, evaluation, and indexing artifacts as hands-on labs.
 ---
 
+
+**MANDATORY:** Load `~/.claude/commands/learn/_guide-common.md` BEFORE responding. 진행 방식(kickoff, snapshot, done 판정, notes.md 지속화, top-down 루프)은 전부 그 파일이 정본이다. 아래 내용은 그 위에 얹히는 토픽별 규칙이지 대체재가 아니다.
+
 # RAG Guide
 
 ## Overview
