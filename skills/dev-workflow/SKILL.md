@@ -144,6 +144,25 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   done
   [ -f "$REPO_ROOT/.env" ] && ln -s "$REPO_ROOT/.env" <worktree>/.env
   ```
+- **repo 신뢰 확인 — 그 repo에서 워크트리를 처음 띄우는 날에만 걸린다.** Claude는 신뢰하지
+  않은 폴더에서 「이 폴더를 신뢰하나」 화면을 띄우고 **기본 선택이 `No, exit`**이다. orch가
+  보낸 시드의 첫 Enter가 그걸 눌러 claude가 즉시 종료되고, 남은 키는 셸로 떨어진다.
+  ```bash
+  REPO_ROOT=$(git rev-parse --show-toplevel)
+  python3 -c "import json,os,sys
+d=json.load(open(os.path.expanduser('~/.claude.json')))
+print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
+  ```
+  **`True`가 아니면 dispatch하지 말고 사람에게 한 번 수락받는다** — `! cd <repo> && claude`로
+  `Yes, I trust this folder`를 고르고 나오면 된다. **대신 눌러주지 말 것**(보안 확인이고,
+  `~/.claude.json`을 직접 고치는 것은 그 확인에 대신 답하는 것이다).
+
+  신뢰는 **경로가 아니라 repo 단위로 상속된다** — `~/plab`이 `True`여도 그 아래 repo가
+  목록에 없으면 걸린다. 2026-08-31 `plab-notion-rag`에서 실제로 발생했다.
+
+  **이 실패는 완료 신호 세 줄을 전부 통과한다** — `orch ls`는 `running`, tmux 세션 존재,
+  워크트리 `git status`는 clean이다. claude가 시작조차 안 했는데 정상으로 보인다.
+  `tmux capture-pane -p -S -200`으로 스크롤백을 봐야 확인 화면이 나온다.
 
 ### A4. Auto brainstorm / explore / plan (inside worktree)
 - **Triage tier** — auto-assign (no ask). Signals: Tier A = boilerplate/CRUD/config/docs,
