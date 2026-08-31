@@ -21,9 +21,13 @@
 anything outside `main...HEAD`.** The implementation is done; your job is to find what it got
 wrong and dispose of each finding.
 
-**Never post to GitHub.** No `gh pr review`, no `gh api .../comments`, no PR comments of any
-kind. The review lives in a file; a human decides whether any of it reaches GitHub. This is not
-a style preference — posting is a human-gated action (`ops:github-pr-review` §5).
+**GitHub 게시는 이 세션의 마지막 단계다** (§5). 그 전에는 아무것도 올리지 말 것 — fix 커밋이
+전부 push되고 HEAD가 확정된 뒤에 한 번만 올린다. 도중에 올리면 인라인 코멘트가 그 뒤에 얹힌
+커밋에 밀려 엉뚱한 줄에 붙는다.
+
+**`ops:github-pr-review`를 부르지 말 것.** 그건 **남의 PR**을 리뷰하는 스킬이라 게시 전 사람
+확인을 요구하고(§5), 헤드리스 세션은 답할 수 없어 거기서 멈춘다. 이 세션이 올리는 대상은 자기
+루프가 만든 자기 PR이고 읽는 사람이 그 PR 주인이라, 그 확인이 걸리는 자리가 아니다.
 
 ## 1. Establish the target
 
@@ -92,6 +96,42 @@ Critical과 Important만 고친다. Suggestion은 기록만.
 고치지 않기로 한 것은 이유를 적는다. **조용한 skip 금지** — 지적을 지우지 말고 `push-back`이나
 `won't-fix`로 남긴다. 지운 지적은 사람이 판정할 기회가 사라진다.
 
-## 5. 마지막
+## 5. 게시
+
+fix 커밋이 전부 push되고 테스트가 green인 것을 확인한 뒤 **한 번만** 올린다. 여기가 이 세션의
+유일한 바깥 방향 행동이다.
+
+### 5a. 요약 코멘트 1건
+
+리뷰 파일을 그대로 올린다. 형식을 새로 짜지 말 것 — `## 지적`과 `## plan 대조` 표가 이미 있다.
+
+```bash
+gh pr review --comment --body-file docs/plans/<ID>-MMDD-review-<topic>.md
+```
+
+`--approve`·`--request-changes`는 쓰지 말 것. 자기 PR에는 GitHub이 거부한다
+(`Can not request changes on your own pull request`).
+
+### 5b. 인라인 스레드 — 안 고친 것만
+
+`push-back` · `defer` · `won't-fix` 행에만 단다. **`fix <해시>`와 `기록만`에는 달지 않는다** —
+고친 것은 커밋이 이미 기록이라, 열자마자 닫아야 하는 빈 스레드만 남는다.
+
+```bash
+HEAD_SHA=$(git rev-parse HEAD)
+gh api repos/{owner}/{repo}/pulls/<n>/comments --method POST \
+  -f body="defer — <리뷰 파일 처리 칸의 이유 그대로>" \
+  -f path="<위치 칸의 경로>" \
+  -f commit_id="$HEAD_SHA" \
+  -F line=<줄 번호> -f side=RIGHT
+```
+
+- `commit_id`는 **그 시점 HEAD**여야 한다. fix 커밋 전 SHA를 쓰면 줄이 밀려 엉뚱한 곳에 붙는다.
+- `position`(diff hunk 안 오프셋)은 쓰지 말 것. `line` + `side=RIGHT`를 쓴다.
+- fix 커밋으로 줄 번호가 바뀐 파일은 **올리기 전에 현재 줄을 다시 확인**한다. 리뷰 파일에 적힌
+  줄 번호는 리뷰 시점 값이라 그대로 못 쓴다.
+- 한 건이라도 실패하면 그 사실을 리뷰 파일 맨 아래에 적는다. **조용히 넘어가지 말 것.**
+
+## 6. 마지막
 
 리뷰 파일을 커밋하고 push한 뒤 `<promise>REVIEW_DONE</promise>`.
