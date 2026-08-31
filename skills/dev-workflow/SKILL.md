@@ -405,15 +405,32 @@ ORCH_TASK_ID="<ID>-review" orch add <워크트리 절대경로> "<아래 quote-s
 completion-promise는 공백 없는 단일 토큰). 상세는 전부 지시 파일에 있다:
 
 ```
-/ralph-loop:ralph-loop Read /Users/jw/.claude/skills/dev-workflow/review-prompt.md and follow it exactly for the open PR on this branch. You are already in the worktree on the feature branch, so never switch branches, never create a worktree, and never use AskUserQuestion. Never post anything to GitHub. --completion-promise REVIEW_DONE --max-iterations 15
+/ralph-loop:ralph-loop Read /Users/jw/.claude/skills/dev-workflow/review-prompt.md and follow it exactly for the open PR on this branch. You are already in the worktree on the feature branch, so never switch branches, never create a worktree, and never use AskUserQuestion. Post the review to the PR only at the very end as the instructions say. --completion-promise REVIEW_DONE --max-iterations 15
 ```
 
 ### C3. 산출물
 
 `docs/plans/<ID>-MMDD-review-<short-topic>.md` — 지적 표(심각도·위치·내용·처리)와 plan 대조 표.
 Critical/Important는 **지적 하나당 커밋 하나**로 고쳐 push되고, 안 고친 것은 `push-back` /
-`defer` / `won't-fix`로 이유가 남는다. **GitHub에는 아무것도 안 올라간다** — 게시는
-`ops:github-pr-review`가 사람 확인을 받고 하는 일이다.
+`defer` / `won't-fix`로 이유가 남는다.
+
+**그 다음 PR에 올린다** — 리뷰 파일 전문을 `gh pr review --comment`로 한 건, 안 고친 항목만
+인라인 스레드로. 전부 push되고 HEAD가 확정된 뒤 마지막에 한 번이다 (`review-prompt.md` §5).
+
+파일에만 두던 것을 바꾼 이유 둘. **(1) 흔적이 PR에 없으면 없는 것과 같다** — PR 페이지만 보면
+리뷰가 돌았는지 알 수 없고, 실제로 그래서 못 찾은 적이 있다 (2026-08-31 PR #9). **(2) 게시를
+GATE 2a로 미루면 흔적이 사람 일정에 묶인다** — jw가 앉기까지 며칠이 걸리고(#9·#10은 6일),
+그동안 PR은 비어 있다. `rules/portfolio-judgment.md`가 착수 전 예측을 PR 게이트에서 Kickoff으로
+옮긴 것과 같은 시점 문제다.
+
+`ops:github-pr-review`의 확인 절차(§5)는 여기 안 걸린다. 그 스킬은 **남의 PR**을 리뷰하는
+도구고 거기서 게시는 동료에게 보내는 메시지다. Phase C가 올리는 것은 자기 루프가 만든 자기
+PR이고 읽는 사람이 그 PR 주인이다. 그 스킬은 계속 남의 PR에 쓰고, Phase C가 올린 스레드에
+나중에 대응할 때 그 스킬의 §Addressing Review Comments가 그대로 이어진다.
+
+**게시가 처리를 보장하지는 않는다.** unresolved 스레드는 보이게만 할 뿐이고, 브랜치 보호가
+없으면 미해결 상태로도 머지된다. `defer` 항목에 목적지(후속 티켓·이번 PR에서 처리·안 함)를
+주는 것은 GATE 2a에서 사람이 하는 일이다.
 
 리뷰 세션이 `done`이 되면 다시 C1의 세 줄로 멈춤을 확인하고 GATE 2로 넘어간다.
 
