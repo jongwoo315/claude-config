@@ -50,10 +50,24 @@ CURRENT_GH_USER=$(gh api user -q '.login' 2>/dev/null)
 
 2. 접두사는 **소문자로 작성**한다.
 3. 접두사 뒤에 `:` 를 붙이고 **띄어쓰기를 포함**한다.
+   **괄호를 붙이지 않는다** — `docs(korean-style):` 같은 Conventional Commits 꼴은 금지.
+   위 표에 있는 접두사 하나 + `:` 가 전부다.
 4. commit 메시지의 단위는 작게 나눈다.
    - 여기서의 `작게` 는 파일 단위로 설정한다.
    - 여러 파일을 한 번에 하는 경우에는 수정된 부분에 있어서 관련된 부분을 묶어 함께 commit 한다.
 5. commit 메시지는 **한글로** 작성한다.
+
+**`type(scope):` 꼴은 되풀이해서 새어든다.** 표만 있고 금지가 없던 동안 실제로 반복됐고,
+매번 나중에 고쳐졌다 — `docs(korean-style):` → `docs:`, `add(hooks):` → `add:`,
+`docs(notion):` → `docs:`, `fix(orch):`, `rules(korean-style):`. 마지막 것은
+`rules`가 표에 없는 접두사라 두 번째 위반이기도 하다.
+
+**고친 기록이 남아도 다음 세션이 다시 쓴다.** Conventional Commits가 기본 습관이고,
+활성 플러그인 `caveman:caveman-commit`이 `<type>(<scope>): <summary>`를 명문화해 두었기
+때문이다. **이 파일이 그 스킬보다 우선한다.**
+
+이 repo에는 `commit-msg` hook도 CI도 없어서 **기계로 잡히지 않는다.** 접두사 검사는
+정규식 한 줄이면 되므로, 되풀이되면 hook을 붙인다.
 
 **무인 실행(ralph loop)에서 4번을 읽는 법 — 커밋 단위는 plan의 `Task` 하나다.**
 plan 파일 하나에 커밋이 여럿 나온다:
