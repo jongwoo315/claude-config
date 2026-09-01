@@ -15,7 +15,7 @@ is `/ralph-loop:ralph-loop` (TDD inside each iteration).
 
 **The two gates (only synchronous human touches):**
 1. **Kickoff** — approve the auto-generated plan (go / adjust / cancel).
-2. **GATE 2** — 두 절이다. **G2a 판단 로그**는 Phase C 종료 직후 그 자리에서 분 단위로 끝나고,
+2. **GATE 2** — 두 절이다. **G2a 판단 로그**는 Phase C 종료 직후 그 자리에서 몇 분이면 끝나고,
    **G2b PR 리뷰·머지**는 비동기다 (GitHub, 며칠 걸려도 됨).
 
 Everything between — parse, ticket, worktree, brainstorm, explore, plan, TDD implementation,
@@ -462,13 +462,13 @@ Phase C가 끝났다. **성질이 다른 두 절이고, 섞으면 앞의 것이 
 | 절 | 언제 | 걸리는 시간 | 입력 |
 | --- | --- | --- | --- |
 | **G2a 판단 로그** | C1 재확인 직후 그 자리 | 분 | 리뷰 파일 + 사실 블록 |
-| **G2b PR 리뷰·머지** | jw가 앉을 때 | 며칠 가능 | GitHub diff, CI |
+| **G2b PR 리뷰·머지** | jw가 시간 날 때 | 며칠 가능 | GitHub diff, CI |
 
 G2a를 뒤로 밀면 안 되는 이유 — 트리거가 상태(`orch done` + PR 열림 + 워크트리 clean)이고
 그 상태는 C1에서 확정된다. 그리고 rules가 경고하는 대로 **사실은 몇 분 만에 낡는다.**
 G2b를 기다리면 jw가 자리에 없는 동안 로그가 통째로 빠진다 (#9·#10은 PR에서 판정까지 6일).
 
-### G2a. 진입 직후 — 판단 로그와 티켓 refine (동기, 분 단위)
+### G2a. 진입 직후 — 판단 로그와 티켓 정리 (동기, 몇 분)
 
 **diff를 읽고 나서 쓰는 게 아니다.** 판단 4칸이 전부 아래 블록만 보고 채워진다 — 기준은
 plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판단을 내리는 곳이 아니라 대조하는
@@ -501,7 +501,7 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
 
   파이프라인 문맥에서 추가로 지킬 것:
   - **Order: 판단 로그가 G2a의 첫 산출물이다.** 리뷰 파일 읽기만 앞선다 — 그건 사본이 아니라
-    입력이라서다 (`리뷰 처리` 줄과 `놓친 것` 칸이 거기서 나온다). 티켓 refine은 뒤, G2b는 그 다음.
+    입력이라서다 (`리뷰 처리` 줄과 `놓친 것` 칸이 거기서 나온다). 티켓 정리는 뒤, G2b는 그 다음.
   - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
     dev-workflow entry, list PRs created since the last logged row and offer a batch fill.
     **`--author @me` 쓰지 말 것** — `@me`는 `gh`의 *현재 활성 계정*으로 풀리는데 이 맥에는
@@ -521,7 +521,7 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
   acceptable, refine is best-effort.
 
 This is the ONLY place ticket fields get asked — post-facto, non-blocking (point 4).
-refine은 판단이 없는 행정이라 성질은 Phase에 가깝다. 여기 있는 이유는 트리거가 판단 로그와
+티켓 정리는 판단이 없는 잡무라 성질은 Phase에 가깝다. 여기 있는 이유는 트리거가 판단 로그와
 같은 상태(orch 완료)라서지 사람이 고를 것이 있어서가 아니다.
 
 ### G2b. 그 뒤 — PR 리뷰와 머지 (비동기, 며칠 걸려도 됨)
@@ -596,7 +596,7 @@ orch rm <ID>; orch rm <ID>-review
 | 곳 | 처리 |
 | --- | --- |
 | Notion (`~/prv`) | `상태`=완료, `작업일.end`=오늘. ⚠ `작업일`은 date range — 현재 `start`를 조회해 `{start, end}`로 PATCH (§티켓 프로퍼티) |
-| Jira (`~/plab`·`~/work`) | `Done`으로 전이 (`rules/apis.md` §상태 전이). 팀이 배포 전 단계를 쓰면 `Ready to Deploy`가 더 맞다 — 관례를 따를 것. A2 기본값이 아직 그대로면 여기서 같이 refine |
+| Jira (`~/plab`·`~/work`) | `Done`으로 전이 (`rules/apis.md` §상태 전이). 팀이 배포 전 단계를 쓰면 `Ready to Deploy`가 더 맞다 — 관례를 따를 것. A2 기본값이 아직 그대로면 여기서 같이 정리 |
 | 로컬 브랜치 | `git branch -d <branch>` — 머지됐으므로 `-d`로 지워진다. `-D`가 필요하면 안 머지된 것이니 멈춘다 |
 | origin 브랜치 | 건드리지 않는다. GitHub의 auto-delete가 한다 |
 
@@ -654,9 +654,9 @@ orch rm <ID>; orch rm <ID>-review
 
 ### Jira (`~/plab`, `~/work`)
 
-**이 파이프라인 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 refine.
+**이 파이프라인 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 정리.
 기본값 — Issue Type `Dev`, Parent `DEV-3637`, Labels `Backend`, Priority `Medium (3)`,
-Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 refine.)*
+Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 정리.)*
 
 **파이프라인 밖에서 단독 티켓 생성 시:** 아래 5개를 **AskUserQuestion으로 확인**.
 
