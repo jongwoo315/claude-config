@@ -1755,6 +1755,56 @@
         "date": "2026-08-27",
         "track": "rag",
         "topic": "reranking"
+      },
+      {
+        "date": "2026-08-27",
+        "track": "fastapi",
+        "topic": "fastapi-auth"
+      },
+      {
+        "date": "2026-08-28",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-08-28",
+        "track": "prompt",
+        "topic": "system-prompt"
+      },
+      {
+        "date": "2026-08-29",
+        "track": "rag",
+        "topic": "vector-store"
+      },
+      {
+        "date": "2026-08-29",
+        "track": "prompt",
+        "topic": "role-prompting"
+      },
+      {
+        "date": "2026-08-30",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-08-30",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-08-31",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-08-31",
+        "track": "prompt",
+        "topic": "chain-of-thought"
+      },
+      {
+        "date": "2026-09-01",
+        "track": "rag",
+        "topic": "vector-store"
       }
     ]
   },
@@ -1762,11 +1812,11 @@
     "current_streak": 0,
     "longest_streak": 4,
     "today": {
-      "date": "2026-08-27",
+      "date": "2026-09-01",
       "type": "explain",
-      "topic": "reranking",
+      "topic": "vector-store",
       "track": "rag",
-      "description": "reranking — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
+      "description": "vector store — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
       "xp": 30,
       "completed": false,
       "source": "daily_quest"
