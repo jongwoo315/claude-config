@@ -561,7 +561,60 @@ gh pr view <n> --json state,mergedAt,headRefName,mergeCommit
 **`state`가 `MERGED`인 것만 정리한다.** `CLOSED`는 머지가 아니다 — 반려돼 다시 손볼 브랜치를
 지우면 작업이 사라진다. 둘의 차이는 `mergedAt`이 `null`인지로도 갈린다.
 
-### D2. 워크트리
+### D2. orch 태스크와 tmux 세션
+
+**워크트리보다 먼저 한다.** 세션이 그 워크트리 안에서 돌고 있으므로 순서가 반대면 도는
+에이전트의 발밑을 지우게 된다.
+
+```bash
+TICKET=DEV-XXXX      # 티켓 번호까지. 슬러그(-mcp-text-fallback)는 붙이지 않는다
+skipped=''
+for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null \
+           | grep -E "^claude-orch-$TICKET(-|$)"); do
+  # 세션 -> 태스크는 .session 필드로 되짚는다. 이름에서 잘라내지 말 것 — tmux 는 orch 의
+  # id 와 무관하게 이름 충돌에 -1 을 붙이므로 세션 이름과 태스크 id 가 어긋난다
+  meta=$(jq -r --arg s "$s" 'select(.session==$s) | "\(.status) \(.id)"' \
+         ~/.claude/orch/queue/task-*.json 2>/dev/null | head -1)
+  st=${meta%% *}; tid=${meta#* }; [ -z "$meta" ] && { st=none; tid=''; }
+  # 죽이는 것은 done 과 none(큐에 없음 = orphan) 뿐이다. running·queued·failed 는 건너뛴다
+  case "$st" in
+    done|none) tmux kill-session -t "$s" && echo "종료: $s ($st)"
+               [ -n "$tid" ] && orch rm "$tid" >/dev/null 2>&1 ;;
+    *)         skipped="$skipped $s($st)" ;;
+  esac
+done
+[ -n "$skipped" ] && echo "⚠ 안 끝남:$skipped — 끝나면 D2 를 다시 돌릴 것"
+orch ls
+```
+
+**이름을 짐작하지 말고 센다.** 옛 서식(`claude-orch-<ID>` / `<ID>-review`)은 실제 이름을
+못 맞춘다 — 2026-09-02 실측에서 살아 있던 `claude-orch-DEV-8496-mcp-text-fallback`과
+`-1` 둘 다 놓쳤다(0/2). 워크트리 슬러그가 붙고, 같은 id로 `orch add` 를 두 번 하면
+`task.sh` 가 `-1` 접미사를 붙이기 때문이다(리뷰 단계에 `ORCH_TASK_ID` 를 안 준 경우).
+
+**세션 이름에서 태스크 id 를 잘라내지 말 것.** 2026-09-02 실측: 태스크
+`DEV-8600-search-quality`(running)의 세션이 `claude-orch-DEV-8600-search-quality-1` 이었다.
+tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이므로 둘이 어긋난다. 이름에서
+되짚으면 그 파일이 없어 `none` 이 되고 **도는 태스크의 세션을 orphan 으로 보고 죽인다** —
+지금 서식보다 나쁘다. `.session` 필드가 유일하게 맞는 연결이다.
+
+**죽이는 조건을 허용 목록으로 쓴다 — `done` 과 `none` 뿐이다.** `running` 만 막는 금지
+목록으로 쓰면 `queued`·`failed` 가 새어 나간다. 2026-09-02 실측에서 같은 루프가 1분 간격
+두 번에 다르게 답했다(`종료 대상` → `건너뜀`) — `orch add` 가 겹치는 순간 상태가 잠깐
+`running` 이 아니었기 때문이다. **상태는 이 루프가 도는 동안에도 움직인다.**
+
+가드 자체를 빼면 더 나쁘다. 같은 티켓의 아직 도는 후속 태스크(`claude-orch-<TICKET>-fix`
+등)까지 죽는다 — 정확 이름 서식에서는 우연히 안전했던 자리라, 가드 없는 세기는 지금보다
+나쁘다.
+
+**orch 는 태스크가 끝나도 세션을 스스로 안 죽인다.** 전체에서 `kill-session` 은
+`orch clean` 안 한 곳뿐이다. 그래서 이 절이 필요하다. 정상 흐름이면 마지막 step 에서
+`status=done` 이 되어 있으므로 여기서 전부 정리된다.
+
+**`orch clean` 을 쓰지 말 것:** `done` 태스크를 **전부** 지워서 아직 머지 안 된 다른 티켓의
+행까지 날아간다. 티켓 단위 정리는 위 루프다.
+
+### D3. 워크트리
 
 **지우기 전에 `~/.claude/judgment-log.md`에 그 PR 행이 있나 본다.** 없으면 지우지 말고 그
 사실만 보고한다 — 워크트리가 `git diff --stat`로 모으던 사실 줄의 유일한 출처다. 채우는
@@ -569,6 +622,10 @@ gh pr view <n> --json state,mergedAt,headRefName,mergeCommit
 만족하지 않고(`PR이 열려 있고`), 무엇보다 `반려`가 죽어 남는 행동이 통과 누르기뿐이 된다.
 
 ```bash
+# running 태스크가 이 워크트리를 target 으로 잡고 있으면 멈춘다.
+jq -r 'select(.status=="running") | .target' ~/.claude/orch/queue/task-*.json 2>/dev/null \
+  | grep -qx "<worktree>" && { echo "멈춤 — running 태스크가 이 워크트리를 쓰는 중"; exit 1; }
+
 git -C <worktree> status --porcelain                    # 비어야 한다
 git -C <worktree> log --oneline @{u}..HEAD              # 안 올라간 커밋 0이어야 한다
 git worktree remove --force <worktree>                  # --force: docs/plans·venv 심볼릭 링크가 untracked
@@ -579,17 +636,8 @@ git worktree prune
 **둘 중 하나라도 비어 있지 않으면 멈추고 그 사실을 보고한다.** 지우지 말 것 — 커밋 안 된
 변경이나 안 올라간 커밋은 머지된 PR에 없는 것이고, 워크트리가 유일한 사본이다.
 
-### D3. orch 태스크와 tmux 세션
-
-```bash
-tmux kill-session -t claude-orch-<ID>        2>/dev/null
-tmux kill-session -t claude-orch-<ID>-review 2>/dev/null
-orch rm <ID>; orch rm <ID>-review
-```
-
-`orch rm`은 큐 파일만 지운다 — tmux 세션은 따로 죽여야 한다. **`orch clean`을 쓰지 말 것:**
-`done` 태스크를 **전부** 지워서 아직 머지 안 된 다른 티켓의 행까지 날아간다. 티켓 단위 정리는
-위 네 줄이다.
+**`status --porcelain` 이 빈 것은 「아무도 안 쓴다」의 근거가 아니다.** 도는 에이전트도
+커밋 직후에는 clean 이다. 그래서 위 `running` 확인이 따로 있다.
 
 ### D4. 티켓과 브랜치
 
