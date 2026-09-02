@@ -74,9 +74,15 @@ spawn_session() {
 
   $ORCH_TMUX new-session -d -s "$sess" -c "$dir"
   st_set "$sess" @orch_task "$id"
+  # Display name = the session name minus the prefix, NOT the task id. They differ
+  # only when the loop above took a `-N` suffix, and that is exactly when the
+  # distinction matters: labelling both panes "$id" put two identically-named nodes
+  # on the picker and the web graph, so the newer session read as missing (2026-09-02,
+  # DEV-8600). @orch_task stays the task id — it names the queue entry, not the pane.
+  local label="${sess#$ORCH_SESSION_PREFIX}"
   # Picker label. Without it the row falls back to the worktree dir basename
   # (pf-policy-bot-DEV-7133); an orch session has no explicit /rename title.
-  st_set "$sess" @claude_title "$id"
+  st_set "$sess" @claude_title "$label"
   # @claude_state is owned by the plugin's Claude Code hooks — do NOT self-stamp it.
   # A self-stamped working masks the session's real state (idle/waiting) in the
   # picker and makes the @orch_await start-gate read our own stamp instead of the
@@ -89,7 +95,7 @@ spawn_session() {
   # (nameSource 없음)이라 picker title 최우선순위를 잡는다. 값은 task id 그대로 —
   # picker의 claude- prefix 필터는 tmux 세션명(claude-orch-*)에만 걸리므로 라벨에
   # prefix를 덧붙이면 "claude-DEV-7133"처럼 노이즈만 붙는다.
-  flags="$flags --name $id"
+  flags="$flags --name $label"
   # 실행 티어. ralph는 이미 승인된 plan을 TDD로 옮기는 실행 단계고, 판단은 그 앞
   # Kickoff 게이트에서 사람이 끝낸다 — 여기에 Opus를 쓰면 값이 안 나온다.
   # settings.json 의 전역 `model` 을 물려받지 않고 여기서 못 박는 이유: 대화형
