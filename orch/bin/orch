@@ -10,7 +10,7 @@ orch add [dir] <prompt>            queue a task (dir defaults to cwd)
 orch pipe <dir> <step...>          queue a pipeline task
 orch add --each <dir...> <prompt>  fan-out (one task per dir)
 orch ls                            list tasks
-orch rm <id>                       remove a task
+orch rm <id>                       remove a task (+ kill its session)
 orch clean                         remove all done tasks (+ kill any leftover session)
 orch start [--max N]               start daemon (default 3)
 orch stop                          stop daemon
@@ -54,8 +54,16 @@ case "$cmd" in
             printf '%-16s %-10s %-9s %-7s %s\n' "$id" "$t" "$m" "$s" "$st"; done
     done ;;
   rm)
+    # Kill the worker session before dropping the json — same reason `clean` does it.
+    # Without this the pane outlives its task file, and re-dispatching the same id
+    # then lands on spawn_session's `-N` suffix path: two live sessions on one
+    # worktree, both tagged @orch_task=<id>, only one reachable from the queue.
     [ -n "${1:-}" ] || { echo "usage: orch rm <id>" >&2; exit 1; }
-    rm -f "$ORCH_QUEUE/task-$1.json" ;;
+    f="$ORCH_QUEUE/task-$1.json"
+    sess=""
+    [ -e "$f" ] && sess=$(jq -r '.session // empty' "$f")
+    [ -n "$sess" ] && ${ORCH_TMUX:-tmux} kill-session -t "$sess" 2>/dev/null
+    rm -f "$f" ;;
   clean)
     # Drop finished tasks (status done). Kill any lingering worker session first —
     # normally already gone, but defensive so clean never orphans a tmux session.
