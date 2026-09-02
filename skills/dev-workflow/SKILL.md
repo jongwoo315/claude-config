@@ -328,9 +328,22 @@ jq -r '.session' ~/.claude/orch/queue/task-<id>.json   # id와 정확히 일치�
 **복구:** `orch rm <id>` → **고아 프로세스 확인(아래)** → `orch stop` → `orch start` → 재 dispatch.
 (디스크의 `lib/spawn.sh`가 이미 고쳐져 있어도 실행 중 daemon은 옛 코드를 쓴다 — 실제 발생함.)
 
-⚠️ **`orch rm`은 claude 프로세스를 죽이지 않는다.** 큐 항목과 tmux 세션만 정리한다. 세션이
-사라져도 claude는 고아로 살아남아 같은 worktree에 계속 쓰므로, 그대로 재 dispatch하면
-**한 worktree에 에이전트 2개**가 붙는다 (실제 발생 — 둘이 같은 DB에 pytest를 돌려 서로를 깨뜨린다).
+⚠️ **`orch rm`은 claude 프로세스를 죽이지 않는다.** tmux 세션은 죽이지만(2026-09-02 수정 전에는
+그것도 안 했다 — 큐 파일만 지웠다) 그 안의 claude는 고아로 살아남아 같은 worktree에 계속 쓰므로,
+그대로 재 dispatch하면 **한 worktree에 에이전트 2개**가 붙는다 (실제 발생 — 둘이 같은 DB에
+pytest를 돌려 서로를 깨뜨린다).
+
+**세션이 남으면 재 dispatch가 조용히 `-1` 세션을 만든다.** `spawn_session`은 이름이 이미 있으면
+`claude-orch-<id>-1`, `-2`로 비켜 간다(`lib/spawn.sh:70-73`) — 기존 세션 입력줄에 새 프롬프트를
+밀어넣지 않으려는 방어라 이 동작 자체는 옳다. 다만 결과가 **같은 worktree에 산 세션 둘, 둘 다
+`@orch_task=<id>` 태그, 큐가 가리키는 것은 하나뿐**이라 picker에서 한쪽이 끊긴 것처럼 보인다.
+2026-09-02 DEV-8600에서 실제로 발생했다 — 구현 세션을 `orch rm` 하고 같은 워크트리에 리뷰를
+dispatch한 자리다. 고아 쪽 입력줄에는 실행되지 않은 프롬프트가 타이핑된 채 남아 있었다.
+
+```bash
+tmux ls | grep claude-orch-<id>          # 접미사 붙은 것이 같이 나오면 고아가 있다
+tmux show-option -qv -t <sess> @orch_task
+```
 **1순위는 워크트리가 더러운지다. 프로세스 검사가 아니다.**
 
 ```bash
@@ -416,9 +429,26 @@ dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의
 ORCH_TASK_ID="<ID>-review" orch add <워크트리 절대경로> "<아래 quote-safe 한 줄>"
 ```
 
-`ORCH_TASK_ID`가 없으면 id 충돌 경로로 빠져 `<ID>-1`이 되고, 그 라벨은 이게 구현인지 리뷰인지
-말해주지 않는다. 큐 파일·tmux 세션(`claude-orch-<ID>-review`)·picker 라벨이 전부 id를 미러하므로
-이 하나로 체인 전체가 맞는다.
+`ORCH_TASK_ID`가 없으면 id 충돌 경로로 빠져 tmux 세션이 `claude-orch-<ID>-1`이 되고, 그 이름은
+이게 구현인지 리뷰인지 말해주지 않는다. 큐 파일·tmux 세션(`claude-orch-<ID>-review`)·picker
+라벨이 전부 id를 미러하므로 이 하나로 체인 전체가 맞는다.
+
+**게다가 큐 행이 하나로 합쳐진다.** `orch add`는 워크트리 basename에서 id를 파생하므로 같은
+워크트리에 두 번 add하면 **같은 task json을 리뷰가 덮어쓴다** — `orch ls`에 행이 하나뿐이라
+구현 세션의 `done`과 리뷰 세션의 `done`을 구분할 수 없다. 이건 세션 이름 문제가 아니라
+**완료 신호를 못 읽게 되는 문제**다.
+
+⚠️ **2026-09-02 DEV-8600에서 이 지시를 안 지켰고 세 가지가 한꺼번에 났다.** 기록해 둔다 —
+문서는 옳았고 운용이 틀렸다:
+
+| 증상 | 원인 |
+| --- | --- |
+| merge 후에도 orch 세션이 남고 `-1`이 쌓인다 | `orch rm`이 큐 파일만 지웠다. 2026-09-02 수정 |
+| spawn에 세션 2개, 하나만 orch에 연결됨 | 고아 + 새 `-1`. 큐는 `-1`만 가리킨다 |
+| **리뷰 세션이 webserver 목록에서 안 보인다** | `spawn_session`이 세션명만 `-1`로 비키고 `@claude_title`·`--name`은 원래 id를 박았다 → picker와 웹 그래프에 **같은 이름 노드가 둘**. 2026-09-02 수정(라벨도 세션명을 따라간다) |
+
+`orch rm`으로 정리하고 같은 id로 다시 add하지 말 것. **리뷰는 처음부터 다른 id로 띄운다** —
+그러면 rm 자체가 필요 없다.
 
 **리뷰 한 줄 — Phase B와 같은 quote-safe 규칙** (따옴표·아포스트로피·`; & | $ ( ) < >`·개행 금지,
 completion-promise는 공백 없는 단일 토큰). 상세는 전부 지시 파일에 있다:
