@@ -44,7 +44,7 @@ TICKET="${TICKET:-TICKET-UNSET}"
 WATCH_DAYS="${WATCH_DAYS:-3}"
 
 # 배포 감지 방식: eb | ecs
-#   eb  — Elastic Beanstalk VersionLabel 변화  (pf-server-django)
+#   eb  — Elastic Beanstalk VersionLabel 변화  ($PLAB_REPO_SERVER)
 #   ecs — ECS 서비스의 task definition revision 변화 (social-backend-fastapi 등)
 DEPLOY_DETECT="${DEPLOY_DETECT:-eb}"
 EB_APP="${EB_APP:-prod}"
