@@ -31,7 +31,7 @@ description: Use when you want to watch production for issues after a specific P
 |---|---|---|---|
 | PR 번호 또는 티켓 ID | Yes | - | 둘 중 하나. 티켓이면 PR을 역추적한다 |
 | `--days` | No | 3 | 감시 기간 |
-| `--repo` | No | `pf-server-django` | 대상 레포 |
+| `--repo` | No | `$PLAB_REPO_SERVER` | 대상 레포 |
 | `--channel` | No | `default` (#워즈테스트) | `jobs.yaml`의 `slack_targets` 이름 |
 
 ## 참조 파일

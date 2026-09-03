@@ -87,6 +87,33 @@ Task 아래로 파일별로 더 쪼개면 impl만 있고 test 없는 커밋, 또
 다른 자리라 충돌이 아니다. `dev-workflow` 스킬의 PR 제목 `[DEV-XXXX] type: 설명`에서
 `type`은 **위 표의 접두사**를 쓴다.
 
+## 브랜치 자르는 지점 — base와 다르다
+
+**작업 브랜치를 자르는 지점과 PR base는 별개다.** 둘이 다른 것이 정상이고, 어느 쪽도
+상대에서 유추하지 않는다.
+
+| 축 | 정하는 것 |
+| --- | --- |
+| **자르는 지점** | 그 repo의 **기본 브랜치**(`main` 또는 `develop`). 아래 표 |
+| **PR base** | 그 repo CLAUDE.md 관례. 열려 있는 배포 회차 브랜치가 있으면 그쪽일 수 있다 |
+
+기본 브랜치는 repo마다 갈린다 — `~/plab/CLAUDE.md` 의 Repo Map 표에 repo별로 적혀 있다.
+**추측하지 말고 확인한다:**
+
+```bash
+git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD   # origin/main | origin/develop
+```
+
+### 임시 브랜치에서 자르지 않는다
+
+배포 회차 브랜치(`release/YYMMDD-NN`)처럼 **머지 후 삭제되는 컷에서 브랜치를 뻗지 않는다.**
+없어질 브랜치에 히스토리가 매달린다. PR base 로만 쓴다.
+
+기본 브랜치가 회차 브랜치보다 앞서 있으면 PR diff 에 다른 PR 커밋이 딸려 보인다
+(2026-09-03 `$PLAB_REPO_SERVER` 에서 4커밋 드리프트 발생). **그건 감수하고 base 쪽에서
+정리한다 — drift 를 보고 브랜치를 회차에서 다시 자르지 말 것.** 그날 그렇게 잘못
+결론냈고 사용자가 바로잡았다.
+
 ## Git Branch 전환 규칙
 
 - `git checkout -- <file>` (파일 복원)은 항상 허용

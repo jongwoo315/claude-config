@@ -48,7 +48,7 @@ DEV-7711 실측 (2026-08-12, Datadog 24h):
 
 ## 배포 경계 — `merged_at`은 배포 시각이 아니다
 
-`pf-server-django` 체인:
+`$PLAB_REPO_SERVER` 체인:
 
 ```
 feature PR → release/YYMMDD-NN 브랜치 → test EB 환경
@@ -63,7 +63,7 @@ Build 완료 14:29 → Manual 대기. 머지 시각을 T0로 잡으면 배포 �
 
 | 레포 | 감지 방식 | 설정 |
 |---|---|---|
-| `pf-server-django` | `DEPLOY_DETECT=eb` | `EB_APP=prod` `EB_ENV=Prod-env-1` |
+| `$PLAB_REPO_SERVER` | `DEPLOY_DETECT=eb` | `EB_APP=prod` `EB_ENV=Prod-env-1` |
 | `social-backend-fastapi` | `DEPLOY_DETECT=ecs` | `ECS_CLUSTER=social-prod-cluster` `ECS_SERVICE=social-backend-prod-service` |
 
 ---
@@ -73,9 +73,9 @@ Build 완료 14:29 → Manual 대기. 머지 시각을 T0로 잡으면 배포 �
 ### 앱 로그 (CloudWatch Logs Insights)
 
 ```
-pf-server-django prod:
+$PLAB_REPO_SERVER prod:
   /aws/elasticbeanstalk/Prod-env-1/var/log/eb-docker/containers/eb-current-app/stdouterr.log
-pf-server-django test:
+$PLAB_REPO_SERVER test:
   /aws/elasticbeanstalk/App-Test-env/var/log/eb-docker/containers/eb-current-app/stdouterr.log
 ```
 
@@ -95,7 +95,7 @@ org는 `$PLAB_GH_ORG` (~/.zshenv). 자격증명은 `$SENTRY_AUTH_TOKEN`.
 
 | 프로젝트 | 대상 |
 |---|---|
-| `django` | pf-server-django 본체 |
+| `django` | $PLAB_REPO_SERVER 본체 |
 | `plab-cron` | 스케줄러 / 배치 |
 | `social-backend-fastapi` | BE 2.0 |
 | `new-plab-front`, `plab-fe`, `plab-front` | FE (API 계약 파손이 여기 뜬다) |
@@ -109,7 +109,7 @@ org는 `$PLAB_GH_ORG` (~/.zshenv). 자격증명은 `$SENTRY_AUTH_TOKEN`.
 `firstSeen:-Nm` 으로 좁히면 베이스라인이 **하루 약 1건**으로 떨어진다
 (14일간 8건, 2026-08-12 기준 최근 24h 0건).
 
-### APM (Datadog — pf-server-django 전용)
+### APM (Datadog — $PLAB_REPO_SERVER 전용)
 
 `trace.django.request{,.hits,.errors}` by `resource_name`. 보존 15일.
 
