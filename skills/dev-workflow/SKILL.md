@@ -99,7 +99,7 @@ From the kickoff input, auto-detect URLs — no "source?" question:
 ### A2. Ticket + branch (default fields, no ask)
 - **Existing ticket (from A1):** reuse key. Create branch, skip ticket creation.
 - **No ticket, work mode:** invoke `setup-work` headless with default fields:
-  Issue Type `Dev`, Parent `DEV-3637`, Labels `Backend`, Priority `Medium (3)`,
+  Issue Type `Dev`, Parent **분기 운영 에픽(아래 조회)**, Labels `Backend`, Priority `Medium (3)`,
   Story Points `3`, Assignee @me, Start today.
   *(Parent + Labels are placeholders — user refines post-merge.)*
 - **No ticket, personal mode:** invoke `personal-setup-work` headless: title from parse/brainstorm,
@@ -733,7 +733,7 @@ git worktree prune
 ### Jira (`~/plab`, `~/work`)
 
 **이 파이프라인 안:** 질문 없이 **기본값으로 생성**, PR 머지 후 정리.
-기본값 — Issue Type `Dev`, Parent `DEV-3637`, Labels `Backend`, Priority `Medium (3)`,
+기본값 — Issue Type `Dev`, Parent **분기 운영 에픽(아래 조회)**, Labels `Backend`, Priority `Medium (3)`,
 Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 정리.)*
 
 **파이프라인 밖에서 단독 티켓 생성 시:** 아래 5개를 **AskUserQuestion으로 확인**.
@@ -741,8 +741,8 @@ Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 정리.)*
 | 필드         | 선택지                                                                                        |
 | ------------ | --------------------------------------------------------------------------------------------- |
 | Issue Type   | Dev / Task / Story / Bug / Incident / Epic                                                    |
-| Parent       | DEV-3637 / Epic 또는 "없음"                                                                   |
-| Labels       | `Backend` / `Frontend` / `개발요청` / `26_2Q` (multiSelect, 최대 4개 선택지 제한) — 상황에 맞게 조합 |
+| Parent       | 분기 운영 에픽(아래 조회) / 다른 Epic 또는 "없음"                                              |
+| Labels       | `Backend` / `Frontend` / `개발요청` / **분기 라벨(아래 계산)** (multiSelect, 최대 4개 선택지 제한) — 상황에 맞게 조합 |
 | Priority     | Critical / High / Medium / Low / Lowest                                                       |
 | Story Points | 1 / 2 / 3 / 5 / 8 / 13                                                                       |
 
@@ -752,6 +752,27 @@ Story Points `3`. *(Parent + Labels는 placeholder — 상황 따라 정리.)*
 | ---------- | --------------------------------------------- | -------------------- |
 | Assignee   | `712020:a7dec654-3a3b-432d-a825-9a38531ddc78` | `assignee.accountId` |
 | Start Date | 오늘 날짜                                     | `customfield_10015`  |
+
+**분기 라벨도 하드코딩하지 않는다.** Parent 와 같은 이유이고, 이쪽은 조회도 필요 없다 —
+날짜로 계산된다:
+
+```bash
+QLABEL=$(date '+%y')_$(( ($(date +%-m) - 1) / 3 + 1 ))Q    # 2026-09-04 -> 26_3Q
+```
+
+**Parent 기본값은 하드코딩하지 않는다 — 매 분기 바뀐다.** 운영 유지보수 에픽은
+`[26 2Q]` → `[26 3Q]` 처럼 분기마다 새로 열리고 이전 것은 `Done` 이 된다. 값을 박아 두면
+새 분기가 시작된 뒤로 계속 닫힌 에픽에 티켓이 붙는다 (2026-09-04 실제로 그랬다 —
+`DEV-3637`(2Q, Done)에 3Q 티켓 둘이 달렸고 jw 가 지적했다). 착수 시점에 조회한다:
+
+```bash
+JQL='project = DEV AND issuetype = Epic AND statusCategory != Done AND summary ~ "서비스 운영 유지보수" ORDER BY created DESC'
+curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" -G \
+  --data-urlencode "jql=$JQL" --data-urlencode "fields=summary" --data-urlencode "maxResults=5" \
+  "https://$PLAB_JIRA_HOST/rest/api/3/search/jql" | jq -r '.issues[] | "\(.key) \(.fields.summary)"'
+```
+
+0건이면 새 분기 에픽이 아직 없는 것이다. 지어내지 말고 Parent 없이 만든 뒤 그 사실을 보고한다.
 
 **Story Points는 두 필드 모두 설정:** `customfield_10016` + `customfield_10031`
 
