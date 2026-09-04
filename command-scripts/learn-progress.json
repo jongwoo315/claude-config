@@ -1805,6 +1805,36 @@
         "date": "2026-09-01",
         "track": "rag",
         "topic": "vector-store"
+      },
+      {
+        "date": "2026-09-01",
+        "track": "prompt",
+        "topic": "few-shot"
+      },
+      {
+        "date": "2026-09-02",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
+      },
+      {
+        "date": "2026-09-02",
+        "track": "prompt",
+        "topic": "prompt-injection"
+      },
+      {
+        "date": "2026-09-03",
+        "track": "rag",
+        "topic": "reranking"
+      },
+      {
+        "date": "2026-09-03",
+        "track": "prompt",
+        "topic": "zero-shot-cot"
+      },
+      {
+        "date": "2026-09-04",
+        "track": "fastapi",
+        "topic": "fastapi-lifespan"
       }
     ]
   },
@@ -1812,11 +1842,11 @@
     "current_streak": 0,
     "longest_streak": 4,
     "today": {
-      "date": "2026-09-01",
+      "date": "2026-09-04",
       "type": "explain",
-      "topic": "vector-store",
-      "track": "rag",
-      "description": "vector store — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
+      "topic": "fastapi-lifespan",
+      "track": "fastapi",
+      "description": "fastapi lifespan — 왜 필요한지, 핵심 문제, trade-off 위주로 설명",
       "xp": 30,
       "completed": false,
       "source": "daily_quest"
