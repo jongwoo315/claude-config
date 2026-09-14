@@ -95,7 +95,20 @@ Task 아래로 파일별로 더 쪼개면 impl만 있고 test 없는 커밋, 또
 | 축 | 정하는 것 |
 | --- | --- |
 | **자르는 지점** | 그 repo의 **기본 브랜치**(`main` 또는 `develop`). 아래 표 |
-| **PR base** | 그 repo CLAUDE.md 관례. 열려 있는 배포 회차 브랜치가 있으면 그쪽일 수 있다 |
+| **PR base** | 그 repo CLAUDE.md 관례. 열려 있는 배포 회차 브랜치가 있으면 그쪽일 수 있다. **`$PLAB_REPO_SERVER` 는 예외 — 아래** |
+
+### `$PLAB_REPO_SERVER` PR base 는 무조건 `main`
+
+회차 브랜치(`release/YYMMDD-NN`)는 10:00 · 14:30 · 17:00 배포에 맞춰 jw 가 새로 만들고,
+**PR base 를 그쪽으로 옮기는 것도 jw 가 손으로 한다.** 그러니 PR 을 만드는 쪽은 회차를
+고르지 않는다 — 열려 있는 회차 브랜치가 있어도 base 는 `main` 이다.
+
+그 repo `CLAUDE.md` 는 「열려 있는 회차 브랜치가 있으면 그쪽」이라고 적혀 있다. **이 규칙이
+우선한다.** plan 의 Done criteria 에 base 를 쓸 때도 `main` 으로 고정해 적는다.
+
+2026-09-14 DEV-9175 에서 plan 에 회차 브랜치를 base 로 적었고, 무인 루프가 diff 를 맞추려고
+그 회차 브랜치를 작업 브랜치에 **merge 해 넣었다**(`aac557a0e`). 그 회차는 몇 시간 뒤 main 에
+머지돼 base 가 끝난 브랜치를 가리키게 됐다 — 회차 브랜치가 지워지면 PR 이 자동으로 닫힌다.
 
 기본 브랜치는 repo마다 갈린다 — `~/plab/CLAUDE.md` 의 Repo Map 표에 repo별로 적혀 있다.
 **추측하지 말고 확인한다:**
@@ -108,6 +121,10 @@ git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD   # origin/main | or
 
 배포 회차 브랜치(`release/YYMMDD-NN`)처럼 **머지 후 삭제되는 컷에서 브랜치를 뻗지 않는다.**
 없어질 브랜치에 히스토리가 매달린다. PR base 로만 쓴다.
+
+**작업 브랜치에 회차 브랜치를 merge·rebase 해 넣지도 않는다.** 자르는 것과 같은 문제가
+merge 로 들어온다. 무인 루프 plan 에는 「base 브랜치를 작업 브랜치에 merge·rebase 하지 말 것」을
+명시한다 — 안 적으면 루프가 PR diff 를 맞추려고 스스로 한다(DEV-9175 실측).
 
 기본 브랜치가 회차 브랜치보다 앞서 있으면 PR diff 에 다른 PR 커밋이 딸려 보인다
 (2026-09-03 `$PLAB_REPO_SERVER` 에서 4커밋 드리프트 발생). **그건 감수하고 base 쪽에서
