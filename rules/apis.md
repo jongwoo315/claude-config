@@ -127,6 +127,24 @@ jira_move() {   # $1=이슈 키, $2=목표 상태명
 `transition 없음`이 뜨면 현재 상태에서 목표로 가는 길이 없는 것이다. 하드 실패시키지 말고
 그 사실만 보고할 것 — 워크플로는 프로젝트마다 다르고 바뀐다.
 
+### 이슈 생성 — assignee를 항상 넣는다
+
+**`POST /rest/api/3/issue`에 `assignee`를 빼면 담당자 없이 만들어진다.** DEV 프로젝트는
+기본 담당자가 없다. `setup-work` 스킬은 assignee를 넣지만, 스킬 없이 curl로 직접 만든
+티켓은 빠졌다(DEV-9062, 2026-09-04 생성 — ISMS 에픽 하위 4건 중 하나).
+
+```bash
+ME=$(curl -s -u "$PLAB_WORK_EMAIL:$JIRA_API_TOKEN" "https://$PLAB_JIRA_HOST/rest/api/3/myself" | jq -r .accountId)
+# payload fields에:  "assignee": {"accountId": "<$ME>"}
+```
+
+사용자가 다른 담당자를 지정하지 않았으면 `myself`로 넣는다. 만든 뒤 응답 키로
+`GET .../issue/<key>?fields=assignee`를 한 번 찍어 비어 있지 않은지 본다.
+
+**`PUT /issue/{key}`로 필드를 고칠 때 `assignee`를 payload에 넣지 않는다** — `null`로 보내면
+담당자가 지워진다. 2026-09-07 18:21에 DEV-7770·7772·8819 세 건의 담당자가 같은 시각
+`워즈 → null`로 바뀌었다. API 토큰도 워즈 계정이라 changelog로는 사람이 한 것인지 구분이 안 된다.
+
 ### 본문 작성 포맷 (ADF)
 
 description·댓글 모두 ADF(Atlassian Document Format)다. 위 §Notion 페이지 작성
