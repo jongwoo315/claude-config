@@ -146,7 +146,7 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   ```
 - **repo 신뢰 확인 — 그 repo에서 워크트리를 처음 띄우는 날에만 걸린다.** Claude는 신뢰하지
   않은 폴더에서 「이 폴더를 신뢰하나」 화면을 띄우고 **기본 선택이 `No, exit`**이다. orch가
-  보낸 시드의 첫 Enter가 그걸 눌러 claude가 즉시 종료되고, 남은 키는 셸로 떨어진다.
+  보낸 시드의 첫 Enter가 그걸 눌러 claude가 즉시 종료되고, 남은 키는 shell로 떨어진다.
   ```bash
   REPO_ROOT=$(git rev-parse --show-toplevel)
   python3 -c "import json,os,sys

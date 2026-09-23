@@ -8,7 +8,7 @@
 ```bash
 # 기본 쿼리 형식
 # 작은따옴표는 변수가 확장되지 않으므로 큰따옴표를 쓰되, BigQuery 테이블 참조의
-# 백틱은 반드시 \`로 이스케이프한다 — 안 하면 셸이 명령치환으로 해석해 쿼리가 깨진다.
+# 백틱은 반드시 \`로 이스케이프한다 — 안 하면 shell이 명령치환으로 해석해 쿼리가 깨진다.
 bq query --use_legacy_sql=false --format=json \
   "SELECT * FROM \`$PLAB_BQ_PROJECT.plab.TABLE_NAME\` LIMIT 10"
 
@@ -52,8 +52,8 @@ bq ls "$PLAB_BQ_PROJECT":plab
 `performance_schema`가 필요한 작업(쿼리 다이제스트·full scan 분석)은 별도 권한 부여
 없이는 불가능하다. 실패 시 그 단계만 건너뛰고 진행할 것 — 하드 실패시키지 말 것.
 
-`~/.zshenv`는 비대화형 셸에도 자동 적용되므로 `source` 없이 바로 쓸 수 있다.
-비어 있으면 셸을 새로 띄우거나 `source ~/.zshenv`.
+`~/.zshenv`는 비대화형 shell에도 자동 적용되므로 `source` 없이 바로 쓸 수 있다.
+비어 있으면 shell을 새로 띄우거나 `source ~/.zshenv`.
 
 ```bash
 # MySQL (plab replica, read-only)

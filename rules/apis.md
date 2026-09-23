@@ -42,7 +42,7 @@
                  "color": "gray_background" } }
 ```
 
-**셸에서 JSON을 직접 조립하지 말 것.** 한글 프로퍼티명과 긴 본문이 섞여 따옴표
+**shell에서 JSON을 직접 조립하지 말 것.** 한글 프로퍼티명과 긴 본문이 섞여 따옴표
 사고가 난다. python으로 payload 파일을 만든 뒤 `--data-binary @file`로 보낸다.
 
 #### 기존 블록 고치기 — `PATCH /v1/blocks/{block_id}`
@@ -85,7 +85,7 @@ PATCH /v1/blocks/{page_id}/children
 ## Jira API
 
 - Email: `$PLAB_WORK_EMAIL` / Server: `$PLAB_JIRA_HOST` — 둘 다 `~/.zshenv`.
-  `~/.zshenv`는 비대화형 셸에도 자동 적용돼 `source` 없이 값이 보인다.
+  `~/.zshenv`는 비대화형 shell에도 자동 적용돼 `source` 없이 값이 보인다.
   (구 규칙 "`$JIRA_EMAIL` env var 금지, 하드코딩할 것"은 폐기 — 당시엔 그 변수가
   zshenv에 정의돼 있지 않아 빈 값이었던 것이지 전달 자체가 문제가 아니었다.)
   비었으면 하드코딩하지 말고 `printenv PLAB_WORK_EMAIL`로 먼저 확인할 것.
@@ -179,7 +179,7 @@ description·댓글 모두 ADF(Atlassian Document Format)다. 위 §Notion 페�
 색은 다크모드 기준으로 골랐다. 회색 계열은 다크모드에서 **본문보다 어둡게**
 보여 헤딩이 뒤로 물러난다 — 그걸 알고 고른 값이다.
 
-**payload를 셸에서 조립하지 말 것.** 한글과 중첩 JSON이 섞인다. python으로
+**payload를 shell에서 조립하지 말 것.** 한글과 중첩 JSON이 섞인다. python으로
 파일을 만든 뒤 `--data-binary @file`로 보낸다.
 
 ## Grafana (Amazon Managed Grafana)
@@ -256,7 +256,7 @@ pyenv가 초기화되지 않기 때문 — 예약 실행에서만 시스템 pyth
 PyYAML은 시스템 python에 들어 있어 `bin/jobs`는 우연히 돌지만, boto3 같은 건 없다.
 
 **스케줄 스크립트는 인터프리터를 절대경로로 고정할 것.** shim(`~/.pyenv/shims/python3`)도
-쓰지 말 것 — `pyenv global`을 따라가므로 대화형 셸에서 버전을 한 번 바꾸면 무인 잡이
+쓰지 말 것 — `pyenv global`을 따라가므로 대화형 shell에서 버전을 한 번 바꾸면 무인 잡이
 죽는다 (2026-08-07 global 3.9.10 → 3.13.2 전환에 실제로 깨졌다). 전용 virtualenv를 쓴다.
 
 ## AWS Credentials

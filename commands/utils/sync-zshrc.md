@@ -17,7 +17,7 @@ Run `/sync-zshrc` to create encrypted zips and upload to Notion.
 **Claude는 zip 비밀번호를 받지 않는다.** AskUserQuestion으로 받아 `-P "<password>"`로
 명령줄에 넣는 방식은 쓰지 않는다. 이유:
 
-- 비밀번호가 대화 기록·셸 히스토리·프로세스 목록(`ps`)에 평문으로 남는다
+- 비밀번호가 대화 기록·shell 히스토리·프로세스 목록(`ps`)에 평문으로 남는다
 - `~/.zshenv`에는 프로덕션 DB 비밀번호와 API 토큰 20여 개가 들어 있다.
   zip 비밀번호는 그 전부를 감싸는 마지막 방어선이라 노출되면 암호화 자체가 무의미해진다
 - Claude는 평문 비밀번호를 다루지 않는다. 사용자가 허용해도 동일하다

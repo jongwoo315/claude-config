@@ -233,7 +233,7 @@ JSON
 `children`을 함께 보내면 페이지 생성과 본문 작성이 한 번에 끝난다. 블록이 1000개를 넘으면
 먼저 페이지만 만들고 나머지는 `PATCH /v1/blocks/{page_id}/children`으로 이어 붙인다.
 
-한글 프로퍼티명과 긴 본문이 섞이므로 셸에서 직접 JSON을 조립하지 말 것. python으로
+한글 프로퍼티명과 긴 본문이 섞이므로 shell에서 직접 JSON을 조립하지 말 것. python으로
 payload 파일을 만든 뒤 `--data-binary @file`로 보내는 편이 따옴표 사고가 없다.
 
 **블록 구조:**
