@@ -59,6 +59,10 @@ PR 리뷰 두 지점뿐이다.
 **`~/prv`에서 plan이 오히려 더 중요해진다.** 통과 기준·이번에 안 하는 것·실패 징후가 plan에
 없으면 ralph는 "동작하는 코드"만 만들고 끝난다. Kickoff 게이트에서 이 3줄을 반드시 확인할 것.
 
+**plan보다 먼저 jw의 한 줄을 받는다 (A0).** 두 모드 공통이다. 다른 것은 저장 위치뿐이다 —
+`~/prv`는 plan과 `docs/decisions.md`를 커밋하고, 회사 repo는 plan을 커밋하지 않는다
+(`rules/github.md` §회사 repo에 커밋하지 않는 것).
+
 ⚠️ **worktree를 모드에 맞는 주차장에 만들 것.** `~/prv` 프로젝트를 `~/plab/.wt/`에 두면
 디렉터리 기반 계정 규칙이 `kimwoz`로 해석돼 개인 레포 접근이 404로 실패한다 (실제 발생함).
 
@@ -79,10 +83,29 @@ itself.
 
 ---
 
-## Phase A — Kickoff Prep (all automatic, no AskUserQuestion)
+## Phase A — Kickoff Prep (A0 한 줄 외에는 전부 자동, no AskUserQuestion)
 
 Runs in the main session. Everything lands in the worktree. No loop running yet, so the main
 session is not hijacked.
+
+### A0. jw 기준 한 줄 — 모든 것보다 먼저 (plain message, NOT AskUserQuestion)
+
+요청이 들어오면 **brainstorm·plan보다 먼저** 이것 하나만 묻고 기다린다:
+
+```
+시작 전에 한 줄 — 뭘 성공으로 볼지, 또는 어디서 깨질 것 같은지.
+```
+
+- 요청 문장 안에 이미 성공 기준이 있으면 그걸 인용해 「이걸로 갈까?」로 확인만 한다.
+- 답을 **원문 그대로** 보관한다. 다듬지 않는다. A4가 plan 맨 위에 옮긴다.
+- 잴 수 없는 문장이면 여기서 한 번 되묻는다. 후보 문장을 대신 내밀지 않는다.
+- 「모르겠다」면 구현이 아니라 **선택지 2~3개**를 낸다. jw가 고르고 이유를 붙인 것이 한 줄이 되고,
+  `(선택지에서 고름)` 표시가 붙는다.
+- 기준 문서는 `rules/portfolio-judgment.md` §착수 전 한 줄. 갈리면 rules를 따른다.
+
+**왜 이게 Phase A 첫 줄인가.** 예전에는 plan을 다 쓴 뒤 GATE 1에서 「어디가 깨질까」를 물었다.
+그 시점에는 plan의 실패 징후가 이미 답을 적어 두고 있어서 9번 중 9번 `skip`이었다. Claude가
+먼저 쓰면 jw는 승인만 하게 된다 — 이 한 줄은 그 순서를 뒤집는 자리다.
 
 ### A1. Context detect
 From the kickoff input, auto-detect URLs — no "source?" question:
@@ -179,7 +202,13 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   전체 규칙은 이 파일 아래 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
   this file, **all execution detail must live in the plan**: TDD task breakdown, a **Pre-PR checks**
   section (embed the canonical block from Phase B verbatim), a **Done criteria** section, and the
-  PR-creation step (personal mode: include the "update Notion PR property" step). Plan header
+  PR-creation step (personal mode: include the "update Notion PR property" step).
+  **plan 본문 첫 절은 `## jw 기준`** — A0 답 원문. 그 바로 아래 `## 통과 기준`이 온다.
+  `## 실패 징후` 첫 항목은 jw 기준을 재는 것이고 임계값 세 구간을 붙인다.
+  Done criteria에 모드별 한 줄을 넣는다 — 루프는 rules가 아니라 plan을 따른다:
+  - `~/prv`: 「PR 본문 맨 위에 `## 착수 전 기준 (jw)` 절 — plan의 `## jw 기준` 원문 + 그 기준으로 잰 결과」
+  - `~/plab`·`~/work`: 「`docs/plans/`는 커밋하지 않는다. 파일을 지정해 add한다」
+  Plan header
   directive MUST be:
   ```markdown
   > **For Claude:** This plan is executed via /ralph-loop:ralph-loop in a detached orch session.
@@ -204,31 +233,16 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
 
 ## GATE 1 — Kickoff Approval (the one synchronous gate)
 
-This gate has **two beats**: prediction first, then approval. Prediction must come before the
-plan's verification detail is discussed — see `rules/portfolio-judgment.md` §착수 전 예측.
+A0에서 받은 jw 기준이 plan 맨 위에 있고, 실패 징후 첫 항목이 그걸 재는지 확인한다. 없으면
+보여 주기 전에 고친다. 예전의 Beat 1(착수 전 예측 3개)은 2026-09-30에 걷어냈다 — A0가 그 자리다.
 
-### Beat 1 — 착수 전 예측 (plain message, NOT AskUserQuestion)
-
-Emit the plan's step list and nothing else — no 통과 기준, no 실패 징후, no risk commentary.
-Those are the answer.
-
-```
-<ID> <제목>
-plan 단계
-  1 <단계 요약>
-  2 ...
-
-착수 전 예측 — 이 plan대로 짜면 어디가 깨질 것 같나? 3개. (건너뛰려면 `skip`)
-```
-
-Record the reply verbatim. Do **not** suggest candidates, rank them, or react to them — the
-whole value of the metric is that the choosing is jw's. `skip` is a valid answer.
-
-### Beat 2 — Approval
+### Approval
 
 **AskUserQuestion:**
 ```
 Tier: [X] — [one-line rationale]
+jw 기준: <A0 원문>
+  → 잴 방법: <실패 징후 첫 항목 — 임계값 세 구간>
 Plan: docs/plans/<ID>-MMDD-plan-<topic>.md
   - Task 1: ...
   - Task 2: ...
@@ -239,7 +253,9 @@ Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
 > - adjust — plan/tier 수정 후 다시 확인
 > - cancel — worktree 정리 후 중단
 
-- **go** → append the Beat 1 answer to the plan file, commit it, create ticket
+- **go** → commit the plan (`~/prv`: 같은 커밋에 `docs/decisions.md` 행 추가 — 기준 칸만 채운다.
+  서식은 `rules/portfolio-judgment.md` §레포에 남기는 판단 기록. 회사 repo: 커밋하지 않고
+  `docs/plans/`를 `.git/info/exclude`에 넣는다), create ticket
   (A2 deferred creation if not yet made), **티켓을 작업 중 상태로 옮긴다**, proceed to Phase B.
 
   **상태 전이가 A2가 아니라 여기인 이유** — A2에서는 티켓이 아직 없을 수 있고(생성이 `go`로
@@ -258,17 +274,8 @@ Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
   이미 `In Dev`면 아무것도 안 한다. 전이 경로가 없으면 그 사실만 보고하고 진행한다
   (하드 실패 금지 — 워크플로는 프로젝트마다 다르다).
 
-  ```markdown
-  ## 착수 전 예측
-
-  - 1. <키워드 + 한 줄>
-  - 2. ...
-  - 3. ...
-  ```
-
-  `skip`이면 `## 착수 전 예측\n\nskip` 한 줄. **빈 절로 두지 말 것.**
-  Commit it before dispatch — the git timestamp is what makes the number un-fakeable, and the
-  headless loop must not be the one writing this section.
+  `~/prv`에서는 plan 커밋을 dispatch 전에 한다 — 커밋 시각이 「jw 기준이 구현보다 먼저」라는
+  증거이고, 헤드리스 루프가 이 절을 쓰면 안 된다.
 - **adjust** → edit plan or tier, re-present this gate.
 - **cancel** → `git worktree remove --force <worktree>`, stop.
 
@@ -469,7 +476,7 @@ Critical/Important는 **지적 하나당 커밋 하나**로 고쳐 push되고, �
 파일에만 두던 것을 바꾼 이유 둘. **(1) 흔적이 PR에 없으면 없는 것과 같다** — PR 페이지만 보면
 리뷰가 돌았는지 알 수 없고, 실제로 그래서 못 찾은 적이 있다 (2026-08-31 PR #9). **(2) 게시를
 GATE 2a로 미루면 흔적이 사람 일정에 묶인다** — jw가 앉기까지 며칠이 걸리고(#9·#10은 6일),
-그동안 PR은 비어 있다. `rules/portfolio-judgment.md`가 착수 전 예측을 PR 게이트에서 Kickoff으로
+그동안 PR은 비어 있다. `rules/portfolio-judgment.md`가 jw의 판단을 PR 게이트에서 착수 전으로
 옮긴 것과 같은 시점 문제다.
 
 `ops:github-pr-review`의 확인 절차(§5)는 여기 안 걸린다. 그 스킬은 **남의 PR**을 리뷰하는
@@ -500,7 +507,7 @@ G2b를 기다리면 jw가 자리에 없는 동안 로그가 통째로 빠진다 
 
 ### G2a. 진입 직후 — 판단 로그와 티켓 정리 (동기, 몇 분)
 
-**diff를 읽고 나서 쓰는 게 아니다.** 판단 4칸이 전부 아래 블록만 보고 채워진다 — 기준은
+**diff를 읽고 나서 쓰는 게 아니다.** 판정 칸은 아래 블록만 보고 채워진다 — 기준은
 plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판단을 내리는 곳이 아니라 대조하는
 곳이다. G2b의 diff 리뷰는 프로덕션 직전 두 번째 안전망이지 이 판정의 입력이 아니다.
 
@@ -531,7 +538,10 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
 
   파이프라인 문맥에서 추가로 지킬 것:
   - **Order: 판단 로그가 G2a의 첫 산출물이다.** 리뷰 파일 읽기만 앞선다 — 그건 사본이 아니라
-    입력이라서다 (`리뷰 처리` 줄과 `놓친 것` 칸이 거기서 나온다). 티켓 정리는 뒤, G2b는 그 다음.
+    입력이라서다 (`리뷰 처리` 줄이 거기서 나온다). 티켓 정리는 뒤, G2b는 그 다음.
+  - **`~/prv`면 jw 답을 받은 그 자리에서 레포에도 남긴다.** 워크트리가 아직 있으니 PR 브랜치에
+    `docs/decisions.md` 행(결과·판정·이유)과 README `## 판단 기록` 절을 고쳐 커밋·push한다.
+    판정이 코드와 같이 머지된다. 회사 repo는 하지 않는다.
   - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
     dev-workflow entry, list PRs created since the last logged row and offer a batch fill.
     **`--author @me` 쓰지 말 것** — `@me`는 `gh`의 *현재 활성 계정*으로 풀리는데 이 맥에는
