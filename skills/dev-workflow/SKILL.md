@@ -524,7 +524,7 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
   produced no log at all. Never in the orch ralph session, which is headless and already
   finished.
 
-  Dedup on the PR number, not on how you got here: if `~/.claude/judgment-log.md` (`~/prv`) or `~/.claude/judgment-log-work.md` (`~/plab`·`~/work`) already has a
+  Dedup on the PR number, not on how you got here: if the ledger — the repo's `docs/decisions.md` (`~/prv`) or `~/.claude/judgment-log-work.md` (`~/plab`·`~/work`) — already has a filled
   row for that PR, skip. That is what makes a state trigger safe to re-enter.
 
   main is outside the worktree, so gather the
@@ -539,9 +539,9 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
   파이프라인 문맥에서 추가로 지킬 것:
   - **Order: 판단 로그가 G2a의 첫 산출물이다.** 리뷰 파일 읽기만 앞선다 — 그건 사본이 아니라
     입력이라서다 (`리뷰 처리` 줄이 거기서 나온다). 티켓 정리는 뒤, G2b는 그 다음.
-  - **`~/prv`면 jw 답을 받은 그 자리에서 레포에도 남긴다.** 워크트리가 아직 있으니 PR 브랜치에
-    `docs/decisions.md` 행(결과·판정·이유)과 README `## 판단 기록` 절을 고쳐 커밋·push한다.
-    판정이 코드와 같이 머지된다. 회사 repo는 하지 않는다.
+  - **`~/prv`의 장부는 레포 `docs/decisions.md`다.** jw 답을 받은 그 자리에서 워크트리의 PR
+    브랜치에 그 행(결과·판정·이유)과 README `## 판단 기록` 절을 고쳐 커밋·push한다. 판정이 코드와
+    같이 머지된다. `~/.claude/judgment-log.md`에는 쓰지 않는다.
   - **Catch-up** — if main was gone when orch finished, that row is missing. On the next
     dev-workflow entry, list PRs created since the last logged row and offer a batch fill.
     **`--author @me` 쓰지 말 것** — `@me`는 `gh`의 *현재 활성 계정*으로 풀리는데 이 맥에는
@@ -656,7 +656,7 @@ tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이�
 
 ### D3. 워크트리
 
-**지우기 전에 `~/.claude/judgment-log.md`(회사 repo면 `judgment-log-work.md`)에 그 PR 행이 있나 본다.** 없으면 지우지 말고 그
+**지우기 전에 장부(`~/prv`: 레포 `docs/decisions.md` / 회사: `judgment-log-work.md`)에 그 PR 판정이 있나 본다.** 없으면 지우지 말고 그
 사실만 보고한다 — 워크트리가 `git diff --stat`로 모으던 사실 줄의 유일한 출처다. 채우는
 것은 GATE 2 G2a의 catch-up이 하지 **이 자리가 아니다**: 머지된 PR은 rules의 상태 트리거를
 만족하지 않고(`PR이 열려 있고`), 무엇보다 `반려`가 죽어 남는 행동이 통과 누르기뿐이 된다.

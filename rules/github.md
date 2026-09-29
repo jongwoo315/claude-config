@@ -148,7 +148,7 @@ merge 로 들어온다. 무인 루프 plan 에는 「base 브랜치를 작업 �
 | --- | --- | --- |
 | `docs/plans/*` (input·design·plan·ticket-info·work-info·review) | 커밋한다 | **커밋하지 않는다** — untracked로 둔다 |
 | `docs/decisions.md`, README 판단 기록 절 | 만든다 | **만들지 않는다** |
-| 판단 로그 행 | `~/.claude/judgment-log.md` | `~/.claude/judgment-log-work.md` |
+| PR 판정 장부 | 각 레포 `docs/decisions.md` | `~/.claude/judgment-log-work.md` |
 
 **Why:** 이 문서들은 jw 개인의 작업 방식과 이직 포트폴리오용 기록이다. 회사 repo에 들어가면
 회사 코드 이력에 개인 목적 문서가 섞인다.
