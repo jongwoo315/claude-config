@@ -102,7 +102,12 @@ spawn_session() {
   # 기본값을 opus 로 되돌리는 순간 orch 세션까지 조용히 같이 올라간다 (89·92 가
   # sonnet 으로 돈 것도 전역값을 물려받은 결과지 의도한 지정이 아니었다).
   # plan 이 얇거나 탐색이 섞인 티켓은 ORCH_MODEL=opus orch add ... 로 올린다.
-  flags="$flags --model ${ORCH_MODEL:-sonnet}"
+  #
+  # effort 도 같은 이유로 여기서 못 박는다. settings.json 의 전역 effortLevel 은
+  # 모델별 값(modelSettings.<model>)이 없는 새 모델에는 적용되지 않는다 — 2.1.284 에서
+  # `sonnet` 별칭이 Sonnet 5.5 로 바뀌자 전역 high 를 무시하고 모델 기본값 medium 으로
+  # 돌았다 (DEV-9894-slack-format). 별칭이 다음 모델로 넘어가도 effort 는 유지된다.
+  flags="$flags --model ${ORCH_MODEL:-sonnet} --effort ${ORCH_EFFORT:-high}"
   if [ "$ORCH_CLAUDE_CMD" = "claude" ]; then
     # real claude: launch, wait for its TUI to be READY, then send + submit.
     $ORCH_TMUX send-keys -t "$sess" "$ORCH_CLAUDE_CMD $flags" C-m
