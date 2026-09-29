@@ -138,3 +138,35 @@ merge 로 들어온다. 무인 루프 plan 에는 「base 브랜치를 작업 �
   - 선택지: "현재 repo에서 checkout" / "worktree 생성 (`superpowers:using-git-worktrees`)" / "취소"
   - 이유: 다른 Claude 세션이 같은 repo에서 작업 중일 수 있으며, checkout은 모든 세션에 영향을 줌
 - 새 브랜치 생성만 필요한 경우: `git branch <name>` (checkout 없이) — 확인 불필요
+
+## 회사 repo에 커밋하지 않는 것 — 계획·판단 문서
+
+**계획·판단 문서는 `~/prv` 하위 repo에만 커밋한다.** `~/plab/*`·`~/work/*`(worktree 주차장
+`~/plab/.wt/*` 포함)에서는 파일로 두되 커밋하지 않는다. 2026-09-30 jw 지시.
+
+| 문서 | `~/prv` | `~/plab`·`~/work` |
+| --- | --- | --- |
+| `docs/plans/*` (input·design·plan·ticket-info·work-info·review) | 커밋한다 | **커밋하지 않는다** — untracked로 둔다 |
+| `docs/decisions.md`, README 판단 기록 절 | 만든다 | **만들지 않는다** |
+| 판단 로그 행 | `~/.claude/judgment-log.md` | `~/.claude/judgment-log-work.md` |
+
+**Why:** 이 문서들은 jw 개인의 작업 방식과 이직 포트폴리오용 기록이다. 회사 repo에 들어가면
+회사 코드 이력에 개인 목적 문서가 섞인다.
+
+**How to apply (회사 repo):**
+
+- 처음 들어간 repo에서 `docs/plans/`를 `.git/info/exclude`에 넣는다. 이 파일은 커밋되지 않고,
+  worktree가 공유하는 공통 git 디렉터리에 있어 모든 worktree에 같이 걸린다.
+  ```bash
+  ex="$(git rev-parse --git-common-dir)/info/exclude"
+  grep -qx 'docs/plans/' "$ex" || echo 'docs/plans/' >> "$ex"
+  ```
+- 무인 루프 plan의 Done criteria에 **「`docs/plans/`는 커밋하지 않는다」**를 적는다. 안 적으면
+  루프가 plan을 커밋에 넣는다 — 루프는 이 rules가 아니라 plan을 따른다.
+- `git add -A`·`git add .` 대신 파일을 지정해 add한다.
+- repo가 이미 `docs/plans/`를 추적하고 있어도 새 파일은 넣지 않는다. 이미 커밋된 파일을 지우는
+  것은 이 규칙 범위 밖이다 — 따로 정한다.
+
+**`~/.claude`는 PUBLIC repo다.** `judgment-log.md`는 추적 대상이고(`.gitignore` 화이트리스트),
+`judgment-log-work.md`는 화이트리스트 밖이라 추적되지 않는다. 회사 PR·회사 관련 문제 발견을
+`judgment-log.md`에 적지 않는다.

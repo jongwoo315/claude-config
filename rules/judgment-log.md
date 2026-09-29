@@ -7,6 +7,17 @@
 개발 파이프라인 자체는 `dev-workflow` 스킬에 있다. 이 파일은 **판단을 기록하는 두 지표**만
 담는다 — 판단 로그(PR 게이트), 문제 발견(상시).
 
+**로그 파일은 둘이다.** `~/.claude`가 PUBLIC repo라서다(`rules/github.md` §회사 repo에 커밋하지
+않는 것).
+
+| 작업 위치 | 파일 | git |
+| --- | --- | --- |
+| `~/prv` | `~/.claude/judgment-log.md` | 추적된다 (public) |
+| `~/plab`·`~/work`, 회사 관련 문제 발견 | `~/.claude/judgment-log-work.md` | 추적 안 된다 |
+
+아래에서 `~/.claude/judgment-log.md`라고 쓴 곳은 작업 위치에 맞는 쪽으로 읽는다. 중복 확인도
+그 파일에서 한다. 회사 PR 행을 public 파일에 적으면 되돌리기 어렵다 — 푸시되는 순간 공개된다.
+
 ## 완료 신호 — 판단 로그 트리거의 전제
 
 **완료 판정 = `orch ls`가 `done` + 워크트리 `git status --porcelain`이 빈 것.**

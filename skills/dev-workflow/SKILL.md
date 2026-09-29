@@ -302,7 +302,7 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 > 1. New env vars: `git diff main...HEAD` added lines matching `os\.environ\.get|os\.getenv|process\.env\.` — log any found.
 > 2. Server boots — detached-safe, NO interactive Ctrl+C (no TTY in orch). Background + timeout + curl the port + kill. Never bare `runserver` (hangs the loop till ORCH_STUCK_SECS). Django → `source <venv>/bin/activate && cd web && (timeout 20 python manage.py runserver 127.0.0.1:8000 --noreload &) ; sleep 8; curl -sf http://127.0.0.1:8000/ -o /dev/null && echo BOOT_OK ; pkill -f runserver`; CDK → `cdk synth` (no server); Zappa/Lambda Django → same background+timeout with `PYENV_VERSION=<env> --settings=<app>.settings.local`; CLI/library → smoke-run the entrypoint (it must self-terminate); else project-specific.
 > 3. Full test suite green (show pass/fail). If no runner: state `no tests — skipped`, do not silently pass.
-> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (설계 문서를 추적하는 repo면 `docs/plans/`도 포함 — repo 관행을 따를 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property). **PR을 만들면 이 루프는 끝난다** — 여기서 `pr-review-toolkit:review-pr`을 돌리지 말 것. 그 리뷰는 Phase C의 별도 세션이 맡는다. 여기서 돌리면 (a) 자기가 쓴 코드를 같은 컨텍스트가 리뷰하고 (b) PR 생성 후에도 커밋이 계속 얹혀 `orch ls`의 `done`이 완료를 뜻하지 않게 된다 (실측: PR 후 8분 이상 지속).
+> Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (`~/prv` repo면 `docs/plans/`도 포함. `~/plab`·`~/work` repo는 `docs/plans/`를 커밋하지 않는다 — `rules/github.md` §회사 repo에 커밋하지 않는 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property). **PR을 만들면 이 루프는 끝난다** — 여기서 `pr-review-toolkit:review-pr`을 돌리지 말 것. 그 리뷰는 Phase C의 별도 세션이 맡는다. 여기서 돌리면 (a) 자기가 쓴 코드를 같은 컨텍스트가 리뷰하고 (b) PR 생성 후에도 커밋이 계속 얹혀 `orch ls`의 `done`이 완료를 뜻하지 않게 된다 (실측: PR 후 8분 이상 지속).
 >
 > 내장 `/code-review`를 여기 쓰지 말 것. 품질은 더 낫지만(다각도 finder + 후보별 독립 검증 CONFIRMED/PLAUSIBLE/REFUTED + failure_scenario 강제) **사람이 직접 치는 커맨드라 available-skills에 없다** — 헤드리스 세션에서 확인함. ralph가 호출하면 없는 스킬을 찾다 끝난다.
 >
@@ -517,7 +517,7 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
   produced no log at all. Never in the orch ralph session, which is headless and already
   finished.
 
-  Dedup on the PR number, not on how you got here: if `~/.claude/judgment-log.md` already has a
+  Dedup on the PR number, not on how you got here: if `~/.claude/judgment-log.md` (`~/prv`) or `~/.claude/judgment-log-work.md` (`~/plab`·`~/work`) already has a
   row for that PR, skip. That is what makes a state trigger safe to re-enter.
 
   main is outside the worktree, so gather the
@@ -646,7 +646,7 @@ tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이�
 
 ### D3. 워크트리
 
-**지우기 전에 `~/.claude/judgment-log.md`에 그 PR 행이 있나 본다.** 없으면 지우지 말고 그
+**지우기 전에 `~/.claude/judgment-log.md`(회사 repo면 `judgment-log-work.md`)에 그 PR 행이 있나 본다.** 없으면 지우지 말고 그
 사실만 보고한다 — 워크트리가 `git diff --stat`로 모으던 사실 줄의 유일한 출처다. 채우는
 것은 GATE 2 G2a의 catch-up이 하지 **이 자리가 아니다**: 머지된 PR은 rules의 상태 트리거를
 만족하지 않고(`PR이 열려 있고`), 무엇보다 `반려`가 죽어 남는 행동이 통과 누르기뿐이 된다.
