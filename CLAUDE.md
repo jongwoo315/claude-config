@@ -4,7 +4,7 @@
 
 - 개발 작업(기능·버그·리팩터링) 시작 → **`dev-workflow` 스킬**. 파이프라인·게이트·orch 운용·
   티켓 프로퍼티·`docs/plans` 파일 규칙이 전부 거기 있다.
-- **판단 기록은 `rules/judgment-log.md`** — 판단 로그(PR 게이트)와 문제 발견(상시). 스킬을
+- **판단 기록은 `rules/before-work.md`(착수 전) · `rules/after-pr.md`(PR 후) · `rules/problem-found.md`(상시)**. 스킬을
   호출하지 않아도 발동하므로 rules에 둔다.
 
 **Pre-PR 필수 체크 (skip 불가):** 환경변수 점검(`.env.example` 대비 diff) · 로컬 서버 기동 ·

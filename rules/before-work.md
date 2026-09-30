@@ -1,4 +1,4 @@
-# Portfolio Judgment Over Typing
+# 착수 전 — 판단 기준 (Portfolio Judgment Over Typing)
 
 **적용 범위:** 포트폴리오 성격의 개인 레포 (`~/prv/*` 중 직접 만드는 것 —
 `cheongyak-rag`, `upgrade-impact-rag` 등).

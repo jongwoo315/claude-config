@@ -53,7 +53,7 @@ fi
 
 **실행 모드는 양쪽 동일 — orch detached ralph-loop, 예외 없음.** `~/prv`가 학습·포트폴리오
 목적이라고 해서 대화형으로 내려오지 않는다. 과정 경험이 아니라 **검증 기준을 정하는 능력**이
-산출물이기 때문이다 (`rules/portfolio-judgment.md`). 사람의 개입은 Kickoff(plan 승인)와
+산출물이기 때문이다 (`rules/before-work.md`). 사람의 개입은 Kickoff(plan 승인)와
 PR 리뷰 두 지점뿐이다.
 
 **`~/prv`에서 plan이 오히려 더 중요해진다.** 통과 기준·이번에 안 하는 것·실패 징후가 plan에
@@ -101,7 +101,7 @@ session is not hijacked.
 - 잴 수 없는 문장이면 여기서 한 번 되묻는다. 후보 문장을 대신 내밀지 않는다.
 - 「모르겠다」면 구현이 아니라 **선택지 2~3개**를 낸다. jw가 고르고 이유를 붙인 것이 한 줄이 되고,
   `(선택지에서 고름)` 표시가 붙는다.
-- 기준 문서는 `rules/portfolio-judgment.md` §착수 전 한 줄. 갈리면 rules를 따른다.
+- 기준 문서는 `rules/before-work.md` §착수 전 한 줄. 갈리면 rules를 따른다.
 
 **왜 이게 Phase A 첫 줄인가.** 예전에는 plan을 다 쓴 뒤 GATE 1에서 「어디가 깨질까」를 물었다.
 그 시점에는 plan의 실패 징후가 이미 답을 적어 두고 있어서 9번 중 9번 `skip`이었다. Claude가
@@ -254,7 +254,7 @@ Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
 > - cancel — worktree 정리 후 중단
 
 - **go** → commit the plan (`~/prv`: 같은 커밋에 `docs/decisions.md` 행 추가 — 기준 칸만 채운다.
-  서식은 `rules/portfolio-judgment.md` §레포에 남기는 판단 기록. 회사 repo: 커밋하지 않고
+  서식은 `rules/before-work.md` §레포에 남기는 판단 기록. 회사 repo: 커밋하지 않고
   `docs/plans/`를 `.git/info/exclude`에 넣는다), create ticket
   (A2 deferred creation if not yet made), **티켓을 작업 중 상태로 옮긴다**, proceed to Phase B.
 
@@ -359,7 +359,7 @@ find <worktree> -newermt '-5 minutes' -not -path '*/.git/*' | head
 ```
 
 **더러우면 프로세스가 안 보여도 진행하지 않는다.** 완료 조건은
-`rules/judgment-log.md`의 `## 완료 신호`가 정의한 것이고, 루프는 `orch ls`가 `done`이 된
+`rules/after-pr.md`의 `## 완료 신호`가 정의한 것이고, 루프는 `orch ls`가 `done`이 된
 뒤에도 계속 커밋한다.
 
 ```bash
@@ -428,7 +428,7 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
 ⚠️ **PR이 떴다고 루프가 끝난 게 아니다.** 루프는 PR 생성 후에도 자기 코드 리뷰를 돌려
 지적사항을 추가 커밋으로 얹는다 (실측: PR 생성 후 8분 이상 계속 작업). 더러운 트리에
 dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의 **고아 프로세스 확인**을 그대로
-거칠 것. 전체 판정 기준은 `rules/judgment-log.md`의 `## 완료 신호`.
+거칠 것. 전체 판정 기준은 `rules/after-pr.md`의 `## 완료 신호`.
 
 ### C2. Dispatch
 
@@ -476,7 +476,7 @@ Critical/Important는 **지적 하나당 커밋 하나**로 고쳐 push되고, �
 파일에만 두던 것을 바꾼 이유 둘. **(1) 흔적이 PR에 없으면 없는 것과 같다** — PR 페이지만 보면
 리뷰가 돌았는지 알 수 없고, 실제로 그래서 못 찾은 적이 있다 (2026-08-31 PR #9). **(2) 게시를
 GATE 2a로 미루면 흔적이 사람 일정에 묶인다** — jw가 앉기까지 며칠이 걸리고(#9·#10은 6일),
-그동안 PR은 비어 있다. `rules/portfolio-judgment.md`가 jw의 판단을 PR 게이트에서 착수 전으로
+그동안 PR은 비어 있다. `rules/before-work.md`가 jw의 판단을 PR 게이트에서 착수 전으로
 옮긴 것과 같은 시점 문제다.
 
 `ops:github-pr-review`의 확인 절차(§5)는 여기 안 걸린다. 그 스킬은 **남의 PR**을 리뷰하는
@@ -515,7 +515,7 @@ plan에 착수 전에 이미 문장으로 적혀 있고, 이 자리는 새 판�
   `push-back`으로 넘겼는지가 여기 있다. **`push-back`·`won't-fix` 행이 사람이 볼 첫 자리다** —
   무인 세션이 "안 고치기로 한 것"이 유일하게 검토가 필요한 결정이다.
 - **판단 로그 — plan의 통과 기준과 대조하고, 판정은 jw가 쓴다. 사실은 네가, 판단은 jw가.**
-  **정본은 `rules/judgment-log.md`의 `## 판단 로그` 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
+  **정본은 `rules/after-pr.md`의 `## 판단 로그` 절** — 트리거·블록 형식·규칙이 전부 거기 있고,
   이 스킬을 호출하지 않아도 발동한다. 둘이 갈리면 rules를 따른다.
   **Fires on the STATE, not the notification** — whenever you have just established that a
   ticket's loop is `done` and its PR exists, in the main / dispatcher session. The orch

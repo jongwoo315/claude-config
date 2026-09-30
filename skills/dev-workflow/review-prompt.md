@@ -80,7 +80,7 @@ Weigh findings by the plan first, then by correctness, then by everything else.
 
 `plan 대조` 표에서 **기계적으로 확인되는 것만 `예`로 적는다.** 테스트 통과·파일 존재·컬럼 추가는
 가능하고, "precision이 baseline보다 낫다" 같은 것은 값만 적고 판정하지 않는다 — 그 판정은
-사람 몫이다 (`rules/judgment-log.md`).
+사람 몫이다 (`rules/after-pr.md`).
 
 ## 4. 리뷰처리 (fix)
 
