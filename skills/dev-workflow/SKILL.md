@@ -333,11 +333,11 @@ orch stop && ORCH_STUCK_SECS=7200 orch start --max 3
 ```bash
 jq -r '.session' ~/.claude/orch/queue/task-<id>.json   # id와 정확히 일치해야 함
 ```
-**복구:** `orch rm <id>` → **고아 프로세스 확인(아래)** → `orch stop` → `orch start` → 재 dispatch.
+**복구:** `orch rm <id>` → **`orphan` 프로세스 확인(아래)** → `orch stop` → `orch start` → 재 dispatch.
 (디스크의 `lib/spawn.sh`가 이미 고쳐져 있어도 실행 중 daemon은 옛 코드를 쓴다 — 실제 발생함.)
 
 ⚠️ **`orch rm`은 claude 프로세스를 죽이지 않는다.** tmux 세션은 죽이지만(2026-09-02 수정 전에는
-그것도 안 했다 — 큐 파일만 지웠다) 그 안의 claude는 고아로 살아남아 같은 worktree에 계속 쓰므로,
+그것도 안 했다 — 큐 파일만 지웠다) 그 안의 claude는 `orphan`으로 살아남아 같은 worktree에 계속 쓰므로,
 그대로 재 dispatch하면 **한 worktree에 에이전트 2개**가 붙는다 (실제 발생 — 둘이 같은 DB에
 pytest를 돌려 서로를 깨뜨린다).
 
@@ -346,10 +346,10 @@ pytest를 돌려 서로를 깨뜨린다).
 밀어넣지 않으려는 방어라 이 동작 자체는 옳다. 다만 결과가 **같은 worktree에 산 세션 둘, 둘 다
 `@orch_task=<id>` 태그, 큐가 가리키는 것은 하나뿐**이라 picker에서 한쪽이 끊긴 것처럼 보인다.
 2026-09-02 DEV-8600에서 실제로 발생했다 — 구현 세션을 `orch rm` 하고 같은 워크트리에 리뷰를
-dispatch한 자리다. 고아 쪽 입력줄에는 실행되지 않은 프롬프트가 타이핑된 채 남아 있었다.
+dispatch한 자리다. `orphan` 쪽 입력줄에는 실행되지 않은 프롬프트가 타이핑된 채 남아 있었다.
 
 ```bash
-tmux ls | grep claude-orch-<id>          # 접미사 붙은 것이 같이 나오면 고아가 있다
+tmux ls | grep claude-orch-<id>          # 접미사 붙은 것이 같이 나오면 `orphan`이 있다
 tmux show-option -qv -t <sess> @orch_task
 ```
 **1순위는 워크트리가 더러운지다. 프로세스 검사가 아니다.**
@@ -428,8 +428,24 @@ git -C <worktree> log --oneline main..HEAD       # 커밋 수가 더 늘지 않�
 
 ⚠️ **PR이 떴다고 루프가 끝난 게 아니다.** 루프는 PR 생성 후에도 자기 코드 리뷰를 돌려
 지적사항을 추가 커밋으로 얹는다 (실측: PR 생성 후 8분 이상 계속 작업). 더러운 트리에
-dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의 **고아 프로세스 확인**을 그대로
+dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의 **`orphan` 프로세스 확인**을 그대로
 거칠 것. 전체 판정 기준은 `rules/after-pr.md`의 `## 완료 신호`.
+
+**세 줄이 통과하면 묻지 않고 바로 C2로 간다.** 이 단계는 사람 게이트가 아니다.
+구현 세션은 `done`이어도 tmux 세션과 claude 프로세스가 살아 있는데, **그대로 둔다 — 끄지 않는다.**
+루프가 끝나 입력이 없으면 아무것도 하지 않고, 리뷰는 다른 id(`<ID>-review`)라 세션이 겹치지 않는다.
+구현·리뷰 세션은 Phase D에서 함께 정리한다(의도한 동작).
+
+**구현 세션의 입력줄은 판정 근거가 아니다.** 2026-10-06에 main이 `capture-pane`으로 구현 세션을
+보다가 입력줄의 `❯ 리뷰 시작해줘`를 사람이 쳐 둔 글자로 읽고 멈춰서 물었다. 그건 Claude Code가
+턴이 끝난 뒤 흐리게 띄우는 **다음 프롬프트 제안**이었다. `capture-pane -p`는 글자 속성을 버려서
+제안과 실제 입력이 똑같이 보인다. 구분이 필요하면 `-e`로 읽는다 — 제안은 `ESC[2m`(흐림)으로 감싸여
+있고 실제로 친 글자에는 없다.
+
+```bash
+tmux capture-pane -ept claude-orch-<ID> | grep -a '❯' | tail -1 | sed 's/\x1b/<ESC>/g'
+# <ESC>[39m❯ <ESC>[2m리뷰 시작해줘<ESC>[0m   ← 제안. 무시하고 진행
+```
 
 ### C2. Dispatch
 
@@ -452,7 +468,7 @@ ORCH_TASK_ID="<ID>-review" orch add <워크트리 절대경로> "<아래 quote-s
 | 증상 | 원인 |
 | --- | --- |
 | merge 후에도 orch 세션이 남고 `-1`이 쌓인다 | `orch rm`이 큐 파일만 지웠다. 2026-09-02 수정 |
-| spawn에 세션 2개, 하나만 orch에 연결됨 | 고아 + 새 `-1`. 큐는 `-1`만 가리킨다 |
+| spawn에 세션 2개, 하나만 orch에 연결됨 | `orphan` + 새 `-1`. 큐는 `-1`만 가리킨다 |
 | **리뷰 세션이 webserver 목록에서 안 보인다** | `spawn_session`이 세션명만 `-1`로 비키고 `@claude_title`·`--name`은 원래 id를 박았다 → picker와 웹 그래프에 **같은 이름 노드가 둘**. 2026-09-02 수정(라벨도 세션명을 따라간다) |
 
 `orch rm`으로 정리하고 같은 id로 다시 add하지 말 것. **리뷰는 처음부터 다른 id로 띄운다** —
