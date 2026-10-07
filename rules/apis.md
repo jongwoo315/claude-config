@@ -124,6 +124,10 @@ jira_move() {   # $1=이슈 키, $2=목표 상태명
 **DEV 프로젝트 상태 (2026-08-28 실측):** `To Do` · `In Dev` · `Ready to Deploy` · `Done` ·
 `Stashed`. **`In Progress`는 없다** — 작업 중 상태의 이름은 `In Dev`다.
 
+**예외 — 이슈 유형에 따라 워크플로가 다르다.** 2026-10-07 ISMS 에픽 하위 티켓(DEV-8412 등)은
+`In Dev`로 가는 길이 없고 `In Progress`(id 91)가 작업 중 상태였다. 위 상태 목록을 외우지 말고
+`jira_move`가 `transition 없음`을 내면 그 이슈의 transitions를 조회해 이름을 확인한다.
+
 `transition 없음`이 뜨면 현재 상태에서 목표로 가는 길이 없는 것이다. 하드 실패시키지 말고
 그 사실만 보고할 것 — 워크플로는 프로젝트마다 다르고 바뀐다.
 
