@@ -14,9 +14,17 @@ PY=$(command -v python3 || echo /usr/bin/python3)
 
 [ -f "$LINT" ] || exit 0
 
-INPUT=$(cat)
-FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
-TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty')
+# 직접 실행: `korean-style-lint.sh <파일>` 이면 그 파일 전체를 본다. stdin 은 안 읽는다.
+# Bash 로 고친 뒤 다시 확인하려고 손으로 부르는 경우가 실제로 있다(2026-10-07 리뷰 세션).
+# 그때 stdin 을 읽으면 아무도 JSON 을 안 넘겨서 `cat` 이 영영 안 끝나고, 그 shell 이
+# 세션을 bg 상태로 묶어 orch 가 done 을 못 낸다.
+if [ $# -gt 0 ]; then
+  INPUT=''; FILE_PATH="$1"; TOOL=Write
+else
+  INPUT=$(cat)
+  FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
+  TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty')
+fi
 
 [ -n "$FILE_PATH" ] || exit 0
 
