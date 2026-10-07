@@ -219,6 +219,8 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   > keep working. Do NOT use superpowers:executing-plans or subagent-driven-development.
   > Emit `<promise>RALPH_DONE</promise>` ONLY when every Done-criteria item and every Pre-PR check
   > is genuinely true AND the PR has been created — never to escape the loop.
+  > Before emitting it, stop every background shell you started (TaskStop tool). A shell left
+  > running keeps the session in `bg` state, and orch never marks the step done.
   > On a HARD, retry-proof API error (OpenAI insufficient_quota, 401/403, exhausted billing), STOP —
   > do NOT emit RALPH_DONE, do NOT create a PR, do NOT spin retrying. It surfaces via the orch
   > completion notification; a human fixes billing. (Transient TPM 429 is different — pace and retry.)
@@ -435,6 +437,21 @@ dispatch하면 한 워크트리에 에이전트 2개가 붙는다 — Phase B의
 구현 세션은 `done`이어도 tmux 세션과 claude 프로세스가 살아 있는데, **그대로 둔다 — 끄지 않는다.**
 루프가 끝나 입력이 없으면 아무것도 하지 않고, 리뷰는 다른 id(`<ID>-review`)라 세션이 겹치지 않는다.
 구현·리뷰 세션은 Phase D에서 함께 정리한다(의도한 동작).
+
+**`orch ls`가 계속 `running`인데 화면에는 promise가 찍혀 있으면 남은 shell을 본다.** 화면 아래에
+「N shell still running」이 있으면 그 shell이 세션을 `bg`(working)로 묶고 있다 — orch는 idle만
+done으로 센다. 판단 로직을 고치지 않는다: `bg`는 백그라운드 테스트·서브에이전트를 기다리는 세션을 <!-- style-exempt -->
+끝났다고 오판하지 않으려고 둔 상태다. 그 shell이 무엇인지 보고, **작업과 무관하게 멈춘 것이면 죽인다**
+— idle이 되고 orch가 알아서 done으로 넘긴다. 테스트처럼 작업의 일부면 기다린다. <!-- style-exempt -->
+
+```bash
+pp=$(tmux display -pt claude-orch-<ID>-review '#{pane_pid}')
+pgrep -lP "$(pgrep -P "$pp" claude)"          # claude 의 자식 — MCP 서버를 빼고 남는 zsh -c … 가 그 shell
+```
+
+2026-10-07 실측: 리뷰 세션이 Bash로 리뷰 파일을 고친 뒤 확인하려고 `korean-style-lint.sh <파일>`을
+손으로 불렀고, 훅이 stdin JSON을 기다리느라 `cat`이 끝나지 않았다. promise 뒤 30분 넘게 `running`. <!-- style-exempt -->
+훅은 고쳤다(인자를 주면 stdin을 안 읽는다).
 
 **구현 세션의 입력줄은 판정 근거가 아니다.** 2026-10-06에 main이 `capture-pane`으로 구현 세션을
 보다가 입력줄의 `❯ 리뷰 시작해줘`를 사람이 쳐 둔 글자로 읽고 멈춰서 물었다. 그건 Claude Code가

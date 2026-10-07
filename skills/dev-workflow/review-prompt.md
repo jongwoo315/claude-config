@@ -9,6 +9,8 @@
 >
 > Emit `<promise>REVIEW_DONE</promise>` ONLY when the review file exists with every finding
 > dispositioned AND every `fix` commit is pushed. Never to escape the loop.
+> Before emitting it, stop every background shell you started (TaskStop tool). A shell left
+> running keeps the session in `bg` state, and orch never marks the step done.
 >
 > On a HARD, retry-proof API error (401/403, `insufficient_quota`, exhausted billing), STOP —
 > do not emit the promise, do not spin. A TRANSIENT error that stops being transient counts as
