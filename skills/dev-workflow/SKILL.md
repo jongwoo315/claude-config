@@ -397,16 +397,49 @@ tmux ls 2>/dev/null | grep claude-orch-
   not a menu. If it stalls despite the guard, the plan directive is missing the no-AskUserQuestion
   line — fix the plan, not the running session.
 - Substitute the real absolute worktree path (no generic prompt).
+- **Arm the wait — 아래 §자동 진행.** `orch add` 직후 `orch wait <id>`를 백그라운드로 건다.
 - **Main session is now free.** Announce:
-  > "orch에 위임했습니다 (worktree `<path>`). `orch ls`로 진행 확인. 구현이 끝나 PR이 뜨면
-  > 무인 리뷰 세션(`<ID>-review`)을 이어서 띄웁니다 — 그게 끝난 뒤에 보시면 됩니다.
-  > 다른 작업을 바로 시작하셔도 됩니다."
+  > "orch에 위임했습니다 (worktree `<path>`). 구현이 끝나면 이 세션이 알아서 깨어나 무인 리뷰
+  > 세션(`<ID>-review`)을 띄우고, 리뷰가 끝나면 판단 로그를 띄웁니다. 다른 작업을 바로
+  > 시작하셔도 됩니다."
 - Do NOT talk to the orch session. Its only output is the worktree commit + PR.
 - **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
   welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
   submitted one). If `orch logs <id>` shows an empty `❯` with the ralph line never sent, resend once
   via `tmux send-keys -t <sess> -- "<ralph line>"; tmux send-keys -t <sess> C-m` — a dispatch action,
   not ticket work.
+
+### 자동 진행 — `orch wait`
+
+**`orch add`를 한 직후 그 태스크의 `orch wait`를 Bash `run_in_background`로 건다.** 구현 세션도
+리뷰 세션도 똑같다. orch daemon은 완료를 부모 세션에 알리지 않는다(실패만 tmux 상태줄에 띄운다).
+그래서 이게 없으면 jw가 `orch ls`를 쳐야만 다음 단계로 간다.
+
+```bash
+orch wait <id>      # Bash run_in_background: true
+```
+
+기다리는 일은 shell이 한다(1분 간격). Claude Code는 백그라운드 명령이 끝나면 이 세션을 깨우므로 <!-- style-exempt -->
+기다리는 동안 턴을 쓰지 않고, 끝났을 때 한 번만 깨어난다. `/loop`·`ScheduleWakeup`으로 n분마다 <!-- style-exempt -->
+깨우지 않는다 — 몇 시간짜리 구현이면 그 사이 수십 턴을 헛쓴다.
+
+`orch wait`는 C1 세 줄을 대신한다: `done`이 되고, 워크트리가 깨끗하고, HEAD가 한 간격 동안
+그대로여야 끝난다. 마지막 줄을 보고 다음을 한다:
+
+| 마지막 줄 | 뜻 | 다음 |
+| --- | --- | --- |
+| `DONE <id> <HEAD>` (구현) | C1 통과 | 묻지 않고 C2 — 리뷰 dispatch, 그 리뷰의 `orch wait`를 다시 건다 |
+| `DONE <id> <HEAD>` (`-review`) | 리뷰 끝 | G2a — 판단 로그 블록을 띄우고 멈춘다. 판정은 jw 몫이라 여기서 자동은 끝난다 |
+| `BG_STUCK <id> <분>` | 턴은 끝났는데 백그라운드 shell이 남아 `running`에 묶였다 | C1 「남은 shell을 본다」 — 멈춘 것이면 죽이고 `orch wait`를 다시 건다 |
+| `FAILED <id>` | daemon이 session died·stuck으로 판정 | jw에게 알린다. `orch logs <id>`의 마지막 화면을 같이 보여준다 |
+| `GONE <id>` | 태스크 파일이 없다 (`orch rm` 등) | jw에게 알린다 |
+
+깨어나는 신호는 task-notification이라 jw 입력이 아니다. 하지만 여기서 하는 일(C2 dispatch, G2a
+블록 띄우기)은 이 스킬이 원래 사람 확인 없이 하는 단계라 승인이 필요 없다.
+
+**부모 세션이 재시작되면 백그라운드 명령이 사라진다.** 그때는 이전처럼 jw가 `orch ls`를 치는 것이
+신호다 — 상태 트리거(C1, G2a)는 그대로 유효하다. 새 세션에서 `orch ls`에 `running`인 이 워크플로의
+태스크가 보이면 `orch wait`를 다시 건다.
 
 ---
 
@@ -522,7 +555,9 @@ PR이고 읽는 사람이 그 PR 주인이다. 그 스킬은 계속 남의 PR에
 없으면 미해결 상태로도 머지된다. `defer` 항목에 목적지(후속 티켓·이번 PR에서 처리·안 함)를
 주는 것은 GATE 2a에서 사람이 하는 일이다.
 
-리뷰 세션이 `done`이 되면 다시 C1의 세 줄로 멈춤을 확인하고 GATE 2로 넘어간다.
+리뷰를 dispatch한 직후 `orch wait <ID>-review`를 백그라운드로 건다(§자동 진행). `DONE`이 오면
+GATE 2로 넘어간다. 손으로 `orch ls`를 쳐서 리뷰 세션 `done`을 봤다면 C1 세 줄로 멈춤을 확인하고
+넘어간다.
 
 ---
 
