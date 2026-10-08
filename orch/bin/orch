@@ -15,6 +15,7 @@ orch clean                         remove all done tasks (+ kill any leftover se
 orch start [--max N]               start daemon (default 3)
 orch stop                          stop daemon
 orch logs <id>                     dump the session's pane
+orch wait <id>                     block until done+clean+stable (for run_in_background)
 Flags: --safe  (this task asks permission instead of skipping)
 EOF
 }
@@ -100,6 +101,46 @@ case "$cmd" in
     # pidfile must not survive a stop (that's what stacked the racing daemons).
     pkill -f "$ORCH_HOME/daemon.sh" 2>/dev/null
     rm -f "$ORCH_PIDFILE"; echo "daemon stopped" ;;
+  wait)
+    # 디스패처가 Bash run_in_background 로 건다. Claude Code 는 백그라운드 명령이 끝나면
+    # 그 세션을 깨우므로, 기다리는 동안 Claude 턴을 쓰지 않고 끝났을 때 한 번만 깨어난다.
+    #
+    # done 만으로 끝내지 않는다 — 루프는 done 뒤에도 커밋을 얹는다(rules/after-pr.md
+    # 「완료 신호」). 워크트리가 깨끗하고 HEAD 가 한 간격 동안 그대로여야 끝난다.
+    #
+    # 마지막 줄이 결과다:
+    #   DONE <id> <HEAD>      exit 0
+    #   FAILED <id>           exit 2   (session died / stuck — daemon 이 정한 것)
+    #   GONE <id>             exit 3   (task 파일 없음 — orch rm 등)
+    #   BG_STUCK <id> <분>     exit 4   (턴은 끝났는데 백그라운드 shell 이 남아 running 에
+    #                                   묶였다. SKILL.md C1 의 남은 shell 확인으로 간다)
+    [ -n "${1:-}" ] || { echo "usage: orch wait <id>" >&2; exit 1; }
+    id="$1"; f="$ORCH_QUEUE/task-$id.json"
+    iv="${ORCH_WAIT_INTERVAL:-60}"; bg_stale="${ORCH_WAIT_BG_STALE:-900}"
+    T="${ORCH_TMUX:-tmux}"; prev=''
+    while :; do
+      [ -e "$f" ] || { echo "GONE $id"; exit 3; }
+      st=$(jq -r .status "$f"); dir=$(jq -r .target "$f"); sess=$(jq -r '.session // empty' "$f")
+      case "$st" in
+        failed) echo "FAILED $id"; exit 2 ;;
+        running)
+          prev=''
+          if [ -n "$sess" ] && [ "$($T show -t "$sess" -qv @claude_bg 2>/dev/null)" = 1 ]; then
+            at=$($T show -t "$sess" -qv @claude_state_at 2>/dev/null)
+            age=$(( $(date +%s) - ${at:-$(date +%s)} ))
+            [ "$age" -ge "$bg_stale" ] && { echo "BG_STUCK $id $((age / 60))"; exit 4; }
+          fi ;;
+        done)
+          head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+          if [ -z "$(git -C "$dir" status --porcelain 2>/dev/null)" ] && [ -n "$head" ]; then
+            [ "$head" = "$prev" ] && { echo "DONE $id $head"; exit 0; }
+            prev="$head"
+          else
+            prev=''
+          fi ;;
+      esac
+      sleep "$iv"
+    done ;;
   logs)
     sess=$(task_get "$1" session)
     if [ -z "$sess" ] || [ "$sess" = "null" ]; then
