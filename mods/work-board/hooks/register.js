@@ -253,43 +253,45 @@ export function register(on) {
       } else if (flow.unsupported) {
         body = [line(flow.unsupported + ' 그림은 아직 못 그린다', { dimColor: true }), ...footer]
       } else {
-        // A flowchart down the pane: each node a box, the main arrow to the next box a connector
-        // under it. Any other arrow has no room to be drawn sideways, so it is a ⇢ line in the box.
-        const boxWidth = Math.min(e.props.bodyColumns, 48)
-        const center = ' '.repeat(Math.floor(boxWidth / 2))
+        // A flowchart left to right: each node a box, the main arrow to the next box a connector
+        // between them; boxes past the pane's width wrap to the next row. Any other arrow has no
+        // room of its own, so it is a ⇢ line in the box it leaves.
+        const boxWidth = Math.min(e.props.bodyColumns, 26)
         body = [
           line((flow.title ?? '흐름') + ' · ' + minutes + '분 전', { bold: true }),
           Text({ children: [' '] }),
-          ...flow.nodes.flatMap((n, i) => {
-            const following = flow.nodes[i + 1]
-            const connector = following && n.edges.find((edge) => edge.isMain && edge.toId === following.id)
-            const others = n.edges.filter((edge) => edge !== connector)
-            return [
-              Box({
-                key: 'node-' + n.id,
-                flexDirection: 'column',
-                width: boxWidth,
-                borderStyle: 'round',
-                borderColor: n.isRemoved ? 'red' : tagColor(n.tag),
-                borderDimColor: !n.isRemoved && !tagColor(n.tag),
-                paddingX: 1,
-                children: [
-                  Box({
-                    flexDirection: 'row',
-                    columnGap: 1,
-                    children: [
-                      Box({ flexGrow: 1, flexShrink: 1, children: [line(n.label, { bold: true, color: n.isRemoved ? 'red' : undefined })] }),
-                      ...(n.tag ? [line('[' + n.tag + ']', { color: tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
-                    ],
-                  }),
-                  ...(n.sublabel ? [line(n.sublabel, { dimColor: true })] : []),
-                  ...others.map((edge) => line('⇢ ' + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), { dimColor: !edge.isMain })),
-                ],
-              }),
-              ...(connector
-                ? [line(center + '│' + (connector.label ? ' ' + connector.label : ''), { dimColor: true }), line(center + '▼', { dimColor: true })]
-                : []),
-            ]
+          Box({
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            rowGap: 1,
+            width: e.props.bodyColumns,
+            children: flow.nodes.flatMap((n, i) => {
+              const following = flow.nodes[i + 1]
+              const connector = following && n.edges.find((edge) => edge.isMain && edge.toId === following.id)
+              const others = n.edges.filter((edge) => edge !== connector)
+              return [
+                Box({
+                  key: 'node-' + n.id,
+                  flexDirection: 'column',
+                  width: boxWidth,
+                  flexShrink: 0,
+                  borderStyle: 'round',
+                  borderColor: n.isRemoved ? 'red' : tagColor(n.tag),
+                  borderDimColor: !n.isRemoved && !tagColor(n.tag),
+                  paddingX: 1,
+                  children: [
+                    line(n.label, { bold: true, wrap: 'wrap', color: n.isRemoved ? 'red' : undefined }),
+                    ...(n.tag ? [line('[' + n.tag + ']', { color: tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
+                    ...(n.sublabel ? [line(n.sublabel, { dimColor: true })] : []),
+                    ...others.map((edge) => line('⇢ ' + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), { dimColor: !edge.isMain })),
+                  ],
+                }),
+                ...(connector
+                  ? [Text({ key: 'arrow-' + n.id, dimColor: true, children: [connector.label ? '─ ' + connector.label + ' ─▶' : '──▶'] })]
+                  : []),
+              ]
+            }),
           }),
           ...footer,
         ]

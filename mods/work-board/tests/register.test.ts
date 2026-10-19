@@ -224,9 +224,9 @@ test('the flow tab draws the newest archify diagram of this session', async ($, 
   expect(await ui.find({ type: 'Text', text: /파일 탭 흐름 · 12분 전/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /대화 기록 읽기/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '[새로 생김]' })).toBeDefined()
-  // The main arrow to the next box is a connector under it, not a line of text
-  expect(await ui.find({ type: 'Text', text: /│ 그릴 때마다/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /▼/ })).toBeDefined()
+  // Left to right: the main arrow to the next box is a connector between them
+  expect(await ui.find({ type: 'Text', text: '─ 그릴 때마다 ─▶' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /▼/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /→ 패널 그리기/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'HTML: ' + scratch + '/files-flow.html' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /남의 세션|옛 그림/ })).toBeUndefined()
