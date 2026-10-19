@@ -204,7 +204,7 @@ for i in 1 2 3; do
   env TICKET=T SENTRY_PROJECTS="" LOG_GROUP="" EXTRA_CHECK_CMD='exit 7' \
       WATCH_STATE=/tmp/fs.json ./tasks/{x}-watch.sh | head -1
 done
-# 기대: OK / OK / 이슈 감지   (1·2회 무음, 3회째 승격)
+# 기대: OK / OK / 이슈 감지   (1·2회 무음, 3회째 이벤트로 올림)
 ```
 
 마지막으로 `bin/jobs run {name}` 으로 Slack 까지 한 번 통과시킨다.
