@@ -1,6 +1,8 @@
 {
   "env": {
-    "DISABLE_AUTOUPDATER": "1"
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_NO_FLICKER": "0",
+    "CLAUDE_CODE_PLUGIN_DIRS": "/Users/jw/.claude/mods/work-board"
   },
   "includeCoAuthoredBy": false,
   "permissions": {
@@ -229,7 +231,8 @@
     "ralph-loop@claude-plugins-official": true,
     "caveman@caveman": true,
     "architecture-diagram@architecture-diagram-skill": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "cc-plugin-you-should-know@builtin": true
   },
   "extraKnownMarketplaces": {
     "claudeclaw": {
@@ -258,11 +261,17 @@
     }
   },
   "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    }
+  },
   "autoCompactWindow": 600000,
   "remote": {
     "defaultEnvironmentId": "env_014JKGFZ7xqP8i8GTbKosBni"
   },
   "tui": "default",
+  "timeFormat": "24-hour",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "normal",
