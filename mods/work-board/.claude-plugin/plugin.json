@@ -1,0 +1,6 @@
+{
+  "name": "work-board",
+  "version": "0.2.0",
+  "description": "Band above the prompt and an on-demand pane with the session's plan, agents, files and flow",
+  "author": { "name": "jongwoo315" }
+}
