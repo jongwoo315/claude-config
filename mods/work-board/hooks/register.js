@@ -34,7 +34,8 @@ async function loadPlan($) {
 }
 
 // The newest archify candidate.json of this session: archify's default <cwd>/.archify, or this
-// session's scratchpad (rules/after-pr.md keeps company diagrams there). Another session's is not this work.
+// session's scratchpad (rules/after-pr.md keeps company diagrams there) — either its .archify or a
+// directory straight under it, since -o names any folder. Another session's is not this work.
 async function loadFlow($) {
   const sid = await $.session.id()
   const roots = [(await $.session.cwd()) + '/.archify']
@@ -42,7 +43,9 @@ async function loadFlow($) {
     for (const tmp of await $.fs.list(TMP)) {
       if (tmp.kind !== 'dir' || !tmp.name.startsWith('claude-')) continue
       for (const project of await $.fs.list(TMP + '/' + tmp.name)) {
-        if (project.kind === 'dir') roots.push([TMP, tmp.name, project.name, sid, 'scratchpad/.archify'].join('/'))
+        if (project.kind !== 'dir') continue
+        const scratchpad = [TMP, tmp.name, project.name, sid, 'scratchpad'].join('/')
+        roots.push(scratchpad, scratchpad + '/.archify')
       }
     }
   } catch {
@@ -148,19 +151,23 @@ export function register(on) {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
+    // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
+    // width table counts them as two. ✎ and ⇢ are the marks the files and flow tabs use.
     const parts = []
-    if (plan) parts.push('작업 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
+    if (plan) parts.push('✓ 작업 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
     const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
-    if (edited.length > 0) parts.push('고친 파일 ' + edited.length)
+    if (edited.length > 0) parts.push('✎ 고친 파일 ' + edited.length)
     const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
-    if (running > 0) parts.push('에이전트 ' + running + ' 실행 중')
-    if (flowAt !== null) parts.push('흐름 ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + '분 전')
+    if (running > 0) parts.push('✢ 에이전트 ' + running + ' 실행 중')
+    if (flowAt !== null) parts.push('⇢ 흐름 ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + '분 전')
     return Box({
       flexDirection: 'row',
       columnGap: 2,
+      // A blank row between the transcript above and the band
+      marginTop: 1,
       width: e.props.bodyColumns,
       children: [
-        Box({ flexShrink: 1, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [parts.join(' · ') || '작업 기록 없음'] })] }),
+        Box({ flexShrink: 1, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
         Button({ key: 'open-pane', label: '열기', plain: true, onPress: () => openPane($) }),
       ],
     })
@@ -252,6 +259,55 @@ export function register(on) {
         ]
       } else if (flow.unsupported) {
         body = [line(flow.unsupported + ' 그림은 아직 못 그린다', { dimColor: true }), ...footer]
+      } else if (flow.stages) {
+        // A dataflow: one column per stage, left to right. Flows go many to many, so each box
+        // lists where its data goes instead of drawing connectors. Columns wrap when the pane
+        // is too narrow for all stages side by side.
+        const columnWidth = Math.max(22, Math.floor(e.props.bodyColumns / Math.max(1, flow.stages.length)) - 1)
+        body = [
+          line((flow.title ?? '흐름') + ' · ' + minutes + '분 전', { bold: true }),
+          ...(flow.dashedLabel ? [line('⇢ 는 ' + flow.dashedLabel, { dimColor: true })] : []),
+          Text({ children: [' '] }),
+          Box({
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            columnGap: 1,
+            rowGap: 1,
+            width: e.props.bodyColumns,
+            children: flow.stages.map((stage, i) =>
+              Box({
+                key: 'stage-' + i,
+                flexDirection: 'column',
+                width: columnWidth,
+                flexShrink: 0,
+                rowGap: 1,
+                children: [
+                  line(stage.label, { bold: true, color: 'cyan' }),
+                  ...stage.nodes.map((n) =>
+                    Box({
+                      key: 'node-' + n.id,
+                      flexDirection: 'column',
+                      borderStyle: 'round',
+                      borderDimColor: true,
+                      paddingX: 1,
+                      children: [
+                        line(n.label, { bold: true, wrap: 'wrap' }),
+                        ...(n.sublabel ? [line(n.sublabel, { dimColor: true, wrap: 'wrap' })] : []),
+                        ...n.edges.map((edge) =>
+                          line((edge.isDashed ? '⇢ ' : '→ ') + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), {
+                            wrap: 'wrap',
+                            dimColor: edge.isDashed,
+                          }),
+                        ),
+                      ],
+                    }),
+                  ),
+                ],
+              }),
+            ),
+          }),
+          ...footer,
+        ]
       } else {
         // A flowchart left to right: each node a box, the main arrow to the next box a connector
         // between them; boxes past the pane's width wrap to the next row. Any other arrow has no

@@ -301,6 +301,7 @@ function tokenize(command) {
 export function flowRows(candidate) {
   const title = candidate.meta?.title ?? null
   const type = candidate.diagram_type ?? 'workflow'
+  if (type === 'dataflow') return dataflowRows(candidate, title)
   if (type !== 'workflow') return { title, unsupported: type }
   const lanes = (candidate.lanes ?? []).map((l) => l.id)
   // rules/after-pr.md puts steps that went away in a lane of their own, drawn as an exception
@@ -327,6 +328,30 @@ export function flowRows(candidate) {
           to: byId.get(e.to)?.label ?? e.to,
           label: e.label ?? null,
           isMain: !e.role || e.role === 'main',
+        })),
+    })),
+  }
+}
+
+// An archify dataflow candidate: one column per stage, its nodes top to bottom by row, each
+// with the flows that leave it. A dashed flow is one archify draws as not there yet.
+function dataflowRows(candidate, title) {
+  const byId = new Map(candidate.nodes.map((n) => [n.id, n]))
+  return {
+    title,
+    dashedLabel: candidate.meta?.legend?.entries?.dashed?.label ?? null,
+    stages: (candidate.stages ?? []).map((stage, i) => ({
+      label: stage.label ?? String(i + 1),
+      nodes: candidate.nodes
+        .filter((n) => n.stage === i)
+        .sort((a, b) => (a.row ?? 0) - (b.row ?? 0))
+        .map((n) => ({
+          id: n.id,
+          label: n.label ?? n.id,
+          sublabel: n.sublabel ?? null,
+          edges: (candidate.flows ?? [])
+            .filter((f) => f.from === n.id)
+            .map((f) => ({ to: byId.get(f.to)?.label ?? f.to, label: f.label ?? null, isDashed: f.variant === 'dashed' })),
         })),
     })),
   }

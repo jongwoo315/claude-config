@@ -232,11 +232,47 @@ test('the flow tab draws the newest archify diagram of this session', async ($, 
   expect(await ui.find({ type: 'Text', text: /남의 세션|옛 그림/ })).toBeUndefined()
 })
 
+test('the flow tab finds a diagram written straight under the scratchpad', async ($, on) => {
+  // archify's -o pointed at <scratchpad>/<dir>, not <scratchpad>/.archify/<dir> (2026-10-19)
+  const scratch = '/private/tmp/claude-501/-work/sid-1/scratchpad/archify-structure'
+  archifyFs(on, {
+    [scratch + '/candidate.json']: { text: CANDIDATE, mtimeMs: 88 * MINUTE },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: /파일 탭 흐름 · 12분 전/ })).toBeDefined()
+})
+
 test('the flow tab says how to get a diagram when there is none', async ($, on) => {
   archifyFs(on, {})
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'tab-flow' })
   expect(await ui.find({ type: 'Text', text: /archify 그림이 없다/ })).toBeDefined()
+})
+
+test('the flow tab draws a dataflow as one column per stage', async ($, on) => {
+  archifyFs(on, {
+    '/work/.archify/dataflow-x/candidate.json': {
+      text: JSON.stringify({
+        diagram_type: 'dataflow',
+        meta: { title: '구조' },
+        stages: [{ label: '외부 출처' }, { label: '파일' }],
+        nodes: [
+          { id: 'pdf', stage: 0, row: 0, label: 'FAQ PDF' },
+          { id: 'jsonl', stage: 1, row: 0, label: 'faq.jsonl' },
+        ],
+        flows: [{ from: 'pdf', to: 'jsonl', label: '질문·답 쌍', variant: 'dashed' }],
+      }),
+      mtimeMs: 99 * MINUTE,
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: /구조 · 1분 전/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '외부 출처' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'faq.jsonl' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '⇢ faq.jsonl (질문·답 쌍)' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /아직 못 그린다/ })).toBeUndefined()
 })
 
 test('the flow tab names a diagram type it cannot draw', async ($, on) => {
@@ -285,7 +321,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '작업 1/2 · 고친 파일 1 · 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✓ 작업 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
 })
 
 test('the band opens the pane with the keyboard, and the session start does not', async ($, on) => {
@@ -305,5 +341,5 @@ test('the band leaves out the work part when the session has no plan', async ($,
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
-  expect(await ui.find({ type: 'Text', text: '고친 파일 1 · 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
 })

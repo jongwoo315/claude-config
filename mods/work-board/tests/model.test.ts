@@ -257,6 +257,32 @@ test('flowRows reports a diagram type it cannot draw', async () => {
   expect(flowRows({ diagram_type: 'sequence', meta: { title: 't' } })).toEqual({ title: 't', unsupported: 'sequence' })
 })
 
+const DATAFLOW = {
+  diagram_type: 'dataflow',
+  meta: { title: '구조', legend: { entries: { dashed: { label: '아직 없는 연결' } } } },
+  stages: [{ label: '외부 출처' }, { label: '파일' }],
+  nodes: [
+    { id: 'law', stage: 0, row: 1, label: '법제처 API', sublabel: 'LAW_OC 필요' },
+    { id: 'pdf', stage: 0, row: 0, label: 'FAQ PDF' },
+    { id: 'jsonl', stage: 1, row: 0, label: 'faq.jsonl' },
+  ],
+  flows: [
+    { from: 'pdf', to: 'jsonl', label: '질문·답 쌍' },
+    { from: 'law', to: 'jsonl', label: '조문', variant: 'dashed' },
+  ],
+}
+
+test('flowRows puts a dataflow into its stages, nodes by row, with outgoing flows', async () => {
+  const flow = flowRows(DATAFLOW)
+  expect(flow.title).toBe('구조')
+  expect(flow.stages.map((s) => s.label)).toEqual(['외부 출처', '파일'])
+  expect(flow.stages[0].nodes.map((n) => n.label)).toEqual(['FAQ PDF', '법제처 API'])
+  expect(flow.stages[0].nodes[1].sublabel).toBe('LAW_OC 필요')
+  expect(flow.stages[0].nodes[0].edges).toEqual([{ to: 'faq.jsonl', label: '질문·답 쌍', isDashed: false }])
+  expect(flow.stages[0].nodes[1].edges).toEqual([{ to: 'faq.jsonl', label: '조문', isDashed: true }])
+  expect(flow.dashedLabel).toBe('아직 없는 연결')
+})
+
 test('flowRows follows mainPath when nodes share a column', async () => {
   const flow = flowRows({
     diagram_type: 'workflow',
