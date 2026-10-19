@@ -127,15 +127,6 @@
     ],
     "Stop": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "T=$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' '); [ -n \"$T\" ] && [ \"$T\" != \"??\" ] && printf '\\a' > \"/dev/$T\" 2>/dev/null || true",
-            "timeout": 2
-          }
-        ]
-      },
-      {
         "matcher": "",
         "hooks": [
           {
