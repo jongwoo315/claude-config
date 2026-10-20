@@ -1,6 +1,6 @@
 // Pure state updates for the work board. No $ and no drawing here, so tests can call them directly.
 
-// The work tab shows a plan's Tasks when the session has one, and a timeline of turns otherwise.
+// The work tab shows a timeline of turns. A plan's Tasks are on the plan tab.
 
 // "## Task N ..." headings of a dev-workflow plan. Status comes from the "- [x]" / "- [ ]" boxes under
 // each heading: all checked = completed, some = in_progress, none = pending, no boxes = unknown.
