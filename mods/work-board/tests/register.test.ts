@@ -354,6 +354,8 @@ function bandSession(on, opened, { hasPlan = true } = {}) {
   on('session.messages', () => ({
     value: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/x.js' } }] }],
   }))
+  // Another mod's band beneath (prompt-rail)
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['prompt rail'] }))
 }
 
 test('the band sums up the four tabs in one line', async ($, on) => {
@@ -384,4 +386,13 @@ test('the band leaves out the work part when the session has no plan', async ($,
 
   const ui = await $.ui.mount(BAND)
   expect(await ui.find({ type: 'Text', text: '✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
+})
+
+test('the band keeps what another mod draws beneath it', async ($, on) => {
+  const opened = []
+  bandSession(on, opened)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(BAND)
+  expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeDefined()
 })
