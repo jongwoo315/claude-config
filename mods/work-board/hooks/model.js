@@ -78,7 +78,7 @@ export function agentRows(list) {
   return rows
 }
 
-// The files tab. Built from the transcript, not from hooks, so it survives a reload and a /resume.
+// The changes tab starts from these rows. Built from the transcript, not from hooks, so it survives a reload and a /resume.
 const EDIT_PATH = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
 
 // messages: $.session.messages(). Returns { edited, read }, each [{ path, count }] sorted by
