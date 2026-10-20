@@ -231,7 +231,7 @@ export function register(on) {
     if (e.props.hasSurvey) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
-    // width table counts them as two. ✎ and ⇢ are the marks the files and flow tabs use.
+    // width table counts them as two. ✎ and ⇢ are the marks the changes and flow tabs use.
     const parts = []
     if (plan) parts.push('✓ 계획 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
     const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
