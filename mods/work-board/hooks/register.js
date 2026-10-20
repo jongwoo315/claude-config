@@ -1,4 +1,4 @@
-import { addTool, agentRows, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from './model.js'
+import { addTool, agentRows, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
@@ -18,7 +18,7 @@ let flowAt = null // mtime of the newest archify candidate, or null
 const MARK = { in_progress: '◐', pending: '○', completed: '●', unknown: '·' }
 const ORDER = { in_progress: 0, pending: 1, unknown: 1, completed: 2 }
 // The tags rules/after-pr.md puts on a changed-flow diagram
-const tagColor = (tag) => (tag === '새로 생김' ? 'green' : /바뀜|좁아짐/.test(tag) ? 'yellow' : undefined)
+const tagColor = (tag) => (tag === '새로 생김' ? 'green' : tag === '없어짐' ? 'red' : /바뀜|좁아짐/.test(tag) ? 'yellow' : undefined)
 const AGENT_COLOR = { running: 'yellow', waiting: 'yellow', completed: 'green', failed: 'red', killed: 'red' }
 
 // Reads the newest plan file under the session's working directory. No plan, no Task list.
@@ -309,48 +309,95 @@ export function register(on) {
           ...footer,
         ]
       } else {
-        // A flowchart left to right: each node a box, the main arrow to the next box a connector
-        // between them; boxes past the pane's width wrap to the next row. Any other arrow has no
-        // room of its own, so it is a ⇢ line in the box it leaves.
-        const boxWidth = Math.min(e.props.bodyColumns, 26)
-        body = [
-          line((flow.title ?? '흐름') + ' · ' + minutes + '분 전', { bold: true }),
-          Text({ children: [' '] }),
+        // A node's box; `others` are the arrows with no connector of their own, one line each
+        const nodeBox = (n, width, others, mark) =>
           Box({
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            rowGap: 1,
-            width: e.props.bodyColumns,
-            children: flow.nodes.flatMap((n, i) => {
-              const following = flow.nodes[i + 1]
-              const connector = following && n.edges.find((edge) => edge.isMain && edge.toId === following.id)
-              const others = n.edges.filter((edge) => edge !== connector)
-              return [
+            key: 'node-' + n.id,
+            flexDirection: 'column',
+            width,
+            flexShrink: 0,
+            borderStyle: 'round',
+            borderColor: n.isRemoved ? 'red' : tagColor(n.tag),
+            borderDimColor: !n.isRemoved && !tagColor(n.tag),
+            paddingX: 1,
+            children: [
+              line(n.label, { bold: true, wrap: 'wrap', color: n.isRemoved ? 'red' : undefined }),
+              ...(n.tag ? [line('[' + n.tag + ']', { color: n.isRemoved ? 'red' : tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
+              ...(n.sublabel ? [line(n.sublabel, { dimColor: true, wrap: 'wrap' })] : []),
+              ...others.map((edge) => line(mark(edge) + ' ' + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), { wrap: 'wrap', dimColor: !edge.isMain })),
+            ],
+          })
+        const connectorText = (edge) => (edge.label ? '─ ' + edge.label + ' ─▶' : '──▶')
+        const header = [line((flow.title ?? '흐름') + ' · ' + minutes + '분 전', { bold: true }), Text({ children: [' '] })]
+
+        // archify's grid: one row per lane, its name first, each node in its column so the
+        // columns line up across lanes. The arrow to the next cell of the same lane sits between
+        // the boxes; an arrow to another lane or further along is a line in the box it leaves.
+        const cols = flow.lanes[0]?.cells.length ?? 0
+        const laneWidth = Math.min(12, Math.max(0, ...flow.lanes.map((l) => displayWidth(l.label)))) + 1
+        const nextEdges = flow.nodes.flatMap((n) => n.edges.filter((edge) => edge.direction === 'next'))
+        const gap = Math.min(16, Math.max(3, ...nextEdges.map((edge) => displayWidth(connectorText(edge))))) + 1
+        const colWidth = Math.floor((e.props.bodyColumns - laneWidth - (cols - 1) * gap) / Math.max(1, cols))
+        const MARK = { down: '↓', up: '↑', back: '←', forward: '→', next: '→' }
+
+        if (colWidth >= 16) {
+          body = [
+            ...header,
+            Box({
+              flexDirection: 'column',
+              rowGap: 1,
+              width: e.props.bodyColumns,
+              children: flow.lanes.map((lane, l) =>
                 Box({
-                  key: 'node-' + n.id,
-                  flexDirection: 'column',
-                  width: boxWidth,
-                  flexShrink: 0,
-                  borderStyle: 'round',
-                  borderColor: n.isRemoved ? 'red' : tagColor(n.tag),
-                  borderDimColor: !n.isRemoved && !tagColor(n.tag),
-                  paddingX: 1,
+                  key: 'lane-' + l,
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   children: [
-                    line(n.label, { bold: true, wrap: 'wrap', color: n.isRemoved ? 'red' : undefined }),
-                    ...(n.tag ? [line('[' + n.tag + ']', { color: tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
-                    ...(n.sublabel ? [line(n.sublabel, { dimColor: true })] : []),
-                    ...others.map((edge) => line('⇢ ' + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), { dimColor: !edge.isMain })),
+                    Box({ width: laneWidth, flexShrink: 0, children: [line(lane.label, { bold: true, wrap: 'wrap', color: lane.isException ? 'red' : 'cyan' })] }),
+                    ...lane.cells.flatMap((cell, c) => {
+                      const connector = cell.flatMap((n) => n.edges).find((edge) => edge.direction === 'next')
+                      return [
+                        Box({
+                          key: 'cell-' + l + '-' + c,
+                          flexDirection: 'column',
+                          width: colWidth,
+                          flexShrink: 0,
+                          children: cell.map((n) => nodeBox(n, colWidth, n.edges.filter((edge) => edge !== connector), (edge) => MARK[edge.direction])),
+                        }),
+                        ...(c < cols - 1
+                          ? [Box({ key: 'gap-' + l + '-' + c, width: gap, flexShrink: 0, children: connector ? [line(connectorText(connector), { dimColor: true })] : [] })]
+                          : []),
+                      ]
+                    }),
                   ],
                 }),
-                ...(connector
-                  ? [Text({ key: 'arrow-' + n.id, dimColor: true, children: [connector.label ? '─ ' + connector.label + ' ─▶' : '──▶'] })]
-                  : []),
-              ]
+              ),
             }),
-          }),
-          ...footer,
-        ]
+            ...footer,
+          ]
+        } else {
+          // Too narrow for the grid: boxes in a row that wraps at the pane's width, the main arrow
+          // to the next box a connector between them
+          body = [
+            ...header,
+            Box({
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              rowGap: 1,
+              width: e.props.bodyColumns,
+              children: flow.nodes.flatMap((n, i) => {
+                const following = flow.nodes[i + 1]
+                const connector = following && n.edges.find((edge) => edge.isMain && edge.toId === following.id)
+                return [
+                  nodeBox(n, Math.min(e.props.bodyColumns, 26), n.edges.filter((edge) => edge !== connector), () => '⇢'),
+                  ...(connector ? [Text({ key: 'arrow-' + n.id, dimColor: true, children: [connectorText(connector)] })] : []),
+                ]
+              }),
+            }),
+            ...footer,
+          ]
+        }
       }
     } else {
       // ui.render can read state but not write it, so the merge is local to this draw

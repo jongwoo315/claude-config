@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { addTool, agentRows, bashTargets, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from '../hooks/model.js'
+import { addTool, agentRows, bashTargets, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from '../hooks/model.js'
 
 const PLAN = `# plan
 
@@ -222,7 +222,7 @@ const FLOW = {
     { id: 'draw', lane: 'mod', col: 2, label: '패널 그리기' },
     { id: 'count', lane: 'mod', col: 1, label: '파일 집계', sublabel: 'fileRows', tag: '새로 생김' },
     { id: 'msgs', lane: 'host', col: 1, label: '대화 기록', tag: '그대로' },
-    { id: 'old', lane: 'gone', col: 3, label: '모듈 변수에 쌓기' },
+    { id: 'old', lane: 'gone', col: 3, label: '모듈 변수에 쌓기', tag: '없어짐' },
   ],
   edges: [
     { id: 'e1', from: 'msgs', to: 'count', label: '그릴 때마다' },
@@ -241,10 +241,10 @@ test('flowRows lists nodes by column then lane, each with its outgoing arrows', 
     sublabel: null,
     tag: '그대로',
     isRemoved: false,
-    edges: [{ toId: 'count', to: '파일 집계', label: '그릴 때마다', isMain: true }],
+    edges: [{ toId: 'count', to: '파일 집계', label: '그릴 때마다', isMain: true, direction: 'down' }],
   })
-  expect(flow.nodes[1].edges).toEqual([{ toId: 'draw', to: '패널 그리기', label: null, isMain: true }])
-  expect(flow.nodes[3]).toMatchObject({ isRemoved: true, edges: [{ to: '대화 기록', label: '이걸로 바뀜', isMain: false }] })
+  expect(flow.nodes[1].edges).toEqual([{ toId: 'draw', to: '패널 그리기', label: null, isMain: true, direction: 'next' }])
+  expect(flow.nodes[3]).toMatchObject({ isRemoved: true, edges: [{ to: '대화 기록', label: '이걸로 바뀜', isMain: false, direction: 'up' }] })
 })
 
 test('flowRows counts every node and arrow of the candidate', async () => {
@@ -297,6 +297,62 @@ test('flowRows follows mainPath when nodes share a column', async () => {
   })
   // mainPath first, then the rest by column
   expect(flow.nodes.map((n) => n.label)).toEqual(['파일 탭', '대화 기록', '기타'])
+})
+
+// A retry loop and a failure path, the shape of a PR diagram with an exception lane that holds
+// no removed step
+const RETRY = {
+  diagram_type: 'workflow',
+  lanes: [
+    { id: 'run', label: '정기 실행' },
+    { id: 'retry', label: '다시 시도' },
+    { id: 'fail', label: '끝내 실패', variant: 'exception' },
+  ],
+  mainPath: ['start', 'get', 'send'],
+  nodes: [
+    { id: 'start', lane: 'run', col: 0, label: '실행' },
+    { id: 'get', lane: 'run', col: 1, label: '요청' },
+    { id: 'send', lane: 'run', col: 3, label: '전송' },
+    { id: 'wait', lane: 'retry', col: 1, label: '대기' },
+    { id: 'alarm', lane: 'fail', col: 3, label: '알람', tag: '그대로' },
+  ],
+  edges: [
+    { id: 'e1', from: 'start', to: 'get' },
+    { id: 'e2', from: 'get', to: 'send', label: '200' },
+    { id: 'e3', from: 'get', to: 'wait', label: '429', role: 'branch' },
+    { id: 'e4', from: 'wait', to: 'get', label: '다시 요청', role: 'return' },
+    { id: 'e5', from: 'wait', to: 'alarm', role: 'error' },
+  ],
+}
+
+test('flowRows lays a workflow out as archify does: a row per lane, a cell per column', async () => {
+  const flow = flowRows(RETRY)
+  expect(flow.lanes.map((l) => [l.label, l.isException])).toEqual([
+    ['정기 실행', false],
+    ['다시 시도', false],
+    ['끝내 실패', true],
+  ])
+  // Columns 0, 1 and 3: column 2 holds nothing, so it takes no cell
+  expect(flow.lanes.map((l) => l.cells.map((cell) => cell.map((n) => n.label).join()))).toEqual([
+    ['실행', '요청', '전송'],
+    ['', '대기', ''],
+    ['', '', '알람'],
+  ])
+  const edges = (id) => flow.nodes.find((n) => n.id === id).edges.map((e) => e.direction)
+  expect(edges('start')).toEqual(['next'])
+  // get → send skips the empty column 2, so it is the next cell
+  expect(edges('get')).toEqual(['next', 'down'])
+  expect(edges('wait')).toEqual(['up', 'down'])
+})
+
+test('flowRows takes a step as removed by its tag, not by an exception lane', async () => {
+  const flow = flowRows(RETRY)
+  expect(flow.nodes.find((n) => n.id === 'alarm').isRemoved).toBe(false)
+})
+
+test('displayWidth counts Hangul as two cells', async () => {
+  expect(displayWidth('─ 200 ─▶')).toBe(8)
+  expect(displayWidth('다시 요청')).toBe(9)
 })
 
 test('bashTargets joins lines continued with a backslash and reports where the shell ends up', async () => {

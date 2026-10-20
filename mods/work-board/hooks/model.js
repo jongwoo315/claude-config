@@ -296,40 +296,68 @@ function tokenize(command) {
   return tokens
 }
 
-// The flow tab. An archify workflow candidate laid out as a vertical list: the pane is too
-// narrow for archify's columns, so nodes go top to bottom by column, then by lane.
+// Terminal cells a string takes: Hangul and other CJK characters take two
+export const displayWidth = (text) =>
+  [...text].reduce((w, c) => w + (/[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(c) ? 2 : 1), 0)
+
+// The flow tab. An archify workflow candidate two ways: `lanes`, archify's own grid (one row per
+// lane, one cell per column), and `nodes`, a flat list for a pane too narrow for that grid — the
+// main path in its own order, then every other node by column and lane.
 export function flowRows(candidate) {
   const title = candidate.meta?.title ?? null
   const type = candidate.diagram_type ?? 'workflow'
   if (type === 'dataflow') return dataflowRows(candidate, title)
   if (type !== 'workflow') return { title, unsupported: type }
-  const lanes = (candidate.lanes ?? []).map((l) => l.id)
-  // rules/after-pr.md puts steps that went away in a lane of their own, drawn as an exception
-  const removedLanes = new Set((candidate.lanes ?? []).filter((l) => l.variant === 'exception').map((l) => l.id))
+  const lanes = [...(candidate.lanes ?? [])]
+  for (const n of candidate.nodes) if (!lanes.some((l) => l.id === n.lane)) lanes.push({ id: n.lane })
+  // Only the columns some node sits in, so a gap in archify's numbering takes no room
+  const cols = [...new Set(candidate.nodes.map((n) => n.col ?? 0))].sort((a, b) => a - b)
   const byId = new Map(candidate.nodes.map((n) => [n.id, n]))
-  // The main path in its own order, then every other node by column and lane
+  const laneOf = (n) => lanes.findIndex((l) => l.id === n.lane)
+  const colOf = (n) => cols.indexOf(n.col ?? 0)
+  // Where an arrow goes on the grid: `next` is the cell right after in the same lane, the one
+  // arrow drawn between boxes; every other one is a line in the box it leaves
+  const direction = (from, to) => {
+    if (!to) return 'forward'
+    const lane = laneOf(to) - laneOf(from)
+    if (lane !== 0) return lane > 0 ? 'down' : 'up'
+    const col = colOf(to) - colOf(from)
+    return col === 1 ? 'next' : col > 0 ? 'forward' : 'back'
+  }
   const main = candidate.mainPath ?? []
   const rank = (n) => (main.includes(n.id) ? main.indexOf(n.id) : main.length)
-  const nodes = [...candidate.nodes].sort(
-    (a, b) => rank(a) - rank(b) || (a.col ?? 0) - (b.col ?? 0) || lanes.indexOf(a.lane) - lanes.indexOf(b.lane),
+  const sorted = [...candidate.nodes].sort((a, b) => rank(a) - rank(b) || colOf(a) - colOf(b) || laneOf(a) - laneOf(b))
+  const rows = new Map(
+    sorted.map((n) => [
+      n.id,
+      {
+        id: n.id,
+        label: n.label ?? n.id,
+        sublabel: n.sublabel ?? null,
+        tag: n.tag ?? null,
+        // rules/after-pr.md tags a step that went away; its lane alone doesn't say so, since an
+        // exception lane may as well hold a failure path
+        isRemoved: n.tag === '없어짐',
+        edges: (candidate.edges ?? [])
+          .filter((e) => e.from === n.id)
+          .map((e) => ({
+            toId: e.to,
+            to: byId.get(e.to)?.label ?? e.to,
+            label: e.label ?? null,
+            isMain: !e.role || e.role === 'main',
+            direction: direction(n, byId.get(e.to)),
+          })),
+      },
+    ]),
   )
   return {
     title,
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      label: n.label ?? n.id,
-      sublabel: n.sublabel ?? null,
-      tag: n.tag ?? null,
-      isRemoved: removedLanes.has(n.lane),
-      edges: (candidate.edges ?? [])
-        .filter((e) => e.from === n.id)
-        .map((e) => ({
-          toId: e.to,
-          to: byId.get(e.to)?.label ?? e.to,
-          label: e.label ?? null,
-          isMain: !e.role || e.role === 'main',
-        })),
+    lanes: lanes.map((l) => ({
+      label: l.label ?? l.id ?? '',
+      isException: l.variant === 'exception',
+      cells: cols.map((_, c) => sorted.filter((n) => n.lane === l.id && colOf(n) === c).map((n) => rows.get(n.id))),
     })),
+    nodes: sorted.map((n) => rows.get(n.id)),
   }
 }
 

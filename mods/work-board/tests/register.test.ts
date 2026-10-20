@@ -275,6 +275,48 @@ test('the flow tab draws a dataflow as one column per stage', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /아직 못 그린다/ })).toBeUndefined()
 })
 
+const RETRY = JSON.stringify({
+  diagram_type: 'workflow',
+  meta: { title: '재시도' },
+  lanes: [
+    { id: 'run', label: '정기 실행' },
+    { id: 'retry', label: '다시 시도' },
+  ],
+  mainPath: ['get', 'send'],
+  nodes: [
+    { id: 'get', lane: 'run', col: 0, label: '요청' },
+    { id: 'send', lane: 'run', col: 1, label: '전송' },
+    { id: 'wait', lane: 'retry', col: 0, label: '대기' },
+  ],
+  edges: [
+    { id: 'e1', from: 'get', to: 'send', label: '200' },
+    { id: 'e2', from: 'get', to: 'wait', label: '429', role: 'branch' },
+    { id: 'e3', from: 'wait', to: 'get', label: '다시 요청', role: 'return' },
+  ],
+})
+
+const wide = (bodyColumns) => ({ ...PANE, props: { ...PANE.props, bodyColumns } })
+
+test('the flow tab draws a workflow as archify does, one row per lane', async ($, on) => {
+  archifyFs(on, { '/work/.archify/workflow-retry/candidate.json': { text: RETRY, mtimeMs: 99 * MINUTE } })
+  const ui = await $.ui.mount(wide(120))
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: '정기 실행' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '다시 시도' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '─ 200 ─▶' })).toBeDefined()
+  // Arrows between lanes say which way they go
+  expect(await ui.find({ type: 'Text', text: '↓ 대기 (429)' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '↑ 요청 (다시 요청)' })).toBeDefined()
+})
+
+test('the flow tab falls back to one wrapping row when the pane is too narrow for the lanes', async ($, on) => {
+  archifyFs(on, { '/work/.archify/workflow-retry/candidate.json': { text: RETRY, mtimeMs: 99 * MINUTE } })
+  const ui = await $.ui.mount(wide(30))
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: '정기 실행' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '⇢ 대기 (429)' })).toBeDefined()
+})
+
 test('the flow tab names a diagram type it cannot draw', async ($, on) => {
   archifyFs(on, {
     '/work/.archify/sequence-x/candidate.json': { text: JSON.stringify({ diagram_type: 'sequence', meta: { title: '순서' } }), mtimeMs: 99 * MINUTE },
