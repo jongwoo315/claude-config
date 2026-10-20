@@ -86,6 +86,12 @@ async function loadFlowAt($) {
   }
 }
 
+// The first line of what git or the runtime said, to put after a note: the reason a count is missing
+const why = (text) => {
+  const first = String(text ?? '').split('\n')[0].trim()
+  return first ? ' (' + first + ')' : ''
+}
+
 // The changes tab's rows: what the conversation edited that git still reports, with +/-. Where git can't
 // say (no repo, git failing) the rows are the transcript's edited files alone and `note` says why.
 async function loadChanges($) {
@@ -99,21 +105,21 @@ async function loadChanges($) {
   try {
     const run = (argv, dir) => $.process.run(argv, { cwd: dir })
     const top = await run(['git', 'rev-parse', '--show-toplevel', '--show-prefix'], cwd)
-    if (top.exitCode !== 0) return withoutGit('git repo가 아니라 +/−를 못 센다')
+    if (top.exitCode !== 0) return withoutGit('git repo가 아니라 +/−를 못 센다' + why(top.stderr))
     const [root, prefix = ''] = top.stdout.split('\n')
     // git names the root by its real path; the transcript's paths go by the session's, which may run through a symlink
     const logicalRoot = prefix && cwd.endsWith('/' + prefix.replace(/\/$/, '')) ? cwd.slice(0, cwd.length - prefix.length) : prefix ? root : cwd
     const status = await run(['git', 'status', '--porcelain', '-z', '--untracked-files=all'], root)
     const diff = await run(['git', 'diff', '--numstat', '-z', 'HEAD'], root)
-    if (status.exitCode !== 0 || diff.exitCode !== 0) return withoutGit('git이 실패해서 +/−를 못 센다')
+    if (status.exitCode !== 0 || diff.exitCode !== 0) return withoutGit('git이 실패해서 +/−를 못 센다' + why(status.exitCode !== 0 ? status.stderr : diff.stderr))
     const args = { files, status: parseStatus(status.stdout), stats: parseNumstat(diff.stdout), lines: {}, root: logicalRoot, cwd, home: await $.env.get('HOME') }
     // An untracked file has no diff stat: its lines are all added. One that can't be read (over 4 MiB, gone
     // since git looked) is left without a count; the other rows keep theirs.
     const untracked = changeRows(args).changed.filter((r) => r.isUntracked)
     for (const r of untracked) args.lines[r.rel] = await $.fs.read(root + '/' + r.rel).then(countLines, () => undefined)
     return { ...changeRows(args), root, note: null }
-  } catch {
-    return withoutGit('git이 실패해서 +/−를 못 센다')
+  } catch (e) {
+    return withoutGit('git이 실패해서 +/−를 못 센다' + why(e?.message ?? e))
   }
 }
 

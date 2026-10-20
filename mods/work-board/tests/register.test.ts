@@ -271,6 +271,26 @@ test('the changes tab says git failed when git cannot run', async ($, on) => {
   expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
 })
 
+test('the changes tab gives git\'s own reason when status or diff exits nonzero', async ($, on) => {
+  // A repo with no commit yet: git diff HEAD cannot name HEAD
+  repoSession(on, {
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/work\n')
+      return e.argv[1] === 'diff' ? failed(128, "fatal: ambiguous argument 'HEAD': unknown revision\nUse '--' to separate paths") : ok('')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서 \+\/−를 못 센다 \(fatal: ambiguous argument 'HEAD': unknown revision\)/ })).toBeDefined()
+})
+
+test('the changes tab gives the reason when git cannot name the repo', async ($, on) => {
+  repoSession(on, { isRepo: false })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git repo가 아니라 \+\/−를 못 센다 \(fatal: not a git repository\)/ })).toBeDefined()
+})
+
 test('the changes tab says so when nothing was touched', async ($, on) => {
   repoSession(on, { messages: [] })
 
