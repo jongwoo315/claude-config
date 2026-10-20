@@ -169,38 +169,92 @@ test('a pane with another id is left to other mods', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: 'someone else' })).toBeDefined()
 })
 
-test('the files tab lists edited files above read ones, straight from the transcript', async ($, on) => {
+const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
+const failed = (exitCode: number, stderr = '') => ({ value: { exitCode, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
+
+// A repo at /work: a.js modified (+3 -1), new.txt untracked (2 lines), committed.js already committed
+function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null } = {}) {
   on('session.cwd', () => ({ value: '/work' }))
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/jw' : undefined }))
   on('fs.exists', () => ({ value: false }))
   on('agent.list', () => ({ value: [] }))
-  // No tool.call ran in this module: the list must come from the transcript alone,
-  // which is what keeps it after the mod reloads
+  on('fs.read', () => ({ value: 'one\ntwo\n' }))
+  on('process.run', ($, e) => {
+    if (git) return git(e)
+    const [, sub] = e.argv
+    if (!isRepo) return failed(128, 'fatal: not a git repository')
+    if (sub === 'rev-parse') return ok('/work\n')
+    if (sub === 'status') return ok(' M a.js\0?? new.txt\0')
+    if (sub === 'diff') return ok(numstat)
+    return failed(1)
+  })
   on('session.messages', () => ({
-    value: [
+    value: messages ?? [
       { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'a', tool: 'Read', input: { file_path: '/work/hooks/model.js' } }] },
-      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/hooks/register.js' } }] },
-      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'c', tool: 'Write', input: { file_path: '/home/jw/notes.md' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/a.js' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'c', tool: 'Write', input: { file_path: '/work/new.txt' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'd', tool: 'Edit', input: { file_path: '/work/committed.js' } }] },
     ],
   }))
+}
+
+test('the changes tab lists edited files git still reports with +/-, and leaves out a committed one', async ($, on) => {
+  repoSession(on)
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-files' })
-  expect(await ui.find({ type: 'Text', text: '고친 파일 2 · 읽은 파일 1' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: '~/notes.md' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'hooks/register.js' })).toBeDefined()
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: '변경 2 · 읽은 파일 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+3' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '−1' })).toBeDefined()
+  // An untracked file counts its lines
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+2' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'hooks/model.js' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Bash는 sed -i · > · tee 로 쓴 파일만 센다/ })).toBeDefined()
 })
 
-test('the files tab says so when nothing was touched', async ($, on) => {
-  on('agent.list', () => ({ value: [] }))
-  on('session.cwd', () => ({ value: '/work' }))
-  on('env.get', () => ({ value: '/home/jw' }))
-  on('session.messages', () => ({ value: [] }))
+test('the changes tab runs git from the repo root, not the session directory', async ($, on) => {
+  const seen: string[][] = []
+  repoSession(on, {
+    git: (e) => {
+      seen.push([...e.argv, String(e.init?.cwd)])
+      return e.argv[1] === 'rev-parse' ? ok('/work\n') : ok('')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(seen.find((a) => a[1] === 'status')).toEqual(['git', 'status', '--porcelain', '-z', '--untracked-files=all', '/work'])
+  expect(seen.find((a) => a[1] === 'diff')).toEqual(['git', 'diff', '--numstat', '-z', 'HEAD', '/work'])
+})
+
+test('the changes tab draws from the transcript alone and says so when it is not a git repo', async ($, on) => {
+  repoSession(on, { isRepo: false })
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-files' })
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git repo가 아니라 \+\/−를 못 센다/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeDefined()
+})
+
+test('the changes tab says git failed when git cannot run', async ($, on) => {
+  repoSession(on, {
+    git: () => {
+      throw new Error('spawn git ENOENT')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서 \+\/−를 못 센다/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+})
+
+test('the changes tab says so when nothing was touched', async ($, on) => {
+  repoSession(on, { messages: [] })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
   expect(await ui.find({ type: 'Text', text: /아직 건드린 파일이 없다/ })).toBeDefined()
 })
 
@@ -450,7 +504,7 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
     'tab-work': [undefined, 'primary'],
     'tab-plan': [undefined, undefined],
     'tab-agents': [undefined, undefined],
-    'tab-files': [undefined, undefined],
+    'tab-changes': [undefined, undefined],
     'tab-flow': [undefined, undefined],
   })
 

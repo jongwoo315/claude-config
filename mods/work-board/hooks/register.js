@@ -1,4 +1,4 @@
-import { addTool, agentRows, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from './model.js'
+import { addTool, agentRows, changeRows, countLines, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
@@ -20,6 +20,7 @@ let turns = []
 let seenAgents = []
 let hasRunningAgent = false
 let flowAt = null // mtime of the newest archify candidate, or null
+let selected = null // the path the changes tab last picked, shown on the diff tab
 
 const MARK = { in_progress: '◐', pending: '○', completed: '●', unknown: '·' }
 const ORDER = { in_progress: 0, pending: 1, unknown: 1, completed: 2 }
@@ -84,6 +85,34 @@ async function loadFlowAt($) {
     return (await loadFlow($))?.mtimeMs ?? null
   } catch {
     return null
+  }
+}
+
+// The changes tab's rows: what the conversation edited that git still reports, with +/-. Where git can't
+// say (no repo, git failing) the rows are the transcript's edited files alone and `note` says why.
+async function loadChanges($) {
+  const cwd = await $.session.cwd()
+  const files = fileRows(await $.session.messages(), cwd, await $.env.get('HOME'))
+  const withoutGit = (note) => ({
+    changed: files.edited.map((f) => ({ ...f, rel: null, add: null, del: null, isBinary: false, isUntracked: false })),
+    read: files.read,
+    note,
+  })
+  try {
+    const run = (argv, dir) => $.process.run(argv, { cwd: dir })
+    const top = await run(['git', 'rev-parse', '--show-toplevel'], cwd)
+    if (top.exitCode !== 0) return withoutGit('git repo가 아니라 +/−를 못 센다')
+    const root = top.stdout.trim()
+    const status = await run(['git', 'status', '--porcelain', '-z', '--untracked-files=all'], root)
+    const diff = await run(['git', 'diff', '--numstat', '-z', 'HEAD'], root)
+    if (status.exitCode !== 0 || diff.exitCode !== 0) return withoutGit('git이 실패해서 +/−를 못 센다')
+    const args = { files, status: parseStatus(status.stdout), stats: parseNumstat(diff.stdout), lines: {}, root, cwd, home: await $.env.get('HOME') }
+    // An untracked file has no diff stat: its lines are all added
+    const untracked = changeRows(args).changed.filter((r) => r.isUntracked)
+    for (const r of untracked) args.lines[r.rel] = countLines(await $.fs.read(root + '/' + r.rel))
+    return { ...changeRows(args), root, note: null }
+  } catch {
+    return withoutGit('git이 실패해서 +/−를 못 센다')
   }
 }
 
@@ -245,30 +274,48 @@ export function register(on) {
                 line('       ' + (tools || '도구 없음'), { dimColor: true }),
               ]
             })
-    } else if (tab === 'files') {
-      const { edited, read } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
+    } else if (tab === 'changes') {
+      const { changed, read, note } = await loadChanges($)
+      const changeRow = (f) =>
+        Button({
+          key: 'change-' + f.path,
+          plain: true,
+          onPress: () => {
+            selected = f.path
+            redraw()
+          },
+          children: [
+            '✎ ' + f.path + ' ',
+            ...(f.add === null
+              ? []
+              : f.isBinary
+                ? [Text({ dimColor: true, children: ['바이너리'] })]
+                : [Text({ color: theme().add, children: ['+' + f.add] }), ' ', Text({ color: theme().del, children: ['−' + f.del] })]),
+          ],
+        })
       // Path truncates at its start so the file name at the end stays visible
-      const fileLine = (mark, f) =>
+      const readLine = (f) =>
         Box({
-          key: 'file-' + mark + f.path,
+          key: 'read-' + f.path,
           flexDirection: 'row',
           columnGap: 1,
           children: [
-            line(mark, { dimColor: mark !== '✎' }),
-            Box({ flexGrow: 1, flexShrink: 1, children: [line(f.path, { wrap: 'truncate-start', dimColor: mark !== '✎' })] }),
+            line('·', { dimColor: true }),
+            Box({ flexGrow: 1, flexShrink: 1, children: [line(f.path, { wrap: 'truncate-start', dimColor: true })] }),
             line('×' + f.count, { dimColor: true }),
           ],
         })
       body =
-        edited.length + read.length === 0
+        changed.length + read.length === 0
           ? [line('아직 건드린 파일이 없다', { dimColor: true })]
           : [
-              line('고친 파일 ' + edited.length + ' · 읽은 파일 ' + read.length, { bold: true }),
+              line('변경 ' + changed.length + ' · 읽은 파일 ' + read.length, { bold: true }),
               Text({ children: [' '] }),
-              ...edited.map((f) => fileLine('✎', f)),
-              ...(edited.length > 0 && read.length > 0 ? [Text({ children: [' '] })] : []),
-              ...read.map((f) => fileLine('·', f)),
+              ...changed.map(changeRow),
+              ...(changed.length > 0 && read.length > 0 ? [Text({ children: [' '] })] : []),
+              ...read.map(readLine),
               Text({ children: [' '] }),
+              ...(note ? [line(note, { dimColor: true })] : []),
               line('Bash는 sed -i · > · tee 로 쓴 파일만 센다. python 등이 쓴 파일은 빠진다', { dimColor: true }),
             ]
     } else if (tab === 'flow') {
@@ -453,7 +500,7 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: theme().bg,
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('files', '파일', '4'), tabButton('flow', '흐름', '5')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('changes', '변경', '4'), tabButton('flow', '흐름', '5')] }),
         Text({ children: [' '] }),
         ...body,
       ],

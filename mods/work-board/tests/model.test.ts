@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { addTool, agentRows, bashTargets, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from '../hooks/model.js'
+import { addTool, agentRows, bashTargets, changeRows, countLines, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from '../hooks/model.js'
 
 const PLAN = `# plan
 
@@ -373,4 +373,70 @@ test('fileRows carries the shell directory from one Bash call to the next until 
     '/home/jw',
   )
   expect(rows.edited.map((r) => r.path)).toEqual(['top.txt', 'hooks/r.js'])
+})
+
+test('parseStatus reads porcelain -z entries, a rename carrying its old name', () => {
+  expect(parseStatus(' M a.js\0?? new dir/b.txt\0R  moved.js\0old.js\0A  c.js\0')).toEqual([
+    { path: 'a.js', isUntracked: false },
+    { path: 'new dir/b.txt', isUntracked: true },
+    { path: 'moved.js', isUntracked: false },
+    { path: 'c.js', isUntracked: false },
+  ])
+  expect(parseStatus('')).toEqual([])
+})
+
+test('parseNumstat reads numstat -z lines, a rename under its new name and a binary file as such', () => {
+  expect(parseNumstat('3\t1\ta.js\0-\t-\timg.png\x002\t0\t\0old.js\0new.js\0')).toEqual([
+    { path: 'a.js', add: 3, del: 1, isBinary: false },
+    { path: 'img.png', add: 0, del: 0, isBinary: true },
+    { path: 'new.js', add: 2, del: 0, isBinary: false },
+  ])
+})
+
+test('countLines counts the last line even without a trailing newline', () => {
+  expect([countLines(''), countLines('a\n'), countLines('a\nb'), countLines('a\nb\n')]).toEqual([0, 1, 2, 2])
+})
+
+const FILES = {
+  edited: [
+    { path: 'a.js', count: 2 },
+    { path: 'committed.js', count: 1 },
+    { path: 'new.txt', count: 1 },
+    { path: '~/notes.md', count: 1 },
+  ],
+  read: [{ path: 'r.js', count: 3 }],
+}
+
+test('changeRows keeps the edited files git still reports, with their +/- counts', () => {
+  const rows = changeRows({
+    files: FILES,
+    status: [
+      { path: 'a.js', isUntracked: false },
+      { path: 'new.txt', isUntracked: true },
+    ],
+    stats: [{ path: 'a.js', add: 3, del: 1, isBinary: false }],
+    lines: { 'new.txt': 7 },
+    root: '/work',
+    cwd: '/work',
+    home: '/home/jw',
+  })
+  // committed.js is not in git's status, so it is gone; ~/notes.md is outside the repo
+  expect(rows.changed).toEqual([
+    { path: 'a.js', rel: 'a.js', count: 2, add: 3, del: 1, isBinary: false, isUntracked: false },
+    { path: 'new.txt', rel: 'new.txt', count: 1, add: 7, del: 0, isBinary: false, isUntracked: true },
+  ])
+  expect(rows.read).toEqual([{ path: 'r.js', count: 3 }])
+})
+
+test('changeRows shows a path under the cwd relative to it when the repo root is above', () => {
+  const rows = changeRows({
+    files: { edited: [{ path: 'mods/x.js', count: 1 }], read: [] },
+    status: [{ path: 'mods/x.js', isUntracked: false }],
+    stats: [{ path: 'mods/x.js', add: 1, del: 0, isBinary: false }],
+    lines: {},
+    root: '/work',
+    cwd: '/work',
+    home: '/home/jw',
+  })
+  expect(rows.changed.map((r) => r.path)).toEqual(['mods/x.js'])
 })

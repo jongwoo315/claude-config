@@ -116,6 +116,60 @@ export function fileRows(messages, cwd, home) {
   return { edited: pick(true), read: pick(false) }
 }
 
+// The changes tab. `git status --porcelain -z` entries: "XY path\0", a rename or copy ("R"/"C" in X)
+// followed by its old path as one more word. Paths are relative to the repo root.
+export function parseStatus(output) {
+  const words = output.split('\0')
+  const entries = []
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    if (word.length < 4) continue
+    if (/[RC]/.test(word[0])) i += 1
+    entries.push({ path: word.slice(3), isUntracked: word.startsWith('??') })
+  }
+  return entries
+}
+
+// `git diff --numstat -z`: "add\tdel\tpath\0", a binary file "-\t-", a rename "add\tdel\t\0old\0new\0"
+export function parseNumstat(output) {
+  const words = output.split('\0')
+  const stats = []
+  for (let i = 0; i < words.length; i++) {
+    const m = words[i].match(/^(-|\d+)\t(-|\d+)\t(.*)$/s)
+    if (!m) continue
+    const path = m[3] === '' ? words[(i += 2)] : m[3]
+    const isBinary = m[1] === '-'
+    stats.push({ path, add: isBinary ? 0 : Number(m[1]), del: isBinary ? 0 : Number(m[2]), isBinary })
+  }
+  return stats
+}
+
+export const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0))
+
+// files: fileRows(); status: parseStatus(); stats: parseNumstat() of `git diff HEAD`; lines: line count of
+// each untracked file by repo path. Returns { changed, read }: the files the conversation edited that git
+// still reports, with +/-, and the files only read.
+export function changeRows({ files, status, stats, lines, root, cwd, home }) {
+  const byPath = new Map(status.map((s) => [shortPath(root + '/' + s.path, cwd, home), s]))
+  const statOf = new Map(stats.map((s) => [s.path, s]))
+  const changed = files.edited
+    .filter((f) => byPath.has(f.path))
+    .map((f) => {
+      const entry = byPath.get(f.path)
+      const stat = statOf.get(entry.path)
+      return {
+        path: f.path,
+        rel: entry.path,
+        count: f.count,
+        add: entry.isUntracked ? (lines[entry.path] ?? 0) : (stat?.add ?? 0),
+        del: entry.isUntracked ? 0 : (stat?.del ?? 0),
+        isBinary: stat?.isBinary ?? false,
+        isUntracked: entry.isUntracked,
+      }
+    })
+  return { changed, read: files.read }
+}
+
 function shortPath(path, cwd, home) {
   if (cwd && path.startsWith(cwd + '/')) return path.slice(cwd.length + 1)
   if (home && path.startsWith(home + '/')) return '~' + path.slice(home.length)
