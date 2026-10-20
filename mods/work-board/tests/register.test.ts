@@ -335,7 +335,7 @@ const BAND = {
 } as const
 
 // A session with a plan of two Tasks (one done), one edited file and one running subagent
-function bandSession(on, opened, { hasPlan = true } = {}) {
+function bandSession(on, opened, { hasPlan = true, beneath = true } = {}) {
   on('session.start', () => ({ cwd: '/work' }))
   mock.clock(on)
   on('session.cwd', () => ({ value: '/work' }))
@@ -355,7 +355,7 @@ function bandSession(on, opened, { hasPlan = true } = {}) {
     value: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/x.js' } }] }],
   }))
   // Another mod's band beneath (prompt-rail)
-  on('ui.render', () => ({ type: 'Text', props: {}, children: ['prompt rail'] }))
+  if (beneath) on('ui.render', () => ({ type: 'Text', props: {}, children: ['prompt rail'] }))
 }
 
 test('the band sums up the four tabs in one line', async ($, on) => {
@@ -395,4 +395,14 @@ test('the band keeps what another mod draws beneath it', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeDefined()
+})
+
+test('the band draws its line alone when nothing is drawn beneath it', async ($, on) => {
+  const opened = []
+  bandSession(on, opened, { beneath: false })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(BAND)
+  expect(await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeUndefined()
 })
