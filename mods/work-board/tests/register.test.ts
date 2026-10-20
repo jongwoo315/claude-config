@@ -172,8 +172,11 @@ test('a pane with another id is left to other mods', async ($, on) => {
 const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
 const failed = (exitCode: number, stderr = '') => ({ value: { exitCode, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
 
+const DIFF_A = '--- a/a.js\n+++ b/a.js\n@@ -1,2 +1,4 @@\n keep\n-old\n+new\n+more\n+most\n'
+const DIFF_NEW = '--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n'
+
 // A repo at /work: a.js modified (+3 -1), new.txt untracked (2 lines), committed.js already committed
-function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null } = {}) {
+function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null } = {}) {
   on('session.cwd', () => ({ value: '/work' }))
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/jw' : undefined }))
   on('fs.exists', () => ({ value: false }))
@@ -185,7 +188,10 @@ function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, 
     if (!isRepo) return failed(128, 'fatal: not a git repository')
     if (sub === 'rev-parse') return ok('/work\n')
     if (sub === 'status') return ok(' M a.js\0?? new.txt\0')
-    if (sub === 'diff') return ok(numstat)
+    if (sub === 'diff' && e.argv.includes('--numstat')) return ok(numstat)
+    // git diff --no-index exits 1 when the files differ
+    if (sub === 'diff' && e.argv.includes('--no-index')) return { value: { ...ok(DIFF_NEW).value, exitCode: 1 } }
+    if (sub === 'diff') return ok(bigDiff ?? DIFF_A)
     return failed(1)
   })
   on('session.messages', () => ({
@@ -505,6 +511,7 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
     'tab-plan': [undefined, undefined],
     'tab-agents': [undefined, undefined],
     'tab-changes': [undefined, undefined],
+    'tab-diff': [undefined, undefined],
     'tab-flow': [undefined, undefined],
   })
 
@@ -524,4 +531,47 @@ test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
   await $.ui.focus({ component: 'Pane', requestId: 'work-board', plugin: 'work-board', element: 'tab-flow', origin: { kind: 'person' } })
   const flow = Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, b.props.variant]))
   expect(flow['tab-flow']).toBe('primary')
+})
+
+const diffOf = async (ui) => (await ui.find({ type: 'Code' }))?.props
+
+test('pressing a changes row opens the diff tab on that file, drawn as a diff', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'change-a.js' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_A, format: 'diff', path: 'a.js' })
+  expect(await ui.find({ type: 'Text', text: 'a.js' })).toBeDefined()
+})
+
+test('the diff tab shows the first changed file when none was picked', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_A, path: 'a.js' })
+})
+
+test('the diff tab shows an untracked file as all added, git diff --no-index exiting 1', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'change-new.txt' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_NEW, format: 'diff', path: 'new.txt' })
+})
+
+test('the diff tab says so when nothing is changed', async ($, on) => {
+  repoSession(on, { messages: [] })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /보여 줄 변경이 없다/ })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
+test('the diff tab cuts a long diff at 400 lines and says how long it was', async ($, on) => {
+  const lines = ['--- a/a.js', '+++ b/a.js', '@@ -1,0 +1,999 @@', ...Array.from({ length: 997 }, (_, i) => '+line ' + i)]
+  repoSession(on, { bigDiff: lines.join('\n') + '\n' })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect((await diffOf(ui)).source.split('\n')).toHaveLength(400)
+  expect(await ui.find({ type: 'Text', text: '1000줄 중 400줄' })).toBeDefined()
 })

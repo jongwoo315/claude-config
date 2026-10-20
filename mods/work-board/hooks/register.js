@@ -2,6 +2,7 @@ import { addTool, agentRows, changeRows, countLines, displayWidth, endTurn, file
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
+const DIFF_LINES = 400 // the diff tab draws this many lines of a diff
 const TMP = '/private/tmp'
 // Every color the pane and band use is a token of the current theme. Claude Code draws in 256
 // colors here, so a hex is rounded to the nearest palette entry; #262626 (palette 235) is exact
@@ -116,6 +117,21 @@ async function loadChanges($) {
   }
 }
 
+// The diff of one changes row: tracked against HEAD, untracked against /dev/null (which exits 1 when the
+// files differ). Resolves { source, total } or { error }.
+async function loadDiff($, root, file) {
+  try {
+    const argv = file.isUntracked ? ['git', 'diff', '--no-index', '--', '/dev/null', file.rel] : ['git', 'diff', 'HEAD', '--', file.rel]
+    const out = await $.process.run(argv, { cwd: root })
+    if (out.exitCode > (file.isUntracked ? 1 : 0)) return { error: 'git diff가 실패했다' }
+    const lines = out.stdout.replace(/\n$/, '').split('\n')
+    if (out.stdout === '') return { error: 'diff가 비어 있다' }
+    return { source: lines.length > DIFF_LINES ? lines.slice(0, DIFF_LINES).join('\n') : out.stdout, total: lines.length }
+  } catch {
+    return { error: 'git diff가 실패했다' }
+  }
+}
+
 const openPane = ($) => $.ui.open({ id: PANE, title: 'Work', focus: true, closeOnEscape: true })
 
 function seconds(ms) {
@@ -223,7 +239,7 @@ export function register(on) {
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     if (e.requestId !== PANE) return next(e)
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const { Box, Text, Button, Code } = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
 
     const tabButton = (name, label, hotkey) =>
@@ -282,6 +298,7 @@ export function register(on) {
           plain: true,
           onPress: () => {
             selected = f.path
+            tab = 'diff'
             redraw()
           },
           children: [
@@ -318,6 +335,23 @@ export function register(on) {
               ...(note ? [line(note, { dimColor: true })] : []),
               line('Bash는 sed -i · > · tee 로 쓴 파일만 센다. python 등이 쓴 파일은 빠진다', { dimColor: true }),
             ]
+    } else if (tab === 'diff') {
+      const { changed, root } = await loadChanges($)
+      const file = changed.find((f) => f.path === selected) ?? changed[0]
+      const diff = file && (file.rel === null ? { error: 'git 없이는 diff를 못 만든다' } : await loadDiff($, root, file))
+      body = !file
+        ? [line('보여 줄 변경이 없다', { dimColor: true })]
+        : [
+            line(file.path, { bold: true }),
+            line('변경 탭에서 Enter로 다른 파일', { dimColor: true }),
+            Text({ children: [' '] }),
+            ...(diff.error
+              ? [line(diff.error, { dimColor: true })]
+              : [
+                  Code({ source: diff.source, format: 'diff', path: file.path }),
+                  ...(diff.total > DIFF_LINES ? [Text({ children: [' '] }), line(diff.total + '줄 중 ' + DIFF_LINES + '줄', { dimColor: true })] : []),
+                ]),
+          ]
     } else if (tab === 'flow') {
       const found = await loadFlow($)
       const flow = found && flowRows(found.candidate)
@@ -500,7 +534,7 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: theme().bg,
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('changes', '변경', '4'), tabButton('flow', '흐름', '5')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('changes', '변경', '4'), tabButton('diff', 'diff', '5'), tabButton('flow', '흐름', '6')] }),
         Text({ children: [' '] }),
         ...body,
       ],
