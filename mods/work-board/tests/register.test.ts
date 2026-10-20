@@ -191,8 +191,8 @@ const DIFF_A = '--- a/a.js\n+++ b/a.js\n@@ -1,2 +1,4 @@\n keep\n-old\n+new\n+mor
 const DIFF_NEW = '--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n'
 
 // A repo at /work: a.js modified (+3 -1), new.txt untracked (2 lines), committed.js already committed
-function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null, unreadable = null } = {}) {
-  on('session.cwd', () => ({ value: '/work' }))
+function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null, unreadable = null, cwd = '/work' } = {}) {
+  on('session.cwd', () => ({ value: cwd }))
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/jw' : undefined }))
   on('fs.exists', () => ({ value: false }))
   on('agent.list', () => ({ value: [] }))
@@ -668,6 +668,37 @@ test('the diff tab cuts a first hunk that alone is over the limit', async ($, on
   await ui.press({ key: 'tab-diff' })
   expect(await ui.find({ type: 'Text', text: /1000줄 중 400줄/ })).toBeDefined()
   expect((await diffOf(ui)).source).toContain('@@ -1,0 +1,397 @@')
+})
+
+test('the changes tab maps git paths to the transcript when the session runs in a subdirectory of the repo', async ($, on) => {
+  // Repo root /work, session in /work/mods/x: git answers with paths from the root, the transcript's go by the session's
+  repoSession(on, {
+    cwd: '/work/mods/x',
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/work\nmods/x/\n')
+      return e.argv[1] === 'status' ? ok(' M mods/x/a.js\0') : ok('5\t2\tmods/x/a.js\0')
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/mods/x/a.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+5' })).toBeDefined()
+})
+
+test('the changes tab maps git paths to the transcript when a symlinked session sits in a subdirectory', async ($, on) => {
+  // The session runs in /link/mods/x; git names the root by its real path /private/real
+  repoSession(on, {
+    cwd: '/link/mods/x',
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/private/real\nmods/x/\n')
+      return e.argv[1] === 'status' ? ok(' M mods/x/a.js\0') : ok('5\t2\tmods/x/a.js\0')
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/link/mods/x/a.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
 })
 
 test('the changes tab matches the transcript when git names the repo by its real path', async ($, on) => {
