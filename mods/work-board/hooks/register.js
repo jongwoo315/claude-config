@@ -359,9 +359,9 @@ export function register(on) {
               line('Bash는 sed -i · > · tee 로 쓴 파일만 센다. python 등이 쓴 파일은 빠진다', { dimColor: true }),
             ]
     } else if (tab === 'diff') {
-      const { changed, root } = await loadChanges($)
+      const { changed, root, note } = await loadChanges($)
       const file = changed.find((f) => f.path === selected) ?? changed[0]
-      const diff = file && (file.rel === null ? { error: 'git 없이는 diff를 못 만든다' } : await loadDiff($, root, file))
+      const diff = file && (file.rel === null ? { error: 'git 없이는 diff를 못 만든다' + (note ? ' — ' + note : '') } : await loadDiff($, root, file))
       body = !file
         ? [line('보여 줄 변경이 없다', { dimColor: true })]
         : [

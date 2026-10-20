@@ -235,6 +235,15 @@ test('the changes tab keeps the other +/- when one untracked file cannot be read
   expect(await ui.find({ type: 'Text', text: /git이 실패해서/ })).toBeUndefined()
 })
 
+test('the diff tab says why there is no diff when git cannot be used', async ($, on) => {
+  repoSession(on, { isRepo: false })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /git 없이는 diff를 못 만든다 — git repo가 아니라 \+\/−를 못 센다 \(fatal: not a git repository\)/ })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
 test('the changes tab runs git from the repo root, not the session directory', async ($, on) => {
   const seen: string[][] = []
   repoSession(on, {
