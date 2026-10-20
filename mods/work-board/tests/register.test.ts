@@ -568,13 +568,60 @@ test('the diff tab says so when nothing is changed', async ($, on) => {
   expect(await diffOf(ui)).toBeUndefined()
 })
 
-test('the diff tab cuts a long diff at 400 lines and says how long it was', async ($, on) => {
-  const lines = ['--- a/a.js', '+++ b/a.js', '@@ -1,0 +1,999 @@', ...Array.from({ length: 997 }, (_, i) => '+line ' + i)]
-  repoSession(on, { bigDiff: lines.join('\n') + '\n' })
+test('the diff tab cuts a long diff at a hunk and says how long it was', async ($, on) => {
+  const text = ['--- a/a.js', '+++ b/a.js', ...Array.from({ length: 10 }, (_, h) => ['@@ -1 +1 @@', ...Array.from({ length: 99 }, (_, i) => '+h' + h + 'l' + i)]).flat()].join('\n') + '\n'
+  repoSession(on, { bigDiff: text })
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'tab-diff' })
-  expect((await diffOf(ui)).source.split('\n')).toHaveLength(400)
-  expect(await ui.find({ type: 'Text', text: '1000줄 중 400줄' })).toBeDefined()
+  expect((await diffOf(ui)).source.split('\n')).toHaveLength(302)
+  expect(await ui.find({ type: 'Text', text: '1002줄 중 302줄' })).toBeDefined()
+})
+
+test('the diff tab says so when one hunk alone is too big', async ($, on) => {
+  const text = ['--- a/a.js', '+++ b/a.js', '@@ -1 +1 @@', ...Array.from({ length: 997 }, (_, i) => '+line ' + i)].join('\n') + '\n'
+  repoSession(on, { bigDiff: text })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /hunk 하나가 너무 커서 못 보여 준다 \(1000줄\)/ })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
+test('the changes tab matches the transcript when git names the repo by its real path', async ($, on) => {
+  // The session runs in /work, a symlink; git answers with the real /private/work
+  repoSession(on, {
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/private/work\n\n')
+      return e.argv[1] === 'status' ? ok(' M a.js\0') : ok('3\t1\ta.js\0')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+})
+
+test('the diff tab passes a renamed file\'s old path to git as well', async ($, on) => {
+  const seen: string[][] = []
+  repoSession(on, {
+    git: (e) => {
+      seen.push([...e.argv])
+      if (e.argv[1] === 'rev-parse') return ok('/work\n\n')
+      if (e.argv[1] === 'status') return ok('R  b.js\0a.js\0')
+      return e.argv.includes('--numstat') ? ok('1\t0\tb.js\0') : ok(DIFF_A)
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Write', input: { file_path: '/work/b.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(seen.find((a) => a[1] === 'diff' && !a.includes('--numstat'))).toEqual(['git', 'diff', 'HEAD', '--', 'b.js', 'a.js'])
+})
+
+test('/board theme still repaints and says so when the choice cannot be saved', async ($, on) => {
+  themeSession(on, {}, { isSaveFailing: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount(PANE)
+  const answer = await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect(answer.text).toMatch(/저장하지 못했다/)
+  expect(await background(ui)).toBe(THEMES.dusk.bg)
 })
 
 // Where a hex sits in the xterm 256-color palette, or -1 when it is not exactly one entry
@@ -597,10 +644,11 @@ test('every theme color is exactly one entry of the 256-color palette', () => {
 })
 
 // A session with the board registered; the pane's outermost Box carries the background
-function themeSession(on, entries = {}) {
+function themeSession(on, entries = {}, { isSaveFailing = false } = {}) {
   const stored = new Map(Object.entries(entries))
   on('store.get', ($, e) => ({ value: stored.get(e.key) }))
   on('store.set', ($, e) => {
+    if (isSaveFailing) throw new Error('store full')
     stored.set(e.key, e.value)
     return { value: undefined }
   })

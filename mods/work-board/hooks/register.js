@@ -1,12 +1,15 @@
 import { THEMES } from './themes.js'
-import { addTool, agentRows, changeRows, countLines, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from './model.js'
+import { addTool, agentRows, changeRows, countLines, cutDiff, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
-const DIFF_LINES = 400 // the diff tab draws this many lines of a diff
+const DIFF_LINES = 400 // the diff tab draws this many lines of a diff, or this many characters (Code's limit),
+const DIFF_CHARS = 100000 // cut at a hunk
 const TMP = '/private/tmp'
 let themeName = 'classic'
 const theme = () => THEMES[themeName]
+// Dim text: the theme's muted color when it has one, else the terminal's dim
+const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true })
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
@@ -95,13 +98,15 @@ async function loadChanges($) {
   })
   try {
     const run = (argv, dir) => $.process.run(argv, { cwd: dir })
-    const top = await run(['git', 'rev-parse', '--show-toplevel'], cwd)
+    const top = await run(['git', 'rev-parse', '--show-toplevel', '--show-prefix'], cwd)
     if (top.exitCode !== 0) return withoutGit('git repo가 아니라 +/−를 못 센다')
-    const root = top.stdout.trim()
+    const [root, prefix = ''] = top.stdout.split('\n')
+    // git names the root by its real path; the transcript's paths go by the session's, which may run through a symlink
+    const logicalRoot = prefix && cwd.endsWith('/' + prefix.replace(/\/$/, '')) ? cwd.slice(0, cwd.length - prefix.length) : prefix ? root : cwd
     const status = await run(['git', 'status', '--porcelain', '-z', '--untracked-files=all'], root)
     const diff = await run(['git', 'diff', '--numstat', '-z', 'HEAD'], root)
     if (status.exitCode !== 0 || diff.exitCode !== 0) return withoutGit('git이 실패해서 +/−를 못 센다')
-    const args = { files, status: parseStatus(status.stdout), stats: parseNumstat(diff.stdout), lines: {}, root, cwd, home: await $.env.get('HOME') }
+    const args = { files, status: parseStatus(status.stdout), stats: parseNumstat(diff.stdout), lines: {}, root: logicalRoot, cwd, home: await $.env.get('HOME') }
     // An untracked file has no diff stat: its lines are all added
     const untracked = changeRows(args).changed.filter((r) => r.isUntracked)
     for (const r of untracked) args.lines[r.rel] = countLines(await $.fs.read(root + '/' + r.rel))
@@ -115,12 +120,14 @@ async function loadChanges($) {
 // files differ). Resolves { source, total } or { error }.
 async function loadDiff($, root, file) {
   try {
-    const argv = file.isUntracked ? ['git', 'diff', '--no-index', '--', '/dev/null', file.rel] : ['git', 'diff', 'HEAD', '--', file.rel]
+    // A renamed file's old path goes in too, or git shows the new one as all added
+    const paths = [file.rel, ...(file.oldRel ? [file.oldRel] : [])]
+    const argv = file.isUntracked ? ['git', 'diff', '--no-index', '--', '/dev/null', file.rel] : ['git', 'diff', 'HEAD', '--', ...paths]
     const out = await $.process.run(argv, { cwd: root })
     if (out.exitCode > (file.isUntracked ? 1 : 0)) return { error: 'git diff가 실패했다' }
-    const lines = out.stdout.replace(/\n$/, '').split('\n')
     if (out.stdout === '') return { error: 'diff가 비어 있다' }
-    return { source: lines.length > DIFF_LINES ? lines.slice(0, DIFF_LINES).join('\n') : out.stdout, total: lines.length }
+    const cut = cutDiff(out.stdout, DIFF_LINES, DIFF_CHARS)
+    return cut.isTooBig ? { error: 'hunk 하나가 너무 커서 못 보여 준다 (' + cut.total + '줄)' } : cut
   } catch {
     return { error: 'git diff가 실패했다' }
   }
@@ -161,8 +168,12 @@ export function register(on) {
     if (!name) return { text: '테마: ' + names + '\n현재: ' + themeName }
     if (!Object.hasOwn(THEMES, name)) return { text: '없는 테마: ' + name + '\n테마: ' + names }
     themeName = name
-    await $.store.set('theme', name)
     $.ui.invalidate('ui.render')
+    try {
+      await $.store.set('theme', name)
+    } catch {
+      return { text: '테마를 ' + name + '(으)로 바꿨지만 저장하지 못했다. 새 세션에서는 이전 테마로 열린다' }
+    }
     return { text: '테마를 ' + name + '(으)로 바꿨다' }
   })
 
@@ -235,7 +246,7 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ ...(theme().muted ? { color: theme().muted } : { dimColor: true }), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
+            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
             Button({ key: 'open-pane', label: '열기', plain: true, onPress: () => openPane($) }),
           ],
         }),
@@ -263,9 +274,7 @@ export function register(on) {
         },
       })
 
-    // Dim text is the theme's muted color when it has one, else the terminal's dim
-    const line = (text, { dimColor, ...style } = {}) =>
-      Text({ wrap: 'truncate-end', ...style, ...(dimColor ? (theme().muted ? { color: theme().muted } : { dimColor }) : {}), children: [text] })
+    const line = (text, { dimColor, ...style } = {}) => Text({ wrap: 'truncate-end', ...style, ...(dimColor ? muted() : {}), children: [text] })
 
     let body
     if (tab === 'plan' && !plan) {
@@ -313,7 +322,7 @@ export function register(on) {
             ...(f.add === null
               ? []
               : f.isBinary
-                ? [Text({ dimColor: true, children: ['바이너리'] })]
+                ? [Text({ ...muted(), children: ['바이너리'] })]
                 : [Text({ color: theme().add, children: ['+' + f.add] }), ' ', Text({ color: theme().del, children: ['−' + f.del] })]),
           ],
         })
@@ -356,7 +365,7 @@ export function register(on) {
               ? [line(diff.error, { dimColor: true })]
               : [
                   Code({ source: diff.source, format: 'diff', path: file.path }),
-                  ...(diff.total > DIFF_LINES ? [Text({ children: [' '] }), line(diff.total + '줄 중 ' + DIFF_LINES + '줄', { dimColor: true })] : []),
+                  ...(diff.shown < diff.total ? [Text({ children: [' '] }), line(diff.total + '줄 중 ' + diff.shown + '줄', { dimColor: true })] : []),
                 ]),
           ]
     } else if (tab === 'flow') {

@@ -124,8 +124,9 @@ export function parseStatus(output) {
   for (let i = 0; i < words.length; i++) {
     const word = words[i]
     if (word.length < 4) continue
-    if (/[RC]/.test(word[0])) i += 1
-    entries.push({ path: word.slice(3), isUntracked: word.startsWith('??') })
+    const isMoved = /[RC]/.test(word[0])
+    entries.push({ path: word.slice(3), isUntracked: word.startsWith('??'), ...(isMoved ? { oldPath: words[i + 1] } : {}) })
+    if (isMoved) i += 1
   }
   return entries
 }
@@ -144,6 +145,26 @@ export function parseNumstat(output) {
   return stats
 }
 
+// The part of a unified diff the diff tab can draw: whole hunks only, since Code does not parse a diff cut
+// mid-hunk (and draws 100000 characters at most). { source, total, shown } or, when even the first hunk is
+// over the limit, { total, isTooBig }.
+export function cutDiff(text, maxLines, maxChars) {
+  const lines = text.replace(/\n$/, '').split('\n')
+  const total = lines.length
+  if (total <= maxLines && text.length <= maxChars) return { source: text, total, shown: total }
+  let n = Math.min(maxLines, total)
+  let chars = 0
+  for (let i = 0; i < n; i++) {
+    chars += lines[i].length + 1
+    if (chars > maxChars) n = i
+  }
+  const first = lines.findIndex((l) => l.startsWith('@@'))
+  for (let k = n; k > first && k > 0; k--) {
+    if (lines[k]?.startsWith('@@')) return { source: lines.slice(0, k).join('\n'), total, shown: k }
+  }
+  return { total, isTooBig: true }
+}
+
 export const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0))
 
 // files: fileRows(); status: parseStatus(); stats: parseNumstat() of `git diff HEAD`; lines: line count of
@@ -160,6 +181,7 @@ export function changeRows({ files, status, stats, lines, root, cwd, home }) {
       return {
         path: f.path,
         rel: entry.path,
+        oldRel: entry.oldPath ?? null,
         count: f.count,
         add: entry.isUntracked ? (lines[entry.path] ?? 0) : (stat?.add ?? 0),
         del: entry.isUntracked ? 0 : (stat?.del ?? 0),
