@@ -14,9 +14,8 @@ const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
 const TABS = ['work', 'plan', 'agents', 'changes', 'diff', 'flow']
-const RING_START = 'ring-start'
-const RING_END = 'ring-end'
-let rest = null // where the person's ring rests: 'start', 'end' or 'close' (see ui.focus); null before it moved
+const RING = 'ring'
+const INDENT = 1 // the body's left indent: the width of RING, drawn before the tabs
 let plan = null // { name, tasks } of the newest *-plan-*.md in docs/plans, or null
 let turns = []
 let seenAgents = []
@@ -103,6 +102,7 @@ async function loadChanges($) {
   const files = fileRows(await $.session.messages(), cwd, await $.env.get('HOME'))
   const withoutGit = (note) => ({
     changed: files.edited.map((f) => ({ ...f, rel: null, add: null, del: null, isBinary: false, isUntracked: false })),
+    settled: [],
     read: files.read,
     note,
   })
@@ -270,11 +270,17 @@ export function register(on) {
     const { Box, Text, Button, Code } = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
 
-    // Where the ring rests while a tab is open (see ui.focus): one space in the background's color
-    // on the background, so the engine's inverse of it is the same cell
-    const ringStop = (key) =>
-      Button({ key, plain: true, onPress: () => {}, children: [Text({ color: theme().bg, backgroundColor: theme().bg, children: [' '] })] })
-
+    // Where the ring rests (see ui.focus): one space in the background's color on the background, so
+    // the engine's inverse of it is the same cell. Drawn first in the tab row, so it is the ring's
+    // first stop; the body is indented by its width (INDENT) to line up with the tabs
+    const ringStop = Button({
+      key: RING,
+      plain: true,
+      onPress: () => {},
+      children: [Text({ color: theme().bg, backgroundColor: theme().bg, children: [' '] })],
+    })
+    // The body's width once indented
+    const bodyColumns = e.props.bodyColumns - INDENT
     const tabButton = (name, label) =>
       Button({
         key: 'tab-' + name,
@@ -321,7 +327,7 @@ export function register(on) {
               ]
             })
     } else if (tab === 'changes') {
-      const { changed, read, note } = await loadChanges($)
+      const { changed, settled, read, note } = await loadChanges($)
       // The ring stays off the pane's buttons (see ui.focus), so a row is picked by its letter
       const changeRow = (f, i) =>
         Button({
@@ -354,15 +360,30 @@ export function register(on) {
             line('×' + f.count, { dimColor: true }),
           ],
         })
+      // The band counts every file edited in the conversation; the ones git no longer shows are listed too
+      const settledLine = (f) =>
+        Box({
+          key: 'settled-' + f.path,
+          flexDirection: 'row',
+          columnGap: 1,
+          children: [
+            line('✓', { dimColor: true }),
+            Box({ flexGrow: 1, flexShrink: 1, children: [line(f.path, { wrap: 'truncate-start', dimColor: true })] }),
+            line('×' + f.count, { dimColor: true }),
+          ],
+        })
+      const groups = [
+        changed.map(changeRow),
+        settled.length > 0 ? [line('커밋했거나 이 repo 밖 ' + settled.length, { dimColor: true }), ...settled.map(settledLine)] : [],
+        read.map(readLine),
+      ].filter((g) => g.length > 0)
       body =
-        changed.length + read.length === 0
+        changed.length + settled.length + read.length === 0
           ? [line('아직 건드린 파일이 없다', { dimColor: true })]
           : [
-              line('변경 ' + changed.length + ' · 읽은 파일 ' + read.length, { bold: true }),
+              line('변경 ' + changed.length + (settled.length > 0 ? ' · 커밋했거나 repo 밖 ' + settled.length : '') + ' · 읽은 파일 ' + read.length, { bold: true }),
               Text({ children: [' '] }),
-              ...changed.map(changeRow),
-              ...(changed.length > 0 && read.length > 0 ? [Text({ children: [' '] })] : []),
-              ...read.map(readLine),
+              ...groups.flatMap((g, i) => (i === 0 ? g : [Text({ children: [' '] }), ...g])),
               Text({ children: [' '] }),
               ...(note ? [line(note, { dimColor: true })] : []),
               line('Bash는 sed -i · > · tee 로 쓴 파일만 센다. python 등이 쓴 파일은 빠진다', { dimColor: true }),
@@ -400,7 +421,7 @@ export function register(on) {
         // A dataflow: one column per stage, left to right. Flows go many to many, so each box
         // lists where its data goes instead of drawing connectors. Columns wrap when the pane
         // is too narrow for all stages side by side.
-        const columnWidth = Math.max(22, Math.floor(e.props.bodyColumns / Math.max(1, flow.stages.length)) - 1)
+        const columnWidth = Math.max(22, Math.floor(bodyColumns / Math.max(1, flow.stages.length)) - 1)
         body = [
           line((flow.title ?? '흐름') + ' · ' + minutes + '분 전', { bold: true }),
           ...(flow.dashedLabel ? [line('⇢ 는 ' + flow.dashedLabel, { dimColor: true })] : []),
@@ -410,7 +431,7 @@ export function register(on) {
             flexWrap: 'wrap',
             columnGap: 1,
             rowGap: 1,
-            width: e.props.bodyColumns,
+            width: bodyColumns,
             children: flow.stages.map((stage, i) =>
               Box({
                 key: 'stage-' + i,
@@ -474,7 +495,7 @@ export function register(on) {
         const laneWidth = Math.min(12, Math.max(0, ...flow.lanes.map((l) => displayWidth(l.label)))) + 1
         const nextEdges = flow.nodes.flatMap((n) => n.edges.filter((edge) => edge.direction === 'next'))
         const gap = Math.min(16, Math.max(3, ...nextEdges.map((edge) => displayWidth(connectorText(edge))))) + 1
-        const colWidth = Math.floor((e.props.bodyColumns - laneWidth - (cols - 1) * gap) / Math.max(1, cols))
+        const colWidth = Math.floor((bodyColumns - laneWidth - (cols - 1) * gap) / Math.max(1, cols))
         const MARK = { down: '↓', up: '↑', back: '←', forward: '→', next: '→' }
 
         if (colWidth >= 16) {
@@ -483,7 +504,7 @@ export function register(on) {
             Box({
               flexDirection: 'column',
               rowGap: 1,
-              width: e.props.bodyColumns,
+              width: bodyColumns,
               children: flow.lanes.map((lane, l) =>
                 Box({
                   key: 'lane-' + l,
@@ -522,12 +543,12 @@ export function register(on) {
               flexWrap: 'wrap',
               alignItems: 'center',
               rowGap: 1,
-              width: e.props.bodyColumns,
+              width: bodyColumns,
               children: flow.nodes.flatMap((n, i) => {
                 const following = flow.nodes[i + 1]
                 const connector = following && n.edges.find((edge) => edge.isMain && edge.toId === following.id)
                 return [
-                  nodeBox(n, Math.min(e.props.bodyColumns, 26), n.edges.filter((edge) => edge !== connector), () => '⇢'),
+                  nodeBox(n, Math.min(bodyColumns, 26), n.edges.filter((edge) => edge !== connector), () => '⇢'),
                   ...(connector ? [Text({ key: 'arrow-' + n.id, dimColor: true, children: [connectorText(connector)] })] : []),
                 ]
               }),
@@ -566,9 +587,15 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: theme().bg,
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [ringStop(RING_START), tabButton('work', 'Work'), tabButton('plan', 'Plan'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow'), ringStop(RING_END)] }),
+        Box({
+          flexDirection: 'row',
+          children: [
+            ringStop,
+            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('plan', 'Plan'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow')] }),
+          ],
+        }),
         Text({ children: [' '] }),
-        ...body,
+        Box({ flexDirection: 'column', paddingLeft: INDENT, children: body }),
       ],
     })
   })
@@ -576,39 +603,21 @@ export function register(on) {
   // Tab, or left/right as ~/.claude/keybindings.json binds them in the Pane context,
   // opens a tab as the focus lands on it, with no Enter
   // The ring never rests on a tab: the engine inverts whatever it holds, a colored block over the
-  // open tab. It rests on one of two one-space Buttons at the ends of the tab row, painted in the
-  // pane's background so their inverse is invisible (RING_START before Work, RING_END after Flow),
-  // or on the pane's close mark, the stop after Flow. The engine's aim says the person's direction:
-  //   from RING_START  next -> tab-work, previous -> the close mark (it wraps)
-  //   from RING_END    next -> the close mark (Flow's body draws no Button), previous -> tab-flow
-  //   from the close mark  next -> RING_START (it wraps), previous -> what this plugin drew last
-  //   from nothing (the pane just took the keys)  next -> RING_START, previous -> the close mark
-  // A move is redirected only from one of this plugin's elements to another, never onto or off
-  // the close mark, so Flow rests on RING_END to reach it with next, and a move aimed at the close
-  // mark that should not land there is kept where it was. A click aims at what it hit; its press opens it.
+  // open tab. It rests on RING, an invisible one-space Button (see ringStop), and the open tab is
+  // drawn in color instead. The engine's aim says the person's direction:
+  //   from RING or from nothing  next -> RING or tab-work, previous -> its close mark (it wraps)
+  // The engine's close mark takes no color, so it is no stop here: a move aimed at it is kept (a
+  // move is redirected only between this plugin's elements). Esc, ctrl+x x or a click closes.
+  // A click aims at what it hit; its press opens it.
   on('ui.focus', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     if (e.origin.kind !== 'person') return next(e)
     const el = e.element
-    const step =
-      rest === 'close' ? (el === RING_START ? 1 : el !== undefined ? -1 : 0)
-      : rest === 'end' ? (el === undefined ? 1 : el === 'tab-' + TABS[TABS.length - 1] ? -1 : 0)
-      : el === RING_START || el === 'tab-' + TABS[0] ? 1 : el === undefined ? -1 : 0
+    const step = el === RING || el === 'tab-' + TABS[0] ? 1 : el === undefined ? -1 : 0
     if (step !== 0) {
-      if (rest === 'close') tab = step > 0 ? TABS[0] : TABS[TABS.length - 1]
-      else {
-        const i = TABS.indexOf(tab) + step
-        if (i >= 0 && i < TABS.length) tab = TABS[i]
-        else if (el === undefined) {
-          rest = 'close'
-          return next(e)
-        }
-      }
+      tab = TABS[(TABS.indexOf(tab) + step + TABS.length) % TABS.length]
       $.ui.invalidate('ui.render')
     }
-    rest = tab === TABS[TABS.length - 1] ? 'end' : 'start'
-    const anchor = rest === 'end' ? RING_END : RING_START
-    // A move aimed at the close mark can be kept but not redirected: it stays where it was
     if (el === undefined) return { deny: 'work-board keeps the ring on its anchor' }
-    return el === anchor ? next(e) : next({ ...e, element: anchor })
+    return el === RING ? next(e) : next({ ...e, element: RING })
   })
 }

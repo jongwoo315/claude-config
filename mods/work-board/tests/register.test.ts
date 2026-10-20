@@ -222,19 +222,22 @@ function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, 
   }))
 }
 
-test('the changes tab lists edited files git still reports with +/-, and leaves out a committed one', async ($, on) => {
+test('the changes tab lists edited files git still reports with +/-, and a committed one apart, without +/-', async ($, on) => {
   repoSession(on)
 
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'tab-changes' })
-  expect(await ui.find({ type: 'Text', text: '변경 2 · 읽은 파일 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '변경 2 · 커밋했거나 repo 밖 1 · 읽은 파일 1' })).toBeDefined()
   expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '+3' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '−1' })).toBeDefined()
   // An untracked file counts its lines
   expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '+2' })).toBeDefined()
+  // The band counts it, so the tab lists it, apart and with no +/-
   expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '커밋했거나 이 repo 밖 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'committed.js' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'hooks/model.js' })).toBeDefined()
 })
 
@@ -596,7 +599,7 @@ test('the six tabs come in order', async ($, on) => {
   for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
 })
 
-test('the person\'s moves cycle the tabs and the close mark while the ring stays off the tabs', async ($, on) => {
+test('the person\'s moves cycle the tabs while the ring stays on its anchor', async ($, on) => {
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
   on('fs.exists', () => ({ value: false }))
@@ -604,38 +607,34 @@ test('the person\'s moves cycle the tabs and the close mark while the ring stays
   on('ui.focus', () => ({}))
 
   const ui = await $.ui.mount(PANE)
-  const open = async () => {
+  const selected = async () => {
     for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) {
       if ((await ui.find({ type: 'Text', text: '[' + label + ']' }))?.props.bold) return label
     }
   }
-  // element absent = the engine aims at the pane's close mark
+  // element absent = the engine aims at its close mark on the border
   const move = (element?: string) =>
     $.ui.focus({ component: 'Pane', requestId: 'work-board', ...(element ? { plugin: 'work-board', element } : {}), origin: { kind: 'person' } })
 
-  // From nothing, next aims at the first stop, ring-start
-  await move('ring-start')
-  expect(await open()).toBe('Plan')
-  // From ring-start, next aims at tab-work; previous at the close mark, which is kept off
+  expect(await selected()).toBe('Work')
+  // From nothing, next aims at the anchor; from the anchor, at tab-work
+  await move('ring')
+  expect(await selected()).toBe('Plan')
   await move('tab-work')
-  expect(await open()).toBe('Agents')
+  expect(await selected()).toBe('Agents')
+  // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Flow
   expect((await move()).deny).toBeDefined()
-  expect(await open()).toBe('Plan')
   await move()
-  // Work, then previous lands on the close mark
-  expect((await move()).deny).toBeUndefined()
-  expect(await open()).toBe('Work')
-  // From the close mark, previous aims at what the plugin drew last and opens Flow
-  await move('ring-end')
-  expect(await open()).toBe('Flow')
-  // Flow rests on ring-end, whose next is the close mark; from there next wraps to ring-start: Work
-  expect((await move()).deny).toBeUndefined()
-  expect(await open()).toBe('Flow')
-  await move('ring-start')
-  expect(await open()).toBe('Work')
+  expect(await selected()).toBe('Work')
+  await move()
+  expect(await selected()).toBe('Flow')
+  await move('tab-work')
+  expect(await selected()).toBe('Work')
   // A click aims at what it hit and leaves the tab to its press
   await move('tab-diff')
-  expect(await open()).toBe('Work')
+  expect(await selected()).toBe('Work')
+  // No close mark of the plugin's own
+  expect(await ui.find({ type: 'Button', key: 'close' })).toBeUndefined()
 })
 
 const diffOf = async (ui) => (await ui.find({ type: 'Code' }))?.props

@@ -197,7 +197,9 @@ export function changeRows({ files, status, stats, lines, root, cwd, home }) {
         isUntracked: entry.isUntracked,
       }
     })
-  return { changed, read: files.read }
+  // Edited in the conversation but gone from git status: committed, reverted, or outside this repo
+  const settled = files.edited.filter((f) => !byPath.has(f.path))
+  return { changed, settled, read: files.read }
 }
 
 function shortPath(path, cwd, home) {
