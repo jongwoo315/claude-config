@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '\\brm\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"rm command detected — confirm deletion?\"}}'; exit 0; fi",
+            "command": "/Users/jw/.claude/hooks/rm-guard.sh",
             "timeout": 5
           },
           {
