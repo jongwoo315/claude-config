@@ -406,3 +406,24 @@ test('the band draws its line alone when nothing is drawn beneath it', async ($,
   expect(await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeUndefined()
 })
+
+test('the tabs are bracketed buttons and only the open one is marked primary', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  const marks = async () =>
+    Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, [b.props.plain, b.props.variant]]))
+  expect(await marks()).toEqual({
+    'tab-work': [undefined, 'primary'],
+    'tab-agents': [undefined, undefined],
+    'tab-files': [undefined, undefined],
+    'tab-flow': [undefined, undefined],
+  })
+
+  await ui.press({ key: 'tab-flow' })
+  expect((await marks())['tab-work']).toEqual([undefined, undefined])
+  expect((await marks())['tab-flow']).toEqual([undefined, 'primary'])
+})

@@ -193,7 +193,8 @@ export function register(on) {
         key: 'tab-' + name,
         label,
         hotkey,
-        plain: true,
+        // Drawn bracketed, [ 작업 ]; the open tab in the accent color
+        variant: tab === name ? 'primary' : undefined,
         dimColor: tab !== name,
         onPress: () => {
           tab = name
@@ -439,7 +440,7 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: PANE_BG,
       children: [
-        Box({ flexDirection: 'row', columnGap: 3, children: [tabButton('work', '작업', '1'), tabButton('agents', '에이전트', '2'), tabButton('files', '파일', '3'), tabButton('flow', '흐름', '4')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('agents', '에이전트', '2'), tabButton('files', '파일', '3'), tabButton('flow', '흐름', '4')] }),
         Text({ children: [' '] }),
         ...body,
       ],
