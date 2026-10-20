@@ -1,6 +1,6 @@
 // Pure state updates for the work board. No $ and no drawing here, so tests can call them directly.
 
-// The work tab shows a plan's Tasks when the session has one, and a timeline of turns otherwise.
+// The work tab shows a timeline of turns. A plan's Tasks are on the plan tab.
 
 // "## Task N ..." headings of a dev-workflow plan. Status comes from the "- [x]" / "- [ ]" boxes under
 // each heading: all checked = completed, some = in_progress, none = pending, no boxes = unknown.
@@ -78,7 +78,7 @@ export function agentRows(list) {
   return rows
 }
 
-// The files tab. Built from the transcript, not from hooks, so it survives a reload and a /resume.
+// The changes tab starts from these rows. Built from the transcript, not from hooks, so it survives a reload and a /resume.
 const EDIT_PATH = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
 
 // messages: $.session.messages(). Returns { edited, read }, each [{ path, count }] sorted by
@@ -114,6 +114,90 @@ export function fileRows(messages, cwd, home) {
   rows.sort((a, b) => compareKeys(dirKey(a.path), dirKey(b.path)))
   const pick = (isEdited) => rows.filter((r) => r.isEdited === isEdited).map(({ path, count }) => ({ path, count }))
   return { edited: pick(true), read: pick(false) }
+}
+
+// The changes tab. `git status --porcelain -z` entries: "XY path\0", a rename or copy ("R"/"C" in X)
+// followed by its old path as one more word. Paths are relative to the repo root.
+export function parseStatus(output) {
+  const words = output.split('\0')
+  const entries = []
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    if (word.length < 4) continue
+    const isMoved = /[RC]/.test(word[0])
+    entries.push({ path: word.slice(3), isUntracked: word.startsWith('??'), ...(isMoved ? { oldPath: words[i + 1] } : {}) })
+    if (isMoved) i += 1
+  }
+  return entries
+}
+
+// `git diff --numstat -z`: "add\tdel\tpath\0", a binary file "-\t-", a rename "add\tdel\t\0old\0new\0"
+export function parseNumstat(output) {
+  const words = output.split('\0')
+  const stats = []
+  for (let i = 0; i < words.length; i++) {
+    const m = words[i].match(/^(-|\d+)\t(-|\d+)\t(.*)$/s)
+    if (!m) continue
+    const path = m[3] === '' ? words[(i += 2)] : m[3]
+    const isBinary = m[1] === '-'
+    stats.push({ path, add: isBinary ? 0 : Number(m[1]), del: isBinary ? 0 : Number(m[2]), isBinary })
+  }
+  return stats
+}
+
+// The part of a unified diff the diff tab can draw: Code does not parse a diff cut mid-hunk (and draws 100000
+// characters at most), so the cut falls on a hunk boundary. When the first hunk alone is over the limit, it is
+// cut and its "@@ -a,b +c,d @@" counts are rewritten to what is kept. { source, total, shown } or, when the
+// diff has no hunk to cut, { total, isTooBig }.
+export function cutDiff(text, maxLines, maxChars) {
+  const lines = text.replace(/\n$/, '').split('\n')
+  const total = lines.length
+  if (total <= maxLines && text.length <= maxChars) return { source: text, total, shown: total }
+  let n = Math.min(maxLines, total)
+  let chars = 0
+  for (let i = 0; i < n; i++) {
+    chars += lines[i].length + 1
+    if (chars > maxChars) n = i
+  }
+  const first = lines.findIndex((l) => l.startsWith('@@'))
+  for (let k = n; k > first && k > 0; k--) {
+    if (lines[k]?.startsWith('@@')) return { source: lines.slice(0, k).join('\n'), total, shown: k }
+  }
+  const head = first >= 0 && n > first + 1 && lines[first].match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/)
+  if (!head) return { total, isTooBig: true }
+  const body = lines.slice(first + 1, n)
+  const kept = (marks) => body.filter((l) => !l.startsWith('\\') && !marks.includes(l[0])).length
+  const oldCount = body.filter((l) => l[0] === '-').length + kept(['+', '-'])
+  const newCount = body.filter((l) => l[0] === '+').length + kept(['+', '-'])
+  const header = '@@ -' + head[1] + ',' + oldCount + ' +' + head[2] + ',' + newCount + ' @@' + head[3]
+  return { source: [...lines.slice(0, first), header, ...body].join('\n'), total, shown: n }
+}
+
+export const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0))
+
+// files: fileRows(); status: parseStatus(); stats: parseNumstat() of `git diff HEAD`; lines: line count of
+// each untracked file by repo path. Returns { changed, read }: the files the conversation edited that git
+// still reports, with +/-, and the files only read.
+export function changeRows({ files, status, stats, lines, root, cwd, home }) {
+  const byPath = new Map(status.map((s) => [shortPath(root + '/' + s.path, cwd, home), s]))
+  const statOf = new Map(stats.map((s) => [s.path, s]))
+  const changed = files.edited
+    .filter((f) => byPath.has(f.path))
+    .map((f) => {
+      const entry = byPath.get(f.path)
+      const stat = statOf.get(entry.path)
+      return {
+        path: f.path,
+        rel: entry.path,
+        oldRel: entry.oldPath ?? null,
+        count: f.count,
+        add: entry.isUntracked ? (lines[entry.path] ?? null) : (stat?.add ?? 0),
+        del: entry.isUntracked ? 0 : (stat?.del ?? 0),
+        isBinary: stat?.isBinary ?? false,
+        isUntracked: entry.isUntracked,
+      }
+    })
+  return { changed, read: files.read }
 }
 
 function shortPath(path, cwd, home) {

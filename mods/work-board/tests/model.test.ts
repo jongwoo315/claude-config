@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { addTool, agentRows, bashTargets, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parsePlanTasks, startTurn } from '../hooks/model.js'
+import { addTool, agentRows, bashTargets, changeRows, countLines, cutDiff, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from '../hooks/model.js'
 
 const PLAN = `# plan
 
@@ -373,4 +373,118 @@ test('fileRows carries the shell directory from one Bash call to the next until 
     '/home/jw',
   )
   expect(rows.edited.map((r) => r.path)).toEqual(['top.txt', 'hooks/r.js'])
+})
+
+test('parseStatus reads porcelain -z entries, a rename carrying its old name', () => {
+  expect(parseStatus(' M a.js\0?? new dir/b.txt\0R  moved.js\0old.js\0A  c.js\0')).toEqual([
+    { path: 'a.js', isUntracked: false },
+    { path: 'new dir/b.txt', isUntracked: true },
+    { path: 'moved.js', isUntracked: false, oldPath: 'old.js' },
+    { path: 'c.js', isUntracked: false },
+  ])
+  expect(parseStatus('')).toEqual([])
+})
+
+test('parseNumstat reads numstat -z lines, a rename under its new name and a binary file as such', () => {
+  expect(parseNumstat('3\t1\ta.js\0-\t-\timg.png\x002\t0\t\0old.js\0new.js\0')).toEqual([
+    { path: 'a.js', add: 3, del: 1, isBinary: false },
+    { path: 'img.png', add: 0, del: 0, isBinary: true },
+    { path: 'new.js', add: 2, del: 0, isBinary: false },
+  ])
+})
+
+test('countLines counts the last line even without a trailing newline', () => {
+  expect([countLines(''), countLines('a\n'), countLines('a\nb'), countLines('a\nb\n')]).toEqual([0, 1, 2, 2])
+})
+
+const FILES = {
+  edited: [
+    { path: 'a.js', count: 2 },
+    { path: 'committed.js', count: 1 },
+    { path: 'new.txt', count: 1 },
+    { path: '~/notes.md', count: 1 },
+  ],
+  read: [{ path: 'r.js', count: 3 }],
+}
+
+test('changeRows keeps the edited files git still reports, with their +/- counts', () => {
+  const rows = changeRows({
+    files: FILES,
+    status: [
+      { path: 'a.js', isUntracked: false },
+      { path: 'new.txt', isUntracked: true },
+    ],
+    stats: [{ path: 'a.js', add: 3, del: 1, isBinary: false }],
+    lines: { 'new.txt': 7 },
+    root: '/work',
+    cwd: '/work',
+    home: '/home/jw',
+  })
+  // committed.js is not in git's status, so it is gone; ~/notes.md is outside the repo
+  expect(rows.changed).toEqual([
+    { path: 'a.js', rel: 'a.js', oldRel: null, count: 2, add: 3, del: 1, isBinary: false, isUntracked: false },
+    { path: 'new.txt', rel: 'new.txt', oldRel: null, count: 1, add: 7, del: 0, isBinary: false, isUntracked: true },
+  ])
+  expect(rows.read).toEqual([{ path: 'r.js', count: 3 }])
+})
+
+test('changeRows shows a path under the cwd relative to it when the repo root is above', () => {
+  // The repo root is /work, the session runs in /work/mods: git names mods/x.js, the transcript's path is x.js
+  const rows = changeRows({
+    files: { edited: [{ path: 'x.js', count: 1 }], read: [] },
+    status: [{ path: 'mods/x.js', isUntracked: false }],
+    stats: [{ path: 'mods/x.js', add: 1, del: 0, isBinary: false }],
+    lines: {},
+    root: '/work',
+    cwd: '/work/mods',
+    home: '/home/jw',
+  })
+  expect(rows.changed.map((r) => [r.path, r.rel, r.add])).toEqual([['x.js', 'mods/x.js', 1]])
+})
+
+// A diff of `hunks` hunks, each `size` lines long including its @@ line
+const hunks = (n: number, size: number) =>
+  ['--- a/f', '+++ b/f', ...Array.from({ length: n }, (_, h) => ['@@ -1 +1 @@', ...Array.from({ length: size - 1 }, (_, i) => '+h' + h + 'l' + i)]).flat()].join('\n') + '\n'
+
+test('cutDiff leaves a short diff whole', () => {
+  const text = hunks(2, 5)
+  expect(cutDiff(text, 400, 100000)).toEqual({ source: text, total: 12, shown: 12 })
+})
+
+test('cutDiff cuts a long diff before a hunk, never inside one', () => {
+  // 2 header lines + 10 hunks of 100 lines: 400 lines reach into the 4th hunk
+  const cut = cutDiff(hunks(10, 100), 400, 100000)
+  expect(cut.shown).toBe(302)
+  expect(cut.total).toBe(1002)
+  expect(cut.source.split('\n')).toHaveLength(302)
+  expect(cut.source.split('\n').at(-1)).toBe('+h2l98')
+})
+
+test('cutDiff also stops at the character limit', () => {
+  const cut = cutDiff(hunks(4, 50), 400, 1000)
+  expect(cut.source.length).toBeLessThanOrEqual(1000)
+  expect(cut.source.split('\n').at(-1)).toMatch(/^\+h\dl\d+$|^--- |^\+\+\+ /)
+})
+
+test('cutDiff cuts inside the first hunk when it alone is over the limit, with the counts of what is kept', () => {
+  // 2 header lines + one hunk of 999 lines (the @@ line and 998 added lines): 400 lines keep 397 of them
+  const cut = cutDiff(hunks(1, 999), 400, 100000)
+  expect(cut.total).toBe(1001)
+  expect(cut.shown).toBe(400)
+  const lines = cut.source.split('\n')
+  expect(lines).toHaveLength(400)
+  expect(lines[2]).toBe('@@ -1,0 +1,397 @@')
+})
+
+test('cutDiff counts the context and removed lines of a first hunk it cuts', () => {
+  const body = Array.from({ length: 20 }, (_, i) => (i % 3 === 0 ? '-r' + i : i % 3 === 1 ? '+a' + i : ' c' + i))
+  const text = ['--- a/f', '+++ b/f', '@@ -5,14 +5,13 @@ fn()', ...body].join('\n') + '\n'
+  const cut = cutDiff(text, 12, 100000)
+  // 9 body lines kept: i = 0..8 -> 3 removed, 3 added, 3 context
+  expect(cut.source.split('\n')[2]).toBe('@@ -5,6 +5,6 @@ fn()')
+  expect(cut.shown).toBe(12)
+})
+
+test('cutDiff says so when the diff has no hunk to cut', () => {
+  expect(cutDiff(['diff --git a/f b/f', ...Array.from({ length: 500 }, (_, i) => 'x' + i)].join('\n'), 400, 100000)).toEqual({ total: 501, isTooBig: true })
 })

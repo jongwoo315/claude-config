@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import { THEMES } from '../hooks/themes.js'
 
 // What Claude Code passes to a ui.render hook for this pane
 const PANE = {
@@ -28,7 +29,7 @@ const PLAN = `# plan
 - [ ] draw
 `
 
-test('a plan in docs/plans shows its Task list on the work tab', async ($, on) => {
+test('a plan in docs/plans shows its Task list on the plan tab', async ($, on) => {
   mock.clock(on)
   on('session.start', () => ({ cwd: '/work' }))
   on('command.register', () => ({ value: undefined }))
@@ -48,10 +49,40 @@ test('a plan in docs/plans shows its Task list on the work tab', async ($, on) =
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-plan' })
   expect(await ui.find({ type: 'Text', text: /1014-plan-new\.md/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /● Task 1 — 뼈대/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /○ Task 2 — 그리기/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Task 9/ })).toBeUndefined()
+})
+
+test('the work tab shows the turn log even when the session has a plan', async ($, on) => {
+  mock.clock(on)
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', ($, e) => ({ value: e.path === '/work/docs/plans' }))
+  on('fs.list', () => ({ value: [{ name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false }] }))
+  on('fs.read', () => ({ value: PLAN }))
+  on('agent.list', () => ({ value: [] }))
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await $.turn.start({ turnId: 't1', text: 'fix the login bug' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await ui.find({ type: 'Text', text: /fix the login bug/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Task 1/ })).toBeUndefined()
+})
+
+test('the plan tab says so when docs/plans has no plan', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-plan' })
+  expect(await ui.find({ type: 'Text', text: /docs\/plans에 \*-plan-\*\.md가 없다/ })).toBeDefined()
 })
 
 test('without a plan the work tab shows a timeline of turns and their tools', async ($, on) => {
@@ -92,6 +123,20 @@ test('an empty session says nothing has happened yet', async ($, on) => {
   on('agent.list', () => ({ value: [] }))
   const ui = await $.ui.mount(PANE)
   expect(await ui.find({ type: 'Text', text: /아직 턴이 없다/ })).toBeDefined()
+})
+
+test('classic keeps the colors the board drew before themes: green added, red removed, yellow running', async ($, on) => {
+  on('agent.list', () => ({
+    value: [
+      { id: 'a', description: 'one', type: 'Explore', status: 'running' },
+      { id: 'b', description: 'two', type: 'Explore', status: 'completed' },
+      { id: 'c', description: 'three', type: 'Explore', status: 'failed' },
+    ],
+  }))
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-agents' })
+  const colorOf = async (text: string) => (await ui.find({ type: 'Text', text }))?.props.color
+  expect([await colorOf('running'), await colorOf('completed'), await colorOf('failed')]).toEqual(['yellow', 'green', 'red'])
 })
 
 test('the agents tab shows subagents nested under their parent', async ($, on) => {
@@ -139,38 +184,149 @@ test('a pane with another id is left to other mods', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: 'someone else' })).toBeDefined()
 })
 
-test('the files tab lists edited files above read ones, straight from the transcript', async ($, on) => {
-  on('session.cwd', () => ({ value: '/work' }))
+const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
+const failed = (exitCode: number, stderr = '') => ({ value: { exitCode, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
+
+const DIFF_A = '--- a/a.js\n+++ b/a.js\n@@ -1,2 +1,4 @@\n keep\n-old\n+new\n+more\n+most\n'
+const DIFF_NEW = '--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n'
+
+// A repo at /work: a.js modified (+3 -1), new.txt untracked (2 lines), committed.js already committed
+function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null, unreadable = null, cwd = '/work' } = {}) {
+  on('session.cwd', () => ({ value: cwd }))
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/jw' : undefined }))
   on('fs.exists', () => ({ value: false }))
   on('agent.list', () => ({ value: [] }))
-  // No tool.call ran in this module: the list must come from the transcript alone,
-  // which is what keeps it after the mod reloads
+  on('fs.read', ($, e) => {
+    if (e.path === unreadable) throw new Error('file is over 4 MiB')
+    return { value: 'one\ntwo\n' }
+  })
+  on('process.run', ($, e) => {
+    if (git) return git(e)
+    const [, sub] = e.argv
+    if (!isRepo) return failed(128, 'fatal: not a git repository')
+    if (sub === 'rev-parse') return ok('/work\n')
+    if (sub === 'status') return ok(' M a.js\0?? new.txt\0')
+    if (sub === 'diff' && e.argv.includes('--numstat')) return ok(numstat)
+    // git diff --no-index exits 1 when the files differ
+    if (sub === 'diff' && e.argv.includes('--no-index')) return { value: { ...ok(DIFF_NEW).value, exitCode: 1 } }
+    if (sub === 'diff') return ok(bigDiff ?? DIFF_A)
+    return failed(1)
+  })
   on('session.messages', () => ({
-    value: [
+    value: messages ?? [
       { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'a', tool: 'Read', input: { file_path: '/work/hooks/model.js' } }] },
-      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/hooks/register.js' } }] },
-      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'c', tool: 'Write', input: { file_path: '/home/jw/notes.md' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/a.js' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'c', tool: 'Write', input: { file_path: '/work/new.txt' } }] },
+      { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'd', tool: 'Edit', input: { file_path: '/work/committed.js' } }] },
     ],
   }))
+}
+
+test('the changes tab lists edited files git still reports with +/-, and leaves out a committed one', async ($, on) => {
+  repoSession(on)
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-files' })
-  expect(await ui.find({ type: 'Text', text: '고친 파일 2 · 읽은 파일 1' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: '~/notes.md' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'hooks/register.js' })).toBeDefined()
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: '변경 2 · 읽은 파일 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+3' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '−1' })).toBeDefined()
+  // An untracked file counts its lines
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+2' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'hooks/model.js' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Bash는 sed -i · > · tee 로 쓴 파일만 센다/ })).toBeDefined()
 })
 
-test('the files tab says so when nothing was touched', async ($, on) => {
-  on('agent.list', () => ({ value: [] }))
-  on('session.cwd', () => ({ value: '/work' }))
-  on('env.get', () => ({ value: '/home/jw' }))
-  on('session.messages', () => ({ value: [] }))
+test('classic draws +N green and −M red on the changes tab', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect((await ui.find({ type: 'Text', text: '+3' }))?.props.color).toBe('green')
+  expect((await ui.find({ type: 'Text', text: '−1' }))?.props.color).toBe('red')
+})
+
+test('the changes tab keeps the other +/- when one untracked file cannot be read', async ($, on) => {
+  repoSession(on, { unreadable: '/work/new.txt' })
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-files' })
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: '+3' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+2' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서/ })).toBeUndefined()
+})
+
+test('the diff tab says why there is no diff when git cannot be used', async ($, on) => {
+  repoSession(on, { isRepo: false })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /git 없이는 diff를 못 만든다 — git repo가 아니라 \+\/−를 못 센다 \(fatal: not a git repository\)/ })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
+test('the changes tab runs git from the repo root, not the session directory', async ($, on) => {
+  const seen: string[][] = []
+  repoSession(on, {
+    git: (e) => {
+      seen.push([...e.argv, String(e.init?.cwd)])
+      return e.argv[1] === 'rev-parse' ? ok('/work\n') : ok('')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(seen.find((a) => a[1] === 'status')).toEqual(['git', 'status', '--porcelain', '-z', '--untracked-files=all', '/work'])
+  expect(seen.find((a) => a[1] === 'diff')).toEqual(['git', 'diff', '--numstat', '-z', 'HEAD', '/work'])
+})
+
+test('the changes tab draws from the transcript alone and says so when it is not a git repo', async ($, on) => {
+  repoSession(on, { isRepo: false })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git repo가 아니라 \+\/−를 못 센다/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeDefined()
+})
+
+test('the changes tab says git failed when git cannot run', async ($, on) => {
+  repoSession(on, {
+    git: () => {
+      throw new Error('spawn git ENOENT')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서 \+\/−를 못 센다/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+})
+
+test('the changes tab gives git\'s own reason when status or diff exits nonzero', async ($, on) => {
+  // A repo with no commit yet: git diff HEAD cannot name HEAD
+  repoSession(on, {
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/work\n')
+      return e.argv[1] === 'diff' ? failed(128, "fatal: ambiguous argument 'HEAD': unknown revision\nUse '--' to separate paths") : ok('')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서 \+\/−를 못 센다 \(fatal: ambiguous argument 'HEAD': unknown revision\)/ })).toBeDefined()
+})
+
+test('the changes tab gives the reason when git cannot name the repo', async ($, on) => {
+  repoSession(on, { isRepo: false })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: /git repo가 아니라 \+\/−를 못 센다 \(fatal: not a git repository\)/ })).toBeDefined()
+})
+
+test('the changes tab says so when nothing was touched', async ($, on) => {
+  repoSession(on, { messages: [] })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
   expect(await ui.find({ type: 'Text', text: /아직 건드린 파일이 없다/ })).toBeDefined()
 })
 
@@ -224,6 +380,7 @@ test('the flow tab draws the newest archify diagram of this session', async ($, 
   expect(await ui.find({ type: 'Text', text: /파일 탭 흐름 · 12분 전/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /대화 기록 읽기/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '[새로 생김]' })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: '[새로 생김]' }))?.props.color).toBe('green')
   // Left to right: the main arrow to the next box is a connector between them
   expect(await ui.find({ type: 'Text', text: '─ 그릴 때마다 ─▶' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /▼/ })).toBeUndefined()
@@ -365,7 +522,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '✓ 작업 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✓ 계획 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
 })
 
 test('the band opens the pane with the keyboard, and the session start does not', async ($, on) => {
@@ -418,14 +575,34 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
     Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, [b.props.plain, b.props.variant]]))
   expect(await marks()).toEqual({
     'tab-work': [undefined, 'primary'],
+    'tab-plan': [undefined, undefined],
     'tab-agents': [undefined, undefined],
-    'tab-files': [undefined, undefined],
+    'tab-changes': [undefined, undefined],
+    'tab-diff': [undefined, undefined],
     'tab-flow': [undefined, undefined],
   })
 
   await ui.press({ key: 'tab-flow' })
   expect((await marks())['tab-work']).toEqual([undefined, undefined])
   expect((await marks())['tab-flow']).toEqual([undefined, 'primary'])
+})
+
+test('the six tabs come in order, on hotkeys 1 to 6', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
+  expect(tabs.map((b) => [b.key, b.props.label, b.props.hotkey])).toEqual([
+    ['tab-work', '작업', '1'],
+    ['tab-plan', '계획', '2'],
+    ['tab-agents', '에이전트', '3'],
+    ['tab-changes', '변경', '4'],
+    ['tab-diff', 'diff', '5'],
+    ['tab-flow', '흐름', '6'],
+  ])
 })
 
 test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
@@ -439,4 +616,256 @@ test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
   await $.ui.focus({ component: 'Pane', requestId: 'work-board', plugin: 'work-board', element: 'tab-flow', origin: { kind: 'person' } })
   const flow = Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, b.props.variant]))
   expect(flow['tab-flow']).toBe('primary')
+})
+
+const diffOf = async (ui) => (await ui.find({ type: 'Code' }))?.props
+
+test('pressing a changes row opens the diff tab on that file, drawn as a diff', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'change-a.js' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_A, format: 'diff', path: 'a.js' })
+  expect(await ui.find({ type: 'Text', text: 'a.js' })).toBeDefined()
+})
+
+test('the diff tab shows the first changed file when none was picked', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_A, path: 'a.js' })
+})
+
+test('the diff tab shows an untracked file as all added, git diff --no-index exiting 1', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'change-new.txt' })
+  expect(await diffOf(ui)).toMatchObject({ source: DIFF_NEW, format: 'diff', path: 'new.txt' })
+})
+
+test('the diff tab says so when nothing is changed', async ($, on) => {
+  repoSession(on, { messages: [] })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /보여 줄 변경이 없다/ })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
+test('the diff tab cuts a long diff at a hunk and says how long it was', async ($, on) => {
+  const text = ['--- a/a.js', '+++ b/a.js', ...Array.from({ length: 10 }, (_, h) => ['@@ -1 +1 @@', ...Array.from({ length: 99 }, (_, i) => '+h' + h + 'l' + i)]).flat()].join('\n') + '\n'
+  repoSession(on, { bigDiff: text })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect((await diffOf(ui)).source.split('\n')).toHaveLength(302)
+  expect(await ui.find({ type: 'Text', text: '1002줄 중 302줄' })).toBeDefined()
+})
+
+test('the diff tab cuts a first hunk that alone is over the limit', async ($, on) => {
+  const text = ['--- a/a.js', '+++ b/a.js', '@@ -1 +1 @@', ...Array.from({ length: 997 }, (_, i) => '+line ' + i)].join('\n') + '\n'
+  repoSession(on, { bigDiff: text })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: /1000줄 중 400줄/ })).toBeDefined()
+  expect((await diffOf(ui)).source).toContain('@@ -1,0 +1,397 @@')
+})
+
+test('the changes tab maps git paths to the transcript when the session runs in a subdirectory of the repo', async ($, on) => {
+  // Repo root /work, session in /work/mods/x: git answers with paths from the root, the transcript's go by the session's
+  repoSession(on, {
+    cwd: '/work/mods/x',
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/work\nmods/x/\n')
+      return e.argv[1] === 'status' ? ok(' M mods/x/a.js\0') : ok('5\t2\tmods/x/a.js\0')
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/mods/x/a.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+5' })).toBeDefined()
+})
+
+test('the changes tab maps git paths to the transcript when a symlinked session sits in a subdirectory', async ($, on) => {
+  // The session runs in /link/mods/x; git names the root by its real path /private/real
+  repoSession(on, {
+    cwd: '/link/mods/x',
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/private/real\nmods/x/\n')
+      return e.argv[1] === 'status' ? ok(' M mods/x/a.js\0') : ok('5\t2\tmods/x/a.js\0')
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/link/mods/x/a.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+})
+
+test('the diff tab says so when git diff exits nonzero or prints nothing', async ($, on) => {
+  let out: unknown = failed(128, 'fatal: bad revision')
+  repoSession(on, { git: (e) => (e.argv[1] === 'rev-parse' ? ok('/work\n') : e.argv[1] === 'status' ? ok(' M a.js\0') : e.argv.includes('--numstat') ? ok('3\t1\ta.js\0') : out) })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: 'git diff가 실패했다' })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+
+  out = ok('')
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: 'diff가 비어 있다' })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
+test('the changes tab matches the transcript when git names the repo by its real path', async ($, on) => {
+  // The session runs in /work, a symlink; git answers with the real /private/work
+  repoSession(on, {
+    git: (e) => {
+      if (e.argv[1] === 'rev-parse') return ok('/private/work\n\n')
+      return e.argv[1] === 'status' ? ok(' M a.js\0') : ok('3\t1\ta.js\0')
+    },
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+})
+
+test('the diff tab passes a renamed file\'s old path to git as well', async ($, on) => {
+  const seen: string[][] = []
+  repoSession(on, {
+    git: (e) => {
+      seen.push([...e.argv])
+      if (e.argv[1] === 'rev-parse') return ok('/work\n\n')
+      if (e.argv[1] === 'status') return ok('R  b.js\0a.js\0')
+      return e.argv.includes('--numstat') ? ok('1\t0\tb.js\0') : ok(DIFF_A)
+    },
+    messages: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Write', input: { file_path: '/work/b.js' } }] }],
+  })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(seen.find((a) => a[1] === 'diff' && !a.includes('--numstat'))).toEqual(['git', 'diff', 'HEAD', '--', 'b.js', 'a.js'])
+})
+
+test('/board theme still repaints and says so when the choice cannot be saved', async ($, on) => {
+  themeSession(on, {}, { isSaveFailing: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  const ui = await $.ui.mount(PANE)
+  const answer = await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect(answer.text).toMatch(/저장하지 못했다/)
+  expect(await background(ui)).toBe(THEMES.dusk.bg)
+})
+
+// Where a hex sits in the xterm 256-color palette, or -1 when it is not exactly one entry
+function paletteIndex(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const cube = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
+  if ([r, g, b].every((c) => cube.includes(c))) return 16 + 36 * cube.indexOf(r) + 6 * cube.indexOf(g) + cube.indexOf(b)
+  return r === g && g === b && r >= 0x08 && r <= 0xee && (r - 0x08) % 10 === 0 ? 232 + (r - 0x08) / 10 : -1
+}
+
+test('every theme color is exactly one entry of the 256-color palette', () => {
+  expect(Object.keys(THEMES)).toEqual(['classic', 'dusk', 'aurora', 'high-contrast'])
+  for (const [name, theme] of Object.entries(THEMES)) {
+    for (const [token, value] of Object.entries(theme)) {
+      if (typeof value === 'string' && value.startsWith('#')) expect([name, token, paletteIndex(value) >= 0]).toEqual([name, token, true])
+    }
+  }
+  // The four themes paint the pane in four different backgrounds
+  expect(new Set(Object.values(THEMES).map((t) => t.bg)).size).toBe(4)
+})
+
+// A session with the board registered; the pane's outermost Box carries the background
+function themeSession(on, entries = {}, { isSaveFailing = false } = {}) {
+  const stored = new Map(Object.entries(entries))
+  on('store.get', ($, e) => ({ value: stored.get(e.key) }))
+  on('store.set', ($, e) => {
+    if (isSaveFailing) throw new Error('store full')
+    stored.set(e.key, e.value)
+    return { value: undefined }
+  })
+  themeStore = stored
+  mock.clock(on)
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+}
+let themeStore: Map<string, unknown>
+const background = async (ui) => (await ui.find({ type: 'Box' }))?.props.backgroundColor
+
+test('/board theme <name> repaints the pane and keeps the choice for the next session', async ($, on) => {
+  themeSession(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+  const answer = await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect(answer.text).toMatch(/dusk/)
+  expect(await background(ui)).toBe(THEMES.dusk.bg)
+  expect(themeStore.get('theme')).toBe('dusk')
+})
+
+test('a saved theme is the one the next session draws', async ($, on) => {
+  themeSession(on, { theme: 'aurora' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.aurora.bg)
+})
+
+test('a saved name that is no theme falls back to classic', async ($, on) => {
+  themeSession(on, { theme: 'gone' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+})
+
+test('/board theme alone lists the themes and the current one', async ($, on) => {
+  themeSession(on, { theme: 'dusk' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const answer = await $.command.run({ command: 'board', args: 'theme' })
+  expect(answer.text).toMatch(/classic/)
+  expect(answer.text).toMatch(/high-contrast/)
+  expect(answer.text).toMatch(/현재.*dusk/)
+})
+
+test('/board theme with a name that is no theme refuses and lists the themes', async ($, on) => {
+  themeSession(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  const answer = await $.command.run({ command: 'board', args: 'theme nope' })
+  expect(answer.text).toMatch(/nope/)
+  expect(answer.text).toMatch(/aurora/)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+  expect(themeStore.get('theme')).toBeUndefined()
+})
+
+test('a theme changes the accent of the flow tab headings too', async ($, on) => {
+  archifyFs(on, { '/work/.archify/workflow-retry/candidate.json': { text: RETRY, mtimeMs: 99 * MINUTE } })
+  on('store.get', () => ({ value: 'high-contrast' }))
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('clock.every', () => ({ value: undefined }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(wide(120))
+  await ui.press({ key: 'tab-flow' })
+  expect((await ui.find({ type: 'Text', text: '정기 실행' }))?.props.color).toBe(THEMES['high-contrast'].accent)
+})
+
+test('/board theme repaints the band above the prompt as well', async ($, on) => {
+  const opened = []
+  bandSession(on, opened, { beneath: false })
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(BAND)
+  const summary = async () => (await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ }))?.props
+  expect((await summary()).dimColor).toBe(true)
+  await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect((await summary()).color).toBe(THEMES.dusk.muted)
 })
