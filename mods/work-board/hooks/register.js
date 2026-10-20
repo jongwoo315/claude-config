@@ -159,7 +159,7 @@ export function register(on) {
     }
     const names = Object.keys(THEMES).join(' · ')
     if (!name) return { text: '테마: ' + names + '\n현재: ' + themeName }
-    if (!Object.hasOwn(THEMES, name)) return { text: name + '은(는) 없는 테마다. 테마: ' + names }
+    if (!Object.hasOwn(THEMES, name)) return { text: '없는 테마: ' + name + '\n테마: ' + names }
     themeName = name
     await $.store.set('theme', name)
     $.ui.invalidate('ui.render')
@@ -269,7 +269,7 @@ export function register(on) {
 
     let body
     if (tab === 'plan' && !plan) {
-      body = [line('docs/plans에 *-plan-*.md가 없다', { dimColor: true })]
+      body = [line('docs/plans에 *-plan-*.md가 없다 (## Task 제목이 있는 plan만 보인다)', { dimColor: true })]
     } else if (tab === 'plan') {
       const sorted = [...plan.tasks].sort((a, b) => ORDER[a.status] - ORDER[b.status])
       const done = plan.tasks.filter((t) => t.status === 'completed').length
