@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import { THEMES } from '../hooks/themes.js'
 
 // What Claude Code passes to a ui.render hook for this pane
 const PANE = {
@@ -574,4 +575,119 @@ test('the diff tab cuts a long diff at 400 lines and says how long it was', asyn
   await ui.press({ key: 'tab-diff' })
   expect((await diffOf(ui)).source.split('\n')).toHaveLength(400)
   expect(await ui.find({ type: 'Text', text: '1000줄 중 400줄' })).toBeDefined()
+})
+
+// Where a hex sits in the xterm 256-color palette, or -1 when it is not exactly one entry
+function paletteIndex(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const cube = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
+  if ([r, g, b].every((c) => cube.includes(c))) return 16 + 36 * cube.indexOf(r) + 6 * cube.indexOf(g) + cube.indexOf(b)
+  return r === g && g === b && r >= 0x08 && r <= 0xee && (r - 0x08) % 10 === 0 ? 232 + (r - 0x08) / 10 : -1
+}
+
+test('every theme color is exactly one entry of the 256-color palette', () => {
+  expect(Object.keys(THEMES)).toEqual(['classic', 'dusk', 'aurora', 'high-contrast'])
+  for (const [name, theme] of Object.entries(THEMES)) {
+    for (const [token, value] of Object.entries(theme)) {
+      if (typeof value === 'string' && value.startsWith('#')) expect([name, token, paletteIndex(value) >= 0]).toEqual([name, token, true])
+    }
+  }
+  // The four themes paint the pane in four different backgrounds
+  expect(new Set(Object.values(THEMES).map((t) => t.bg)).size).toBe(4)
+})
+
+// A session with the board registered; the pane's outermost Box carries the background
+function themeSession(on, entries = {}) {
+  const stored = new Map(Object.entries(entries))
+  on('store.get', ($, e) => ({ value: stored.get(e.key) }))
+  on('store.set', ($, e) => {
+    stored.set(e.key, e.value)
+    return { value: undefined }
+  })
+  themeStore = stored
+  mock.clock(on)
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+}
+let themeStore: Map<string, unknown>
+const background = async (ui) => (await ui.find({ type: 'Box' }))?.props.backgroundColor
+
+test('/board theme <name> repaints the pane and keeps the choice for the next session', async ($, on) => {
+  themeSession(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+  const answer = await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect(answer.text).toMatch(/dusk/)
+  expect(await background(ui)).toBe(THEMES.dusk.bg)
+  expect(themeStore.get('theme')).toBe('dusk')
+})
+
+test('a saved theme is the one the next session draws', async ($, on) => {
+  themeSession(on, { theme: 'aurora' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.aurora.bg)
+})
+
+test('a saved name that is no theme falls back to classic', async ($, on) => {
+  themeSession(on, { theme: 'gone' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+})
+
+test('/board theme alone lists the themes and the current one', async ($, on) => {
+  themeSession(on, { theme: 'dusk' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const answer = await $.command.run({ command: 'board', args: 'theme' })
+  expect(answer.text).toMatch(/classic/)
+  expect(answer.text).toMatch(/high-contrast/)
+  expect(answer.text).toMatch(/현재.*dusk/)
+})
+
+test('/board theme with a name that is no theme refuses and lists the themes', async ($, on) => {
+  themeSession(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  const answer = await $.command.run({ command: 'board', args: 'theme nope' })
+  expect(answer.text).toMatch(/nope/)
+  expect(answer.text).toMatch(/aurora/)
+  expect(await background(ui)).toBe(THEMES.classic.bg)
+  expect(themeStore.get('theme')).toBeUndefined()
+})
+
+test('a theme changes the accent of the flow tab headings too', async ($, on) => {
+  archifyFs(on, { '/work/.archify/workflow-retry/candidate.json': { text: RETRY, mtimeMs: 99 * MINUTE } })
+  on('store.get', () => ({ value: 'high-contrast' }))
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('clock.every', () => ({ value: undefined }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(wide(120))
+  await ui.press({ key: 'tab-flow' })
+  expect((await ui.find({ type: 'Text', text: '정기 실행' }))?.props.color).toBe(THEMES['high-contrast'].accent)
+})
+
+test('/board theme repaints the band above the prompt as well', async ($, on) => {
+  const opened = []
+  bandSession(on, opened, { beneath: false })
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', () => ({ value: undefined }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(BAND)
+  const summary = async () => (await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ }))?.props
+  expect((await summary()).dimColor).toBe(true)
+  await $.command.run({ command: 'board', args: 'theme dusk' })
+  expect((await summary()).color).toBe(THEMES.dusk.muted)
 })

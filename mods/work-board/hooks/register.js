@@ -1,16 +1,10 @@
+import { THEMES } from './themes.js'
 import { addTool, agentRows, changeRows, countLines, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
 const DIFF_LINES = 400 // the diff tab draws this many lines of a diff
 const TMP = '/private/tmp'
-// Every color the pane and band use is a token of the current theme. Claude Code draws in 256
-// colors here, so a hex is rounded to the nearest palette entry; #262626 (palette 235) is exact
-// and matches the dock's own top and bottom rows. Tokens: bg (pane background), accent (headings),
-// add / del / warn (green, red, yellow roles), muted (dim text; absent keeps the terminal's dim).
-const THEMES = {
-  classic: { bg: '#262626', accent: 'cyan', add: 'green', del: 'red', warn: 'yellow', muted: undefined },
-}
 let themeName = 'classic'
 const theme = () => THEMES[themeName]
 
@@ -141,7 +135,10 @@ function seconds(ms) {
 
 export function register(on) {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'board', description: 'Open the work board', immediate: true })
+    await $.command.register({ name: 'board', description: 'Open the work board, or pick its colors', argumentHint: '[theme [name]]', immediate: true })
+    // The saved theme is a nicety: a store that can't be read leaves the classic colors
+    const saved = await $.store.get('theme').catch(() => undefined)
+    if (typeof saved === 'string' && Object.hasOwn(THEMES, saved)) themeName = saved
     // The pane opens only when asked (/board or the band's button): a docked pane always on screen
     // was drawn over by the / typeahead. The band above the prompt sums it up meanwhile.
     plan = await loadPlan($)
@@ -154,9 +151,19 @@ export function register(on) {
     return next(e)
   })
 
-  on('command.run', { command: 'board' }, async ($) => {
-    await openPane($)
-    return {}
+  on('command.run', { command: 'board' }, async ($, e) => {
+    const [sub, name] = e.args.trim().split(/\s+/)
+    if (sub !== 'theme') {
+      await openPane($)
+      return {}
+    }
+    const names = Object.keys(THEMES).join(' · ')
+    if (!name) return { text: '테마: ' + names + '\n현재: ' + themeName }
+    if (!Object.hasOwn(THEMES, name)) return { text: name + '은(는) 없는 테마다. 테마: ' + names }
+    themeName = name
+    await $.store.set('theme', name)
+    $.ui.invalidate('ui.render')
+    return { text: '테마를 ' + name + '(으)로 바꿨다' }
   })
 
   on('turn.start', async ($, e, next) => {
@@ -228,7 +235,7 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
+            Box({ flexShrink: 1, children: [Text({ ...(theme().muted ? { color: theme().muted } : { dimColor: true }), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
             Button({ key: 'open-pane', label: '열기', plain: true, onPress: () => openPane($) }),
           ],
         }),
