@@ -429,16 +429,17 @@ test('changeRows keeps the edited files git still reports, with their +/- counts
 })
 
 test('changeRows shows a path under the cwd relative to it when the repo root is above', () => {
+  // The repo root is /work, the session runs in /work/mods: git names mods/x.js, the transcript's path is x.js
   const rows = changeRows({
-    files: { edited: [{ path: 'mods/x.js', count: 1 }], read: [] },
+    files: { edited: [{ path: 'x.js', count: 1 }], read: [] },
     status: [{ path: 'mods/x.js', isUntracked: false }],
     stats: [{ path: 'mods/x.js', add: 1, del: 0, isBinary: false }],
     lines: {},
     root: '/work',
-    cwd: '/work',
+    cwd: '/work/mods',
     home: '/home/jw',
   })
-  expect(rows.changed.map((r) => r.path)).toEqual(['mods/x.js'])
+  expect(rows.changed.map((r) => [r.path, r.rel, r.add])).toEqual([['x.js', 'mods/x.js', 1]])
 })
 
 // A diff of `hunks` hunks, each `size` lines long including its @@ line
