@@ -701,6 +701,21 @@ test('the changes tab maps git paths to the transcript when a symlinked session 
   expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
 })
 
+test('the diff tab says so when git diff exits nonzero or prints nothing', async ($, on) => {
+  let out: unknown = failed(128, 'fatal: bad revision')
+  repoSession(on, { git: (e) => (e.argv[1] === 'rev-parse' ? ok('/work\n') : e.argv[1] === 'status' ? ok(' M a.js\0') : e.argv.includes('--numstat') ? ok('3\t1\ta.js\0') : out) })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: 'git diff가 실패했다' })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+
+  out = ok('')
+  await ui.press({ key: 'tab-changes' })
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: 'diff가 비어 있다' })).toBeDefined()
+  expect(await diffOf(ui)).toBeUndefined()
+})
+
 test('the changes tab matches the transcript when git names the repo by its real path', async ($, on) => {
   // The session runs in /work, a symlink; git answers with the real /private/work
   repoSession(on, {
