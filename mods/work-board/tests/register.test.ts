@@ -564,6 +564,24 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
   expect((await marks())['tab-flow']).toEqual([undefined, 'primary'])
 })
 
+test('the six tabs come in order, on hotkeys 1 to 6', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
+  expect(tabs.map((b) => [b.key, b.props.label, b.props.hotkey])).toEqual([
+    ['tab-work', '작업', '1'],
+    ['tab-plan', '계획', '2'],
+    ['tab-agents', '에이전트', '3'],
+    ['tab-changes', '변경', '4'],
+    ['tab-diff', 'diff', '5'],
+    ['tab-flow', '흐름', '6'],
+  ])
+})
+
 test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
