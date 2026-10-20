@@ -177,12 +177,15 @@ const DIFF_A = '--- a/a.js\n+++ b/a.js\n@@ -1,2 +1,4 @@\n keep\n-old\n+new\n+mor
 const DIFF_NEW = '--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n'
 
 // A repo at /work: a.js modified (+3 -1), new.txt untracked (2 lines), committed.js already committed
-function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null } = {}) {
+function repoSession(on, { isRepo = true, numstat = '3\t1\ta.js\0', git = null, messages = null, bigDiff = null, unreadable = null } = {}) {
   on('session.cwd', () => ({ value: '/work' }))
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/jw' : undefined }))
   on('fs.exists', () => ({ value: false }))
   on('agent.list', () => ({ value: [] }))
-  on('fs.read', () => ({ value: 'one\ntwo\n' }))
+  on('fs.read', ($, e) => {
+    if (e.path === unreadable) throw new Error('file is over 4 MiB')
+    return { value: 'one\ntwo\n' }
+  })
   on('process.run', ($, e) => {
     if (git) return git(e)
     const [, sub] = e.argv
@@ -219,6 +222,17 @@ test('the changes tab lists edited files git still reports with +/-, and leaves 
   expect(await ui.find({ type: 'Text', text: '+2' })).toBeDefined()
   expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'hooks/model.js' })).toBeDefined()
+})
+
+test('the changes tab keeps the other +/- when one untracked file cannot be read', async ($, on) => {
+  repoSession(on, { unreadable: '/work/new.txt' })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect(await ui.find({ type: 'Text', text: '+3' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '+2' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /git이 실패해서/ })).toBeUndefined()
 })
 
 test('the changes tab runs git from the repo root, not the session directory', async ($, on) => {

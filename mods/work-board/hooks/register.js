@@ -107,9 +107,10 @@ async function loadChanges($) {
     const diff = await run(['git', 'diff', '--numstat', '-z', 'HEAD'], root)
     if (status.exitCode !== 0 || diff.exitCode !== 0) return withoutGit('git이 실패해서 +/−를 못 센다')
     const args = { files, status: parseStatus(status.stdout), stats: parseNumstat(diff.stdout), lines: {}, root: logicalRoot, cwd, home: await $.env.get('HOME') }
-    // An untracked file has no diff stat: its lines are all added
+    // An untracked file has no diff stat: its lines are all added. One that can't be read (over 4 MiB, gone
+    // since git looked) is left without a count; the other rows keep theirs.
     const untracked = changeRows(args).changed.filter((r) => r.isUntracked)
-    for (const r of untracked) args.lines[r.rel] = countLines(await $.fs.read(root + '/' + r.rel))
+    for (const r of untracked) args.lines[r.rel] = await $.fs.read(root + '/' + r.rel).then(countLines, () => undefined)
     return { ...changeRows(args), root, note: null }
   } catch {
     return withoutGit('git이 실패해서 +/−를 못 센다')

@@ -191,7 +191,7 @@ export function changeRows({ files, status, stats, lines, root, cwd, home }) {
         rel: entry.path,
         oldRel: entry.oldPath ?? null,
         count: f.count,
-        add: entry.isUntracked ? (lines[entry.path] ?? 0) : (stat?.add ?? 0),
+        add: entry.isUntracked ? (lines[entry.path] ?? null) : (stat?.add ?? 0),
         del: entry.isUntracked ? 0 : (stat?.del ?? 0),
         isBinary: stat?.isBinary ?? false,
         isUntracked: entry.isUntracked,
