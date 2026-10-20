@@ -2,7 +2,8 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1",
     "CLAUDE_CODE_NO_FLICKER": "0",
-    "CLAUDE_CODE_PLUGIN_DIRS": "/Users/jw/.claude/mods/work-board"
+    "CLAUDE_CODE_PLUGIN_DIRS": "/Users/jw/.claude/mods/work-board",
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1"
   },
   "includeCoAuthoredBy": false,
   "permissions": {
