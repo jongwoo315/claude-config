@@ -125,6 +125,20 @@ test('an empty session says nothing has happened yet', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /아직 턴이 없다/ })).toBeDefined()
 })
 
+test('classic keeps the colors the board drew before themes: green added, red removed, yellow running', async ($, on) => {
+  on('agent.list', () => ({
+    value: [
+      { id: 'a', description: 'one', type: 'Explore', status: 'running' },
+      { id: 'b', description: 'two', type: 'Explore', status: 'completed' },
+      { id: 'c', description: 'three', type: 'Explore', status: 'failed' },
+    ],
+  }))
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-agents' })
+  const colorOf = async (text: string) => (await ui.find({ type: 'Text', text }))?.props.color
+  expect([await colorOf('running'), await colorOf('completed'), await colorOf('failed')]).toEqual(['yellow', 'green', 'red'])
+})
+
 test('the agents tab shows subagents nested under their parent', async ($, on) => {
   on('agent.list', () => ({
     value: [
@@ -222,6 +236,14 @@ test('the changes tab lists edited files git still reports with +/-, and leaves 
   expect(await ui.find({ type: 'Text', text: '+2' })).toBeDefined()
   expect(await ui.find({ type: 'Button', key: 'change-committed.js' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'hooks/model.js' })).toBeDefined()
+})
+
+test('classic draws +N green and −M red on the changes tab', async ($, on) => {
+  repoSession(on)
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-changes' })
+  expect((await ui.find({ type: 'Text', text: '+3' }))?.props.color).toBe('green')
+  expect((await ui.find({ type: 'Text', text: '−1' }))?.props.color).toBe('red')
 })
 
 test('the changes tab keeps the other +/- when one untracked file cannot be read', async ($, on) => {
@@ -358,6 +380,7 @@ test('the flow tab draws the newest archify diagram of this session', async ($, 
   expect(await ui.find({ type: 'Text', text: /파일 탭 흐름 · 12분 전/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /대화 기록 읽기/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '[새로 생김]' })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: '[새로 생김]' }))?.props.color).toBe('green')
   // Left to right: the main arrow to the next box is a connector between them
   expect(await ui.find({ type: 'Text', text: '─ 그릴 때마다 ─▶' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /▼/ })).toBeUndefined()
