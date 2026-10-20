@@ -3,9 +3,15 @@ import { addTool, agentRows, displayWidth, endTurn, fileRows, flowRows, mergeAge
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
 const TMP = '/private/tmp'
-// Pane background. Claude Code draws in 256 colors here, so a hex is rounded to the nearest
-// palette entry; #262626 (palette 235) is exact and matches the dock's own top and bottom rows.
-const PANE_BG = '#262626'
+// Every color the pane and band use is a token of the current theme. Claude Code draws in 256
+// colors here, so a hex is rounded to the nearest palette entry; #262626 (palette 235) is exact
+// and matches the dock's own top and bottom rows. Tokens: bg (pane background), accent (headings),
+// add / del / warn (green, red, yellow roles), muted (dim text; absent keeps the terminal's dim).
+const THEMES = {
+  classic: { bg: '#262626', accent: 'cyan', add: 'green', del: 'red', warn: 'yellow', muted: undefined },
+}
+let themeName = 'classic'
+const theme = () => THEMES[themeName]
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
@@ -18,8 +24,11 @@ let flowAt = null // mtime of the newest archify candidate, or null
 const MARK = { in_progress: '◐', pending: '○', completed: '●', unknown: '·' }
 const ORDER = { in_progress: 0, pending: 1, unknown: 1, completed: 2 }
 // The tags rules/after-pr.md puts on a changed-flow diagram
-const tagColor = (tag) => (tag === '새로 생김' ? 'green' : tag === '없어짐' ? 'red' : /바뀜|좁아짐/.test(tag) ? 'yellow' : undefined)
-const AGENT_COLOR = { running: 'yellow', waiting: 'yellow', completed: 'green', failed: 'red', killed: 'red' }
+const tagColor = (tag) => (tag === '새로 생김' ? theme().add : tag === '없어짐' ? theme().del : /바뀜|좁아짐/.test(tag) ? theme().warn : undefined)
+const agentColor = (status) => {
+  const t = theme()
+  return { running: t.warn, waiting: t.warn, completed: t.add, failed: t.del, killed: t.del }[status]
+}
 
 // Reads the newest plan file under the session's working directory. No plan, no Task list.
 async function loadPlan($) {
@@ -202,7 +211,9 @@ export function register(on) {
         },
       })
 
-    const line = (text, style = {}) => Text({ wrap: 'truncate-end', ...style, children: [text] })
+    // Dim text is the theme's muted color when it has one, else the terminal's dim
+    const line = (text, { dimColor, ...style } = {}) =>
+      Text({ wrap: 'truncate-end', ...style, ...(dimColor ? (theme().muted ? { color: theme().muted } : { dimColor }) : {}), children: [text] })
 
     let body
     if (tab === 'work' && plan) {
@@ -293,7 +304,7 @@ export function register(on) {
                 flexShrink: 0,
                 rowGap: 1,
                 children: [
-                  line(stage.label, { bold: true, color: 'cyan' }),
+                  line(stage.label, { bold: true, color: theme().accent }),
                   ...stage.nodes.map((n) =>
                     Box({
                       key: 'node-' + n.id,
@@ -328,12 +339,12 @@ export function register(on) {
             width,
             flexShrink: 0,
             borderStyle: 'round',
-            borderColor: n.isRemoved ? 'red' : tagColor(n.tag),
+            borderColor: n.isRemoved ? theme().del : tagColor(n.tag),
             borderDimColor: !n.isRemoved && !tagColor(n.tag),
             paddingX: 1,
             children: [
-              line(n.label, { bold: true, wrap: 'wrap', color: n.isRemoved ? 'red' : undefined }),
-              ...(n.tag ? [line('[' + n.tag + ']', { color: n.isRemoved ? 'red' : tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
+              line(n.label, { bold: true, wrap: 'wrap', color: n.isRemoved ? theme().del : undefined }),
+              ...(n.tag ? [line('[' + n.tag + ']', { color: n.isRemoved ? theme().del : tagColor(n.tag), dimColor: n.tag === '그대로' })] : []),
               ...(n.sublabel ? [line(n.sublabel, { dimColor: true, wrap: 'wrap' })] : []),
               ...others.map((edge) => line(mark(edge) + ' ' + edge.to + (edge.label ? ' (' + edge.label + ')' : ''), { wrap: 'wrap', dimColor: !edge.isMain })),
             ],
@@ -364,7 +375,7 @@ export function register(on) {
                   flexDirection: 'row',
                   alignItems: 'center',
                   children: [
-                    Box({ width: laneWidth, flexShrink: 0, children: [line(lane.label, { bold: true, wrap: 'wrap', color: lane.isException ? 'red' : 'cyan' })] }),
+                    Box({ width: laneWidth, flexShrink: 0, children: [line(lane.label, { bold: true, wrap: 'wrap', color: lane.isException ? theme().del : theme().accent })] }),
                     ...lane.cells.flatMap((cell, c) => {
                       const connector = cell.flatMap((n) => n.edges).find((edge) => edge.direction === 'next')
                       return [
@@ -426,7 +437,7 @@ export function register(on) {
                 columnGap: 1,
                 children: [
                   line('  '.repeat(r.depth) + '└ ' + r.label),
-                  line(r.status, { color: AGENT_COLOR[r.status], dimColor: !AGENT_COLOR[r.status] }),
+                  line(r.status, { color: agentColor(r.status), dimColor: !agentColor(r.status) }),
                 ],
               }),
             )),
@@ -438,7 +449,7 @@ export function register(on) {
       width: e.props.bodyColumns,
       // Fill the whole body so the color reaches the bottom, not just the drawn rows
       minHeight: e.props.scroll.bodyRows,
-      backgroundColor: PANE_BG,
+      backgroundColor: theme().bg,
       children: [
         Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('agents', '에이전트', '2'), tabButton('files', '파일', '3'), tabButton('flow', '흐름', '4')] }),
         Text({ children: [' '] }),
