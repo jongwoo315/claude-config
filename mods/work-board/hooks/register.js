@@ -127,7 +127,7 @@ async function loadDiff($, root, file) {
     if (out.exitCode > (file.isUntracked ? 1 : 0)) return { error: 'git diff가 실패했다' }
     if (out.stdout === '') return { error: 'diff가 비어 있다' }
     const cut = cutDiff(out.stdout, DIFF_LINES, DIFF_CHARS)
-    return cut.isTooBig ? { error: 'hunk 하나가 너무 커서 못 보여 준다 (' + cut.total + '줄)' } : cut
+    return cut.isTooBig ? { error: 'hunk가 없어 자를 수 없다 (' + cut.total + '줄)' } : cut
   } catch {
     return { error: 'git diff가 실패했다' }
   }

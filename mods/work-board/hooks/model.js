@@ -145,9 +145,10 @@ export function parseNumstat(output) {
   return stats
 }
 
-// The part of a unified diff the diff tab can draw: whole hunks only, since Code does not parse a diff cut
-// mid-hunk (and draws 100000 characters at most). { source, total, shown } or, when even the first hunk is
-// over the limit, { total, isTooBig }.
+// The part of a unified diff the diff tab can draw: Code does not parse a diff cut mid-hunk (and draws 100000
+// characters at most), so the cut falls on a hunk boundary. When the first hunk alone is over the limit, it is
+// cut and its "@@ -a,b +c,d @@" counts are rewritten to what is kept. { source, total, shown } or, when the
+// diff has no hunk to cut, { total, isTooBig }.
 export function cutDiff(text, maxLines, maxChars) {
   const lines = text.replace(/\n$/, '').split('\n')
   const total = lines.length
@@ -162,7 +163,14 @@ export function cutDiff(text, maxLines, maxChars) {
   for (let k = n; k > first && k > 0; k--) {
     if (lines[k]?.startsWith('@@')) return { source: lines.slice(0, k).join('\n'), total, shown: k }
   }
-  return { total, isTooBig: true }
+  const head = first >= 0 && n > first + 1 && lines[first].match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/)
+  if (!head) return { total, isTooBig: true }
+  const body = lines.slice(first + 1, n)
+  const kept = (marks) => body.filter((l) => !l.startsWith('\\') && !marks.includes(l[0])).length
+  const oldCount = body.filter((l) => l[0] === '-').length + kept(['+', '-'])
+  const newCount = body.filter((l) => l[0] === '+').length + kept(['+', '-'])
+  const header = '@@ -' + head[1] + ',' + oldCount + ' +' + head[2] + ',' + newCount + ' @@' + head[3]
+  return { source: [...lines.slice(0, first), header, ...body].join('\n'), total, shown: n }
 }
 
 export const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0))

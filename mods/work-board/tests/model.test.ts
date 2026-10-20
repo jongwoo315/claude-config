@@ -465,6 +465,25 @@ test('cutDiff also stops at the character limit', () => {
   expect(cut.source.split('\n').at(-1)).toMatch(/^\+h\dl\d+$|^--- |^\+\+\+ /)
 })
 
-test('cutDiff says so when even the first hunk is over the limit', () => {
-  expect(cutDiff(hunks(1, 999), 400, 100000)).toEqual({ total: 1001, isTooBig: true })
+test('cutDiff cuts inside the first hunk when it alone is over the limit, with the counts of what is kept', () => {
+  // 2 header lines + one hunk of 999 lines (the @@ line and 998 added lines): 400 lines keep 397 of them
+  const cut = cutDiff(hunks(1, 999), 400, 100000)
+  expect(cut.total).toBe(1001)
+  expect(cut.shown).toBe(400)
+  const lines = cut.source.split('\n')
+  expect(lines).toHaveLength(400)
+  expect(lines[2]).toBe('@@ -1,0 +1,397 @@')
+})
+
+test('cutDiff counts the context and removed lines of a first hunk it cuts', () => {
+  const body = Array.from({ length: 20 }, (_, i) => (i % 3 === 0 ? '-r' + i : i % 3 === 1 ? '+a' + i : ' c' + i))
+  const text = ['--- a/f', '+++ b/f', '@@ -5,14 +5,13 @@ fn()', ...body].join('\n') + '\n'
+  const cut = cutDiff(text, 12, 100000)
+  // 9 body lines kept: i = 0..8 -> 3 removed, 3 added, 3 context
+  expect(cut.source.split('\n')[2]).toBe('@@ -5,6 +5,6 @@ fn()')
+  expect(cut.shown).toBe(12)
+})
+
+test('cutDiff says so when the diff has no hunk to cut', () => {
+  expect(cutDiff(['diff --git a/f b/f', ...Array.from({ length: 500 }, (_, i) => 'x' + i)].join('\n'), 400, 100000)).toEqual({ total: 501, isTooBig: true })
 })

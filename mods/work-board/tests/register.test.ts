@@ -577,13 +577,13 @@ test('the diff tab cuts a long diff at a hunk and says how long it was', async (
   expect(await ui.find({ type: 'Text', text: '1002줄 중 302줄' })).toBeDefined()
 })
 
-test('the diff tab says so when one hunk alone is too big', async ($, on) => {
+test('the diff tab cuts a first hunk that alone is over the limit', async ($, on) => {
   const text = ['--- a/a.js', '+++ b/a.js', '@@ -1 +1 @@', ...Array.from({ length: 997 }, (_, i) => '+line ' + i)].join('\n') + '\n'
   repoSession(on, { bigDiff: text })
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'tab-diff' })
-  expect(await ui.find({ type: 'Text', text: /hunk 하나가 너무 커서 못 보여 준다 \(1000줄\)/ })).toBeDefined()
-  expect(await diffOf(ui)).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /1000줄 중 400줄/ })).toBeDefined()
+  expect((await diffOf(ui)).source).toContain('@@ -1,0 +1,397 @@')
 })
 
 test('the changes tab matches the transcript when git names the repo by its real path', async ($, on) => {
