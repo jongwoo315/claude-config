@@ -446,4 +446,16 @@ export function register(on) {
       ],
     })
   })
+
+  // Tab, or left/right as ~/.claude/keybindings.json binds them in the Pane context,
+  // opens a tab as the focus lands on it, with no Enter
+  on('ui.focus', { component: 'Pane', requestId: PANE, plugin: 'work-board' }, async ($, e, next) => {
+    const result = await next(e)
+    const name = /^tab-(\w+)$/.exec(e.element ?? '')?.[1]
+    if (!result.deny && name && name !== tab) {
+      tab = name
+      $.ui.invalidate('ui.render')
+    }
+    return result
+  })
 }

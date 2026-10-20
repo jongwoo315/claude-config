@@ -427,3 +427,16 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
   expect((await marks())['tab-work']).toEqual([undefined, undefined])
   expect((await marks())['tab-flow']).toEqual([undefined, 'primary'])
 })
+
+test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+  on('ui.focus', () => ({}))
+
+  const ui = await $.ui.mount(PANE)
+  await $.ui.focus({ component: 'Pane', requestId: 'work-board', plugin: 'work-board', element: 'tab-flow', origin: { kind: 'person' } })
+  const flow = Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, b.props.variant]))
+  expect(flow['tab-flow']).toBe('primary')
+})
