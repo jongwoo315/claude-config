@@ -13,6 +13,10 @@ const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
+const TABS = ['work', 'plan', 'agents', 'changes', 'diff', 'flow']
+const RING_START = 'ring-start'
+const RING_END = 'ring-end'
+let rest = null // where the person's ring rests: 'start', 'end' or 'close' (see ui.focus); null before it moved
 let plan = null // { name, tasks } of the newest *-plan-*.md in docs/plans, or null
 let turns = []
 let seenAgents = []
@@ -233,12 +237,12 @@ export function register(on) {
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
     // width table counts them as two. ✎ and ⇢ are the marks the changes and flow tabs use.
     const parts = []
-    if (plan) parts.push('✓ 계획 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
+    if (plan) parts.push('✓ Plan ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
     const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
-    if (edited.length > 0) parts.push('✎ 고친 파일 ' + edited.length)
+    if (edited.length > 0) parts.push('✎ Changes ' + edited.length)
     const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
-    if (running > 0) parts.push('✢ 에이전트 ' + running + ' 실행 중')
-    if (flowAt !== null) parts.push('⇢ 흐름 ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + '분 전')
+    if (running > 0) parts.push('✢ Agents ' + running + ' running')
+    if (flowAt !== null) parts.push('⇢ Flow ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + 'm ago')
     // The band has one instance: draw what the plugins beneath drew (prompt-rail) under this line.
     // With no plugin beneath, next(e) is the engine's own band; if it fails the line is drawn alone
     const below = await next(e).catch(() => undefined)
@@ -253,8 +257,8 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
-            Button({ key: 'open-pane', label: '열기', plain: true, onPress: () => openPane($) }),
+            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No plan, changes, agents or flow yet'] })] }),
+            Button({ key: 'open-pane', label: 'Open', plain: true, onPress: () => openPane($) }),
           ],
         }),
         ...(below ? [below] : []),
@@ -267,14 +271,18 @@ export function register(on) {
     const { Box, Text, Button, Code } = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
 
-    const tabButton = (name, label, hotkey) =>
+    // Where the ring rests while a tab is open (see ui.focus): one space in the background's color
+    // on the background, so the engine's inverse of it is the same cell
+    const ringStop = (key) =>
+      Button({ key, plain: true, onPress: () => {}, children: [Text({ color: theme().bg, backgroundColor: theme().bg, children: [' '] })] })
+
+    const tabButton = (name, label) =>
       Button({
         key: 'tab-' + name,
-        label,
-        hotkey,
-        // Drawn bracketed, [ 작업 ]; the open tab in the accent color
-        variant: tab === name ? 'primary' : undefined,
-        dimColor: tab !== name,
+        // [Work], glowup's look: a plain Button with its own brackets, colored text and no
+        // background. The open tab in the theme's accent, the others in its muted
+        plain: true,
+        children: [Text(tab === name ? { color: theme().accent, bold: true, children: ['[' + label + ']'] } : { ...muted(), children: ['[' + label + ']'] })],
         onPress: () => {
           tab = name
           redraw()
@@ -315,10 +323,12 @@ export function register(on) {
             })
     } else if (tab === 'changes') {
       const { changed, read, note } = await loadChanges($)
-      const changeRow = (f) =>
+      // The ring stays off the pane's buttons (see ui.focus), so a row is picked by its letter
+      const changeRow = (f, i) =>
         Button({
           key: 'change-' + f.path,
           plain: true,
+          ...(i < 26 ? { hotkey: String.fromCharCode(97 + i) } : {}),
           onPress: () => {
             selected = f.path
             tab = 'diff'
@@ -366,7 +376,7 @@ export function register(on) {
         ? [line('보여 줄 변경이 없다', { dimColor: true })]
         : [
             line(file.path, { bold: true }),
-            line('변경 탭에서 Enter로 다른 파일', { dimColor: true }),
+            line('Changes 탭에서 행 앞 글자를 누르면 다른 파일', { dimColor: true }),
             Text({ children: [' '] }),
             ...(diff.error
               ? [line(diff.error, { dimColor: true })]
@@ -557,7 +567,7 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: theme().bg,
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('changes', '변경', '4'), tabButton('diff', 'diff', '5'), tabButton('flow', '흐름', '6')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [ringStop(RING_START), tabButton('work', 'Work'), tabButton('plan', 'Plan'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow'), ringStop(RING_END)] }),
         Text({ children: [' '] }),
         ...body,
       ],
@@ -566,13 +576,40 @@ export function register(on) {
 
   // Tab, or left/right as ~/.claude/keybindings.json binds them in the Pane context,
   // opens a tab as the focus lands on it, with no Enter
-  on('ui.focus', { component: 'Pane', requestId: PANE, plugin: 'work-board' }, async ($, e, next) => {
-    const result = await next(e)
-    const name = /^tab-(\w+)$/.exec(e.element ?? '')?.[1]
-    if (!result.deny && name && name !== tab) {
-      tab = name
+  // The ring never rests on a tab: the engine inverts whatever it holds, a colored block over the
+  // open tab. It rests on one of two one-space Buttons at the ends of the tab row, painted in the
+  // pane's background so their inverse is invisible (RING_START before Work, RING_END after Flow),
+  // or on the pane's close mark, the stop after Flow. The engine's aim says the person's direction:
+  //   from RING_START  next -> tab-work, previous -> the close mark (it wraps)
+  //   from RING_END    next -> the close mark (Flow's body draws no Button), previous -> tab-flow
+  //   from the close mark  next -> RING_START (it wraps), previous -> what this plugin drew last
+  //   from nothing (the pane just took the keys)  next -> RING_START, previous -> the close mark
+  // A move is redirected only from one of this plugin's elements to another, never onto or off
+  // the close mark, so Flow rests on RING_END to reach it with next, and a move aimed at the close
+  // mark that should not land there is kept where it was. A click aims at what it hit; its press opens it.
+  on('ui.focus', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    if (e.origin.kind !== 'person') return next(e)
+    const el = e.element
+    const step =
+      rest === 'close' ? (el === RING_START ? 1 : el !== undefined ? -1 : 0)
+      : rest === 'end' ? (el === undefined ? 1 : el === 'tab-' + TABS[TABS.length - 1] ? -1 : 0)
+      : el === RING_START || el === 'tab-' + TABS[0] ? 1 : el === undefined ? -1 : 0
+    if (step !== 0) {
+      if (rest === 'close') tab = step > 0 ? TABS[0] : TABS[TABS.length - 1]
+      else {
+        const i = TABS.indexOf(tab) + step
+        if (i >= 0 && i < TABS.length) tab = TABS[i]
+        else if (el === undefined) {
+          rest = 'close'
+          return next(e)
+        }
+      }
       $.ui.invalidate('ui.render')
     }
-    return result
+    rest = tab === TABS[TABS.length - 1] ? 'end' : 'start'
+    const anchor = rest === 'end' ? RING_END : RING_START
+    // A move aimed at the close mark can be kept but not redirected: it stays where it was
+    if (el === undefined) return { deny: 'work-board keeps the ring on its anchor' }
+    return el === anchor ? next(e) : next({ ...e, element: anchor })
   })
 }

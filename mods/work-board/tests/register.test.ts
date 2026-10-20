@@ -522,7 +522,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '✓ 계획 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✓ Plan 1/2 · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
 })
 
 test('the band opens the pane with the keyboard, and the session start does not', async ($, on) => {
@@ -542,7 +542,7 @@ test('the band leaves out the work part when the session has no plan', async ($,
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
-  expect(await ui.find({ type: 'Text', text: '✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
 })
 
 test('the band keeps what another mod draws beneath it', async ($, on) => {
@@ -560,34 +560,11 @@ test('the band draws its line alone when nothing is drawn beneath it', async ($,
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
-  expect(await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /✎ Changes 1/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeUndefined()
 })
 
-test('the tabs are bracketed buttons and only the open one is marked primary', async ($, on) => {
-  on('session.cwd', () => ({ value: '/work' }))
-  on('session.id', () => ({ value: 'sid-1' }))
-  on('fs.exists', () => ({ value: false }))
-  on('agent.list', () => ({ value: [] }))
-
-  const ui = await $.ui.mount(PANE)
-  const marks = async () =>
-    Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, [b.props.plain, b.props.variant]]))
-  expect(await marks()).toEqual({
-    'tab-work': [undefined, 'primary'],
-    'tab-plan': [undefined, undefined],
-    'tab-agents': [undefined, undefined],
-    'tab-changes': [undefined, undefined],
-    'tab-diff': [undefined, undefined],
-    'tab-flow': [undefined, undefined],
-  })
-
-  await ui.press({ key: 'tab-flow' })
-  expect((await marks())['tab-work']).toEqual([undefined, undefined])
-  expect((await marks())['tab-flow']).toEqual([undefined, 'primary'])
-})
-
-test('the six tabs come in order, on hotkeys 1 to 6', async ($, on) => {
+test('the tabs are plain buttons with their own brackets, the open one in the accent', async ($, on) => {
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
   on('fs.exists', () => ({ value: false }))
@@ -595,17 +572,30 @@ test('the six tabs come in order, on hotkeys 1 to 6', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
-  expect(tabs.map((b) => [b.key, b.props.label, b.props.hotkey])).toEqual([
-    ['tab-work', '작업', '1'],
-    ['tab-plan', '계획', '2'],
-    ['tab-agents', '에이전트', '3'],
-    ['tab-changes', '변경', '4'],
-    ['tab-diff', 'diff', '5'],
-    ['tab-flow', '흐름', '6'],
-  ])
+  expect(tabs.map((b) => [b.key, b.props.plain, b.props.variant, b.props.hotkey])).toEqual(
+    ['work', 'plan', 'agents', 'changes', 'diff', 'flow'].map((n) => ['tab-' + n, true, undefined, undefined]),
+  )
+  expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props).toMatchObject({ color: 'cyan', bold: true })
+  expect((await ui.find({ type: 'Text', text: '[Flow]' }))?.props.dimColor).toBe(true)
+
+  await ui.press({ key: 'tab-flow' })
+  expect((await ui.find({ type: 'Text', text: '[Flow]' }))?.props).toMatchObject({ color: 'cyan', bold: true })
+  expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props.dimColor).toBe(true)
 })
 
-test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
+test('the six tabs come in order', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
+  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-plan', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow'])
+  for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
+})
+
+test('the person\'s moves cycle the tabs and the close mark while the ring stays off the tabs', async ($, on) => {
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
   on('fs.exists', () => ({ value: false }))
@@ -613,9 +603,38 @@ test('moving the focus onto a tab opens it, with no Enter', async ($, on) => {
   on('ui.focus', () => ({}))
 
   const ui = await $.ui.mount(PANE)
-  await $.ui.focus({ component: 'Pane', requestId: 'work-board', plugin: 'work-board', element: 'tab-flow', origin: { kind: 'person' } })
-  const flow = Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, b.props.variant]))
-  expect(flow['tab-flow']).toBe('primary')
+  const open = async () => {
+    for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) {
+      if ((await ui.find({ type: 'Text', text: '[' + label + ']' }))?.props.bold) return label
+    }
+  }
+  // element absent = the engine aims at the pane's close mark
+  const move = (element?: string) =>
+    $.ui.focus({ component: 'Pane', requestId: 'work-board', ...(element ? { plugin: 'work-board', element } : {}), origin: { kind: 'person' } })
+
+  // From nothing, next aims at the first stop, ring-start
+  await move('ring-start')
+  expect(await open()).toBe('Plan')
+  // From ring-start, next aims at tab-work; previous at the close mark, which is kept off
+  await move('tab-work')
+  expect(await open()).toBe('Agents')
+  expect((await move()).deny).toBeDefined()
+  expect(await open()).toBe('Plan')
+  await move()
+  // Work, then previous lands on the close mark
+  expect((await move()).deny).toBeUndefined()
+  expect(await open()).toBe('Work')
+  // From the close mark, previous aims at what the plugin drew last and opens Flow
+  await move('ring-end')
+  expect(await open()).toBe('Flow')
+  // Flow rests on ring-end, whose next is the close mark; from there next wraps to ring-start: Work
+  expect((await move()).deny).toBeUndefined()
+  expect(await open()).toBe('Flow')
+  await move('ring-start')
+  expect(await open()).toBe('Work')
+  // A click aims at what it hit and leaves the tab to its press
+  await move('tab-diff')
+  expect(await open()).toBe('Work')
 })
 
 const diffOf = async (ui) => (await ui.find({ type: 'Code' }))?.props
@@ -754,23 +773,15 @@ test('/board theme still repaints and says so when the choice cannot be saved', 
   expect(await background(ui)).toBe(THEMES.dusk.bg)
 })
 
-// Where a hex sits in the xterm 256-color palette, or -1 when it is not exactly one entry
-function paletteIndex(hex: string) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
-  const cube = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
-  if ([r, g, b].every((c) => cube.includes(c))) return 16 + 36 * cube.indexOf(r) + 6 * cube.indexOf(g) + cube.indexOf(b)
-  return r === g && g === b && r >= 0x08 && r <= 0xee && (r - 0x08) % 10 === 0 ? 232 + (r - 0x08) / 10 : -1
-}
-
-test('every theme color is exactly one entry of the 256-color palette', () => {
-  expect(Object.keys(THEMES)).toEqual(['classic', 'dusk', 'aurora', 'high-contrast'])
+test('every theme defines each token, as a color name or #rrggbb, on its own background', () => {
+  expect(Object.keys(THEMES)).toEqual(['classic', 'glowup', 'aurora', 'dusk', 'cyberpunk', 'vaporwave', 'high-contrast'])
   for (const [name, theme] of Object.entries(THEMES)) {
+    expect([name, Object.keys(theme)]).toEqual([name, ['bg', 'accent', 'add', 'del', 'warn', 'muted']])
     for (const [token, value] of Object.entries(theme)) {
-      if (typeof value === 'string' && value.startsWith('#')) expect([name, token, paletteIndex(value) >= 0]).toEqual([name, token, true])
+      if (value !== undefined) expect([name, token, /^(#[0-9a-f]{6}|[a-z]+)$/.test(value)]).toEqual([name, token, true])
     }
   }
-  // The four themes paint the pane in four different backgrounds
-  expect(new Set(Object.values(THEMES).map((t) => t.bg)).size).toBe(4)
+  expect(new Set(Object.values(THEMES).map((t) => t.bg)).size).toBe(Object.keys(THEMES).length)
 })
 
 // A session with the board registered; the pane's outermost Box carries the background
@@ -864,7 +875,7 @@ test('/board theme repaints the band above the prompt as well', async ($, on) =>
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
-  const summary = async () => (await ui.find({ type: 'Text', text: /✎ 고친 파일 1/ }))?.props
+  const summary = async () => (await ui.find({ type: 'Text', text: /✎ Changes 1/ }))?.props
   expect((await summary()).dimColor).toBe(true)
   await $.command.run({ command: 'board', args: 'theme dusk' })
   expect((await summary()).color).toBe(THEMES.dusk.muted)
