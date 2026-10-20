@@ -157,7 +157,7 @@ export function register(on) {
     // The saved theme is a nicety: a store that can't be read leaves the classic colors
     const saved = await $.store.get('theme').catch(() => undefined)
     if (typeof saved === 'string' && Object.hasOwn(THEMES, saved)) themeName = saved
-    // The pane opens only when asked (/board or the band's button): a docked pane always on screen
+    // The pane opens only when asked (/board): a docked pane always on screen
     // was drawn over by the / typeahead. The band above the prompt sums it up meanwhile.
     plan = await loadPlan($)
     flowAt = await loadFlowAt($)
@@ -258,7 +258,6 @@ export function register(on) {
           width: e.props.bodyColumns,
           children: [
             Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No plan, changes, agents or flow yet'] })] }),
-            Button({ key: 'open-pane', label: 'Open', plain: true, onPress: () => openPane($) }),
           ],
         }),
         ...(below ? [below] : []),

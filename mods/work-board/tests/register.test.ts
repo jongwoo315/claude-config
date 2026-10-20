@@ -525,14 +525,15 @@ test('the band sums up the four tabs in one line', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: '✓ Plan 1/2 · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
 })
 
-test('the band opens the pane with the keyboard, and the session start does not', async ($, on) => {
+test('the band draws no button, so ctrl+x tab goes straight to an open pane; /board opens it with the keyboard', async ($, on) => {
   const opened = []
   bandSession(on, opened)
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
   expect(opened).toEqual([])
 
   const ui = await $.ui.mount(BAND)
-  await ui.press({ key: 'open-pane' })
+  expect(await ui.findAll({ type: 'Button' })).toEqual([])
+  await $.command.run({ command: 'board', args: '' })
   expect(opened.map((e) => [e.id, e.focus, e.closeOnEscape])).toEqual([['work-board', true, true]])
 })
 
