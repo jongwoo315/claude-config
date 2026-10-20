@@ -161,17 +161,18 @@ export function register(on) {
     if (running > 0) parts.push('✢ 에이전트 ' + running + ' 실행 중')
     if (flowAt !== null) parts.push('⇢ 흐름 ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + '분 전')
     // The band has one instance: draw what the plugins beneath drew (prompt-rail) under this line.
-    // With nothing beneath, next(e) holds no tree (or fails); the line is drawn alone then
+    // With no plugin beneath, next(e) is the engine's own band; if it fails the line is drawn alone
     const below = await next(e).catch(() => undefined)
     return Box({
       flexDirection: 'column',
       // A blank row between the transcript above and the band
       marginTop: 1,
-      width: e.props.bodyColumns,
       children: [
+        // The width sits on the line, not the outer Box: the engine refuses its own band under a Box with a width
         Box({
           flexDirection: 'row',
           columnGap: 2,
+          width: e.props.bodyColumns,
           children: [
             Box({ flexShrink: 1, children: [Text({ dimColor: true, wrap: 'truncate-end', children: [parts.join(' · ') || '✧ 작업 기록 없음'] })] }),
             Button({ key: 'open-pane', label: '열기', plain: true, onPress: () => openPane($) }),
