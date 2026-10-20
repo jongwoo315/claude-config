@@ -30,6 +30,10 @@ cookies.json
 # 저작권 있는 책에서 생성한 스킬이 public repo에 들어가면 안 된다.
 /skills/book-to-skill
 /skills/generative-ai-with-langchain
+/skills/archify
+
+# claude.ai 계정 스킬을 Claude Code가 세션마다 내려받는 곳. 폴더 이름에 org·account UUID가 들어간다.
+/skills/synced/
 
 # 파이썬 바이트코드
 __pycache__/
