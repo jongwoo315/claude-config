@@ -28,7 +28,7 @@ const PLAN = `# plan
 - [ ] draw
 `
 
-test('a plan in docs/plans shows its Task list on the work tab', async ($, on) => {
+test('a plan in docs/plans shows its Task list on the plan tab', async ($, on) => {
   mock.clock(on)
   on('session.start', () => ({ cwd: '/work' }))
   on('command.register', () => ({ value: undefined }))
@@ -48,10 +48,40 @@ test('a plan in docs/plans shows its Task list on the work tab', async ($, on) =
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-plan' })
   expect(await ui.find({ type: 'Text', text: /1014-plan-new\.md/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /● Task 1 — 뼈대/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /○ Task 2 — 그리기/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Task 9/ })).toBeUndefined()
+})
+
+test('the work tab shows the turn log even when the session has a plan', async ($, on) => {
+  mock.clock(on)
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', ($, e) => ({ value: e.path === '/work/docs/plans' }))
+  on('fs.list', () => ({ value: [{ name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false }] }))
+  on('fs.read', () => ({ value: PLAN }))
+  on('agent.list', () => ({ value: [] }))
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  await $.turn.start({ turnId: 't1', text: 'fix the login bug' })
+
+  const ui = await $.ui.mount(PANE)
+  expect(await ui.find({ type: 'Text', text: /fix the login bug/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Task 1/ })).toBeUndefined()
+})
+
+test('the plan tab says so when docs/plans has no plan', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work' }))
+  on('fs.exists', () => ({ value: false }))
+  on('agent.list', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-plan' })
+  expect(await ui.find({ type: 'Text', text: /docs\/plans에 \*-plan-\*\.md가 없다/ })).toBeDefined()
 })
 
 test('without a plan the work tab shows a timeline of turns and their tools', async ($, on) => {
@@ -365,7 +395,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '✓ 작업 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✓ 계획 1/2 · ✎ 고친 파일 1 · ✢ 에이전트 1 실행 중' })).toBeDefined()
 })
 
 test('the band opens the pane with the keyboard, and the session start does not', async ($, on) => {
@@ -418,6 +448,7 @@ test('the tabs are bracketed buttons and only the open one is marked primary', a
     Object.fromEntries((await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-')).map((b) => [b.key, [b.props.plain, b.props.variant]]))
   expect(await marks()).toEqual({
     'tab-work': [undefined, 'primary'],
+    'tab-plan': [undefined, undefined],
     'tab-agents': [undefined, undefined],
     'tab-files': [undefined, undefined],
     'tab-flow': [undefined, undefined],

@@ -156,14 +156,14 @@ export function register(on) {
     return next(e)
   })
 
-  // One line above the prompt summing up the four tabs, and a button to open them
+  // One line above the prompt summing up the tabs, and a button to open them
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
     // width table counts them as two. ✎ and ⇢ are the marks the files and flow tabs use.
     const parts = []
-    if (plan) parts.push('✓ 작업 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
+    if (plan) parts.push('✓ 계획 ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
     const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
     if (edited.length > 0) parts.push('✎ 고친 파일 ' + edited.length)
     const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
@@ -216,7 +216,9 @@ export function register(on) {
       Text({ wrap: 'truncate-end', ...style, ...(dimColor ? (theme().muted ? { color: theme().muted } : { dimColor }) : {}), children: [text] })
 
     let body
-    if (tab === 'work' && plan) {
+    if (tab === 'plan' && !plan) {
+      body = [line('docs/plans에 *-plan-*.md가 없다', { dimColor: true })]
+    } else if (tab === 'plan') {
       const sorted = [...plan.tasks].sort((a, b) => ORDER[a.status] - ORDER[b.status])
       const done = plan.tasks.filter((t) => t.status === 'completed').length
       body = [
@@ -451,7 +453,7 @@ export function register(on) {
       minHeight: e.props.scroll.bodyRows,
       backgroundColor: theme().bg,
       children: [
-        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('agents', '에이전트', '2'), tabButton('files', '파일', '3'), tabButton('flow', '흐름', '4')] }),
+        Box({ flexDirection: 'row', columnGap: 1, children: [tabButton('work', '작업', '1'), tabButton('plan', '계획', '2'), tabButton('agents', '에이전트', '3'), tabButton('files', '파일', '4'), tabButton('flow', '흐름', '5')] }),
         Text({ children: [' '] }),
         ...body,
       ],
