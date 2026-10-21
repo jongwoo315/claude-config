@@ -27,20 +27,31 @@ export function parsePlanTasks(markdown) {
 
 // The work tab's turns, rebuilt from the transcript so a reload or a resume keeps them. A turn starts at
 // a prompt: a user message with text that is no tool result and no engine markup (<command-name>, ...).
-// { prompt (first line), start, end (message indexes, end exclusive), tools: { Read: 2, ... } }
+// { prompt (first line), start, end (message indexes, end exclusive), tools: { Read: 2, ... }, reply }.
+// reply is the turn's last assistant text, its answer, or null: what it says between tool calls is passed over
 export function turnRows(messages) {
   const turns = []
   messages.forEach((m, i) => {
     const isPrompt = m.role === 'user' && m.text.trim() !== '' && !m.text.trimStart().startsWith('<') && !(m.toolResults?.length > 0)
     if (isPrompt) {
       if (turns.length > 0) turns[turns.length - 1].end = i
-      turns.push({ prompt: m.text.split('\n')[0].trim(), start: i, end: messages.length, tools: {} })
+      turns.push({ prompt: m.text.split('\n')[0].trim(), start: i, end: messages.length, tools: {}, reply: null })
     } else if (turns.length > 0) {
-      const tools = turns[turns.length - 1].tools
-      for (const use of m.toolUses ?? []) tools[use.tool] = (tools[use.tool] ?? 0) + 1
+      const turn = turns[turns.length - 1]
+      for (const use of m.toolUses ?? []) turn.tools[use.tool] = (turn.tools[use.tool] ?? 0) + 1
+      if (m.role === 'assistant' && m.text.trim() !== '') turn.reply = m.text
     }
   })
   return turns
+}
+
+// The pins of each session sit under their own store key (two sessions writing one key would undo each
+// other). entries: [{ key, at }], at = the session's last pin write. The keys past the newest `keep`.
+export function stalePinKeys(entries, keep) {
+  return [...entries]
+    .sort((a, b) => b.at - a.at)
+    .slice(keep)
+    .map((e) => e.key)
 }
 
 // $.agent.list() drops an agent once it has finished, so keep every agent we have seen.

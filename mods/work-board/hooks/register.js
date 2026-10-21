@@ -1,5 +1,5 @@
 import { THEMES } from './themes.js'
-import { agentRows, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, turnRows } from './model.js'
+import { agentRows, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, stalePinKeys, turnRows } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
@@ -13,13 +13,30 @@ const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
-const TABS = ['work', 'orch', 'agents', 'changes', 'diff', 'flow']
+const TABS = ['work', 'orch', 'agents', 'changes', 'diff', 'flow', 'pin']
 const RING = 'ring'
 const INDENT = 1 // the body's left indent: the width of RING, drawn before the tabs
 let orchTasks = [] // orch's queue as loadOrch reads it, for the band
 let tmuxSession = null // the tmux session this one runs in: orch tasks started from it name it their parent
 let isWorking = false // between turn.start and turn.complete: the newest turn is still running
 let turnFilter = null // the turn (index in turnRows) the changes and diff tabs are narrowed to, or null
+let detailTurn = null // the turn (index in turnRows) the work tab has opened, or null for the list
+// This session's pins, kept in the store under pinKey ('pins:<session id>'): a turn's reply
+// { turn, prompt, text }, or what was pasted after /board pin { isPasted, at, text }
+// so a reload or a resume keeps them; each session has its own key, or two would overwrite each other
+let pins = []
+let pinKey = null
+let pinError = null // why the last write of the pins failed, shown on the pin tab
+const PIN_SESSIONS = 20 // the sessions whose pins the store keeps
+// Markdown takes tab and newline as its only control characters and draws 100000 characters in one drawing
+const PIN_CHARS = 10000
+const DRAWN_CHARS = 90000
+const pinId = (p) => (p.isPasted ? 'paste-' + p.at : String(p.turn))
+const clip = (text) =>
+  text
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')
+    .trim()
+    .slice(0, PIN_CHARS)
 let seenAgents = []
 let hasRunningAgent = false
 let flowAt = null // mtime of the newest archify candidate, or null
@@ -126,6 +143,24 @@ const why = (text) => {
   return first ? ' (' + first + ')' : ''
 }
 
+// Writes this session's pins (none: drops its key) and drops the keys of all but the newest sessions
+async function savePins($) {
+  try {
+    pinKey ??= 'pins:' + (await $.session.id())
+    if (pins.length === 0) await $.store.delete(pinKey)
+    else await $.store.set(pinKey, { at: await $.clock.now(), pins })
+    // This session's own key is never the stale one, whatever its clock says
+    const others = (await $.store.keys()).filter((key) => key.startsWith('pins:') && key !== pinKey)
+    if (others.length >= PIN_SESSIONS) {
+      const entries = await Promise.all(others.map(async (key) => ({ key, at: (await $.store.get(key))?.at ?? 0 })))
+      for (const key of stalePinKeys(entries, PIN_SESSIONS - 1)) await $.store.delete(key)
+    }
+    pinError = null
+  } catch (err) {
+    pinError = '저장하지 못했다' + why(err?.message ?? err) + '. 이 세션이 끝나면 사라진다'
+  }
+}
+
 // The changes tab's rows: what the conversation edited that git still reports, with +/-. Where git can't
 // say (no repo, git failing) the rows are the transcript's edited files alone and `note` says why.
 async function loadChanges($) {
@@ -188,12 +223,18 @@ function seconds(ms) {
 
 export function register(on) {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'board', description: 'Open the work board, or pick its colors', argumentHint: '[theme [name]]', immediate: true })
+    await $.command.register({ name: 'board', description: 'Open the work board, or pick its colors', argumentHint: '[theme [name] | pin <pasted text>]', immediate: true })
     // The saved theme is a nicety: a store that can't be read leaves the classic colors
     const saved = await $.store.get('theme').catch(() => undefined)
     if (typeof saved === 'string' && Object.hasOwn(THEMES, saved)) themeName = saved
     // The pane opens only when asked (/board): a docked pane always on screen
     // was drawn over by the / typeahead. The band above the prompt sums it up meanwhile.
+    pinKey = await $.session
+      .id()
+      .then((sid) => 'pins:' + sid)
+      .catch(() => null)
+    const savedPins = pinKey && (await $.store.get(pinKey).catch(() => undefined))
+    pins = Array.isArray(savedPins?.pins) ? savedPins.pins : []
     tmuxSession = await loadTmuxSession($).catch(() => null)
     orchTasks = await loadOrch($, tmuxSession).catch(() => [])
     flowAt = await loadFlowAt($)
@@ -215,6 +256,16 @@ export function register(on) {
 
   on('command.run', { command: 'board' }, async ($, e) => {
     const [sub, name] = e.args.trim().split(/\s+/)
+    // A part of a reply: the engine sees no selection with fullscreen off, but the terminal copies
+    // one from its scrollback, and it comes back pasted after the command
+    if (sub === 'pin') {
+      const text = clip(e.args.trim().slice('pin'.length))
+      if (text === '') return { text: '붙여 넣을 글이 없다. 응답에서 고른 부분을 복사해 /board pin 뒤에 붙여 넣는다' }
+      if (!pins.some((p) => p.text === text)) pins = [...pins, { isPasted: true, at: await $.clock.now(), text }]
+      $.ui.invalidate('ui.render')
+      await savePins($)
+      return { text: pinError ?? '붙여 넣은 ' + text.length + '자를 pin했다' }
+    }
     if (sub !== 'theme') {
       await openPane($)
       return {}
@@ -280,6 +331,7 @@ export function register(on) {
     const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
     if (running > 0) parts.push('✢ Agents ' + running + ' running')
     if (flowAt !== null) parts.push('⇢ Flow ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + 'm ago')
+    if (pins.length > 0) parts.push('⚑ Pin ' + pins.length)
     // The band has one instance: draw what the plugins beneath drew (prompt-rail) under this line.
     // With no plugin beneath, next(e) is the engine's own band; if it fails the line is drawn alone
     const below = await next(e).catch(() => undefined)
@@ -294,7 +346,7 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No orch task, changes, agents or flow yet'] })] }),
+            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No orch task, changes, agents, flow or pins yet'] })] }),
           ],
         }),
         ...(below ? [below] : []),
@@ -304,8 +356,15 @@ export function register(on) {
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     if (e.requestId !== PANE) return next(e)
-    const { Box, Text, Button, Code } = $.ui.resolve(e)
+    const { Box, Text, Button, Code, Markdown } = $.ui.resolve(e)
     const redraw = () => $.ui.invalidate('ui.render')
+    // Shown at once, then written: a store that fails leaves the pin on screen and says so on the pin tab
+    const setPins = async (list) => {
+      pins = list
+      redraw()
+      await savePins($)
+      redraw()
+    }
 
     // Where the ring rests (see ui.focus): one space in the background's color on the background, so
     // the engine's inverse of it is the same cell. Drawn first in the tab row, so it is the ring's
@@ -360,9 +419,38 @@ export function register(on) {
       const turns = messages.error ? [] : turnRows(messages)
       const cwd = turns.length > 0 ? await $.session.cwd() : null
       const home = turns.length > 0 ? await $.env.get('HOME') : null
-      // Newest first, a letter on each of the first 26: it opens the changes tab narrowed to that turn
-      body =
-        turns.length === 0
+      const opened = detailTurn === null ? undefined : turns[detailTurn]
+      // An opened turn: its prompt, its reply as markdown, and what to do with it
+      const turnView = (t, i) => {
+        const isPinned = pins.some((p) => !p.isPasted && p.turn === i)
+        const action = (key, hotkey, label, onPress, style = muted()) => Button({ key, plain: true, hotkey, onPress, children: [Text({ ...style, children: [label] })] })
+        return [
+          line('턴 ' + (i + 1) + '  ' + (t.prompt || '(빈 프롬프트)'), { bold: true }),
+          Box({
+            flexDirection: 'row',
+            columnGap: 2,
+            children: [
+              ...(t.reply ? [action('turn-pin', 'p', isPinned ? 'pin 풀기' : 'pin', () => setPins(isPinned ? pins.filter((p) => p.isPasted || p.turn !== i) : [...pins, { turn: i, prompt: t.prompt, text: clip(t.reply) }]), { color: theme().accent })] : []),
+              action('turn-changes', 'c', '이 턴의 Changes', () => {
+                turnFilter = i
+                detailTurn = null
+                tab = 'changes'
+                redraw()
+              }),
+              action('turn-back', '0', '목록으로', () => {
+                detailTurn = null
+                redraw()
+              }),
+            ],
+          }),
+          Text({ children: [' '] }),
+          t.reply ? Markdown({ key: 'turn-reply', text: clip(t.reply) }) : line('이 턴에는 응답 글이 없다', { dimColor: true }),
+        ]
+      }
+      // Newest first, a letter on each of the first 26: it opens that turn
+      body = opened
+        ? turnView(opened, detailTurn)
+        : turns.length === 0
           ? [line(messages.error ?? '아직 턴이 없다', { dimColor: true })]
           : turns
               .map((t, i) => ({ t, i }))
@@ -371,15 +459,15 @@ export function register(on) {
                 const isRunning = isWorking && i === turns.length - 1
                 const edited = fileRows(messages.slice(t.start, t.end), cwd, home).edited.length
                 const tools = Object.entries(t.tools).map(([name, count]) => name + ' ' + count)
-                const summary = [...tools, ...(edited > 0 ? ['파일 ' + edited] : [])].join(' · ') || '도구 없음'
+                const reply = t.reply?.trim().split('\n')[0]
+                const summary = [...tools, ...(edited > 0 ? ['파일 ' + edited] : []), ...(reply ? [reply] : [])].join(' · ') || '도구 없음'
                 return [
                   Button({
                     key: 'turn-' + i,
                     plain: true,
                     ...(n < 26 ? { hotkey: String.fromCharCode(97 + n) } : {}),
                     onPress: () => {
-                      turnFilter = i
-                      tab = 'changes'
+                      detailTurn = i
                       redraw()
                     },
                     children: [Text({ wrap: 'truncate-end', bold: isRunning, children: [(isRunning ? '◐ ' : '● ') + (i + 1) + '  ' + (t.prompt || '(빈 프롬프트)')] })],
@@ -387,6 +475,36 @@ export function register(on) {
                   Box({ key: 'turn-summary-' + i, paddingLeft: 5, children: [line(summary, { dimColor: true })] }),
                 ]
               })
+    } else if (tab === 'pin') {
+      // Newest first, as many as one drawing takes
+      let room = DRAWN_CHARS
+      const drawn = [...pins].reverse().filter((p) => (room -= p.text.length) >= 0)
+      body = [
+        ...(pinError ? [line(pinError, { color: theme().del }), Text({ children: [' '] })] : []),
+        ...(pins.length === 0
+          ? [line('pin이 없다. Work에서 턴을 고르고 p를 누르거나, 복사한 글을 /board pin 뒤에 붙여 넣는다', { dimColor: true })]
+          : drawn.flatMap((p, n) => [
+              Box({
+                key: 'pin-' + pinId(p),
+                flexDirection: 'row',
+                columnGap: 2,
+                children: [
+                  Box({ flexShrink: 1, children: [line(p.isPasted ? '⚑ 붙여 넣음' : '⚑ 턴 ' + (p.turn + 1) + '  ' + p.prompt, { bold: true, color: theme().accent })] }),
+                  Button({
+                    key: 'pin-del-' + pinId(p),
+                    plain: true,
+                    ...(n < 26 ? { hotkey: String.fromCharCode(97 + n) } : {}),
+                    onPress: () => setPins(pins.filter((q) => pinId(q) !== pinId(p))),
+                    children: [Text({ ...muted(), children: ['지우기'] })],
+                  }),
+                ],
+              }),
+              // Pasted text is what the terminal drew, markdown already rendered
+              p.isPasted ? Text({ key: 'pin-text-' + pinId(p), children: [p.text] }) : Markdown({ key: 'pin-text-' + pinId(p), text: p.text }),
+              Text({ children: [' '] }),
+            ])),
+        ...(drawn.length < pins.length ? [line('한 화면에 그릴 수 있는 글자 수를 넘어 오래된 pin ' + (pins.length - drawn.length) + '개는 그리지 않았다', { dimColor: true })] : []),
+      ]
     } else if (tab === 'changes') {
       const { changed, settled, read, note } = await loadChanges($)
       // The ring stays off the pane's buttons (see ui.focus), so a row is picked by its letter
@@ -668,7 +786,7 @@ export function register(on) {
           flexDirection: 'row',
           children: [
             ringStop,
-            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('orch', 'Orch'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow')] }),
+            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('orch', 'Orch'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow'), tabButton('pin', 'Pin')] }),
           ],
         }),
         Text({ children: [' '] }),

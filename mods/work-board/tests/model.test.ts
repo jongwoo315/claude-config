@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { agentRows, bashTargets, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, turnRows } from '../hooks/model.js'
+import { agentRows, bashTargets, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, stalePinKeys, turnRows } from '../hooks/model.js'
 
 const PLAN = `# plan
 
@@ -50,14 +50,31 @@ const result = () => ({ role: 'user', text: '', toolUses: [], toolResults: [{ to
 test('turnRows starts a turn at each prompt and counts the tools until the next one', async () => {
   const messages = [prompt('fix the bug\nmore detail'), call('Read', 'Read'), result(), call('Edit'), result(), prompt('commit'), call('Bash'), result()]
   expect(turnRows(messages)).toEqual([
-    { prompt: 'fix the bug', start: 0, end: 5, tools: { Read: 2, Edit: 1 } },
-    { prompt: 'commit', start: 5, end: 8, tools: { Bash: 1 } },
+    { prompt: 'fix the bug', start: 0, end: 5, tools: { Read: 2, Edit: 1 }, reply: null },
+    { prompt: 'commit', start: 5, end: 8, tools: { Bash: 1 }, reply: null },
   ])
 })
 
 test('turnRows does not start a turn at a tool result or a message the engine wrote', async () => {
   const messages = [prompt('go'), call('Read'), result(), prompt('<command-name>/board</command-name>'), { role: 'user', text: 'tool output text', toolUses: [], toolResults: [{ tool_use_id: 'u', text: 'x' }] }, call('Edit')]
-  expect(turnRows(messages)).toEqual([{ prompt: 'go', start: 0, end: 6, tools: { Read: 1, Edit: 1 } }])
+  expect(turnRows(messages)).toEqual([{ prompt: 'go', start: 0, end: 6, tools: { Read: 1, Edit: 1 }, reply: null }])
+})
+
+test('turnRows takes the last assistant text of a turn as its reply, not one said between tool calls', async () => {
+  const say = (text) => ({ role: 'assistant', text, toolUses: [] })
+  const messages = [prompt('fix it'), say('Looking first.'), call('Read'), result(), say('Fixed.\n\n- a.js: guard'), call('Bash'), result(), prompt('next'), call('Read'), result()]
+  expect(turnRows(messages).map((t) => t.reply)).toEqual(['Fixed.\n\n- a.js: guard', null])
+})
+
+test('stalePinKeys names every session key but the newest few', async () => {
+  const entries = [
+    { key: 'pins:a', at: 30 },
+    { key: 'pins:b', at: 10 },
+    { key: 'pins:c', at: 20 },
+    { key: 'pins:d', at: 40 },
+  ]
+  expect(stalePinKeys(entries, 2).sort()).toEqual(['pins:b', 'pins:c'])
+  expect(stalePinKeys(entries, 4)).toEqual([])
 })
 
 test('turnRows of a conversation with no prompt yet is empty', async () => {

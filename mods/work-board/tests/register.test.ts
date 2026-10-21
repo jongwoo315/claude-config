@@ -111,6 +111,7 @@ const TURNS = [
   said('<command-name>/board</command-name>'),
   said('add a new file'),
   did('Write', { file_path: '/work/new.txt' }),
+  { role: 'assistant', text: 'Added new.txt.\n\n- new.txt: one line', toolUses: [] },
 ]
 
 test('the work tab rebuilds the turns from the transcript, newest first, with their tools and edited files', async ($, on) => {
@@ -123,7 +124,8 @@ test('the work tab rebuilds the turns from the transcript, newest first, with th
   expect(await ui.find({ type: 'Text', text: /1 {2}fix the login bug/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /with details|command-name/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'Read 1 · Edit 1 · 파일 1' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'Write 1 · 파일 1' })).toBeDefined()
+  // Each turn ends with the first line of its reply, when it has one
+  expect(await ui.find({ type: 'Text', text: 'Write 1 · 파일 1 · Added new.txt.' })).toBeDefined()
 })
 
 test('the newest turn is marked running until the turn completes', async ($, on) => {
@@ -138,11 +140,36 @@ test('the newest turn is marked running until the turn completes', async ($, on)
   expect(await ui.find({ type: 'Text', text: /◐/ })).toBeUndefined()
 })
 
-test('a turn opens the changes tab with only the files it touched; 0 shows them all again', async ($, on) => {
+test('a turn opens on its prompt and reply, with pin, its changes and back', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'turn-1' })
+  expect(await ui.find({ type: 'Text', text: /턴 2 {2}add a new file/ })).toBeDefined()
+  expect((await ui.find({ type: 'Markdown' }))?.props.text).toBe('Added new.txt.\n\n- new.txt: one line')
+  const keys = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('turn-')).map((b) => [b.key, b.props.hotkey])
+  expect(keys).toEqual([['turn-pin', 'p'], ['turn-changes', 'c'], ['turn-back', '0']])
+
+  await ui.press({ key: 'turn-back' })
+  expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
+  expect(await ui.find({ type: 'Button', key: 'turn-0' })).toBeDefined()
+})
+
+test('a turn with no reply text opens with no pin to press', async ($, on) => {
   repoSession(on, { messages: TURNS })
 
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'turn-0' })
+  expect(await ui.find({ type: 'Button', key: 'turn-pin' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /응답 글이 없다/ })).toBeDefined()
+})
+
+test('an opened turn shows the changes tab with only the files it touched; 0 shows them all again', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'turn-0' })
+  await ui.press({ key: 'turn-changes' })
   expect(await ui.find({ type: 'Text', text: /턴 1만 보는 중/ })).toBeDefined()
   expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
   expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeUndefined()
@@ -159,9 +186,131 @@ test('with a turn picked the diff tab picks from its files and says the diff is 
 
   const ui = await $.ui.mount(PANE)
   await ui.press({ key: 'turn-1' })
+  await ui.press({ key: 'turn-changes' })
   await ui.press({ key: 'tab-diff' })
   expect(await ui.find({ type: 'Text', text: 'new.txt' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /그 턴만이 아니라 HEAD 대비 전체다/ })).toBeDefined()
+})
+
+// The store of a session with id sid-1, as the engine's JSON file keeps it
+function pinStore(on, entries = {}, { isSaveFailing = false } = {}) {
+  const stored = new Map(Object.entries(entries))
+  mock.clock(on)
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('store.get', ($, e) => ({ value: stored.get(e.key) }))
+  on('store.keys', () => ({ value: [...stored.keys()] }))
+  on('store.delete', ($, e) => {
+    stored.delete(e.key)
+    return { value: undefined }
+  })
+  on('store.set', ($, e) => {
+    if (isSaveFailing) throw new Error('store full')
+    stored.set(e.key, e.value)
+    return { value: undefined }
+  })
+  return stored
+}
+const PINNED = { turn: 1, prompt: 'add a new file', text: 'Added new.txt.\n\n- new.txt: one line' }
+
+test('p pins the reply of the opened turn to the pin tab, the band and the store; p again unpins it', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  const stored = pinStore(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  const band = await $.ui.mount(BAND)
+  await ui.press({ key: 'turn-1' })
+  await ui.press({ key: 'turn-pin' })
+  expect(stored.get('pins:sid-1')?.pins).toEqual([PINNED])
+  expect(await ui.find({ type: 'Text', text: 'pin 풀기' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /⚑ Pin 1$/ })).toBeDefined()
+
+  await ui.press({ key: 'tab-pin' })
+  expect(await ui.find({ type: 'Text', text: /⚑ 턴 2 {2}add a new file/ })).toBeDefined()
+  expect((await ui.find({ type: 'Markdown' }))?.props.text).toBe(PINNED.text)
+
+  await ui.press({ key: 'tab-work' })
+  await ui.press({ key: 'turn-pin' })
+  expect(stored.has('pins:sid-1')).toBe(false)
+  expect(await band.find({ type: 'Text', text: /⚑ Pin/ })).toBeUndefined()
+})
+
+test('the pins of this session come back from the store at session start; a letter removes one', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  const stored = pinStore(on, { 'pins:sid-1': { at: 1, pins: [PINNED] }, 'pins:sid-2': { at: 1, pins: [{ ...PINNED, prompt: 'other session' }] } })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-pin' })
+  expect(await ui.find({ type: 'Text', text: /other session/ })).toBeUndefined()
+  const remove = await ui.find({ type: 'Button', key: 'pin-del-1' })
+  expect(remove?.props.hotkey).toBe('a')
+  await ui.press({ key: 'pin-del-1' })
+  expect(await ui.find({ type: 'Text', text: /pin이 없다/ })).toBeDefined()
+  expect(stored.has('pins:sid-1')).toBe(false)
+  expect(stored.has('pins:sid-2')).toBe(true)
+})
+
+test('the store keeps the pins of the newest 20 sessions', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  const old = Object.fromEntries(Array.from({ length: 20 }, (_, i) => ['pins:old-' + i, { at: i, pins: [PINNED] }]))
+  const stored = pinStore(on, { ...old, theme: 'dracula' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'turn-1' })
+  await ui.press({ key: 'turn-pin' })
+  expect(stored.has('pins:old-0')).toBe(false)
+  expect(stored.has('pins:old-1')).toBe(true)
+  expect(stored.has('pins:sid-1')).toBe(true)
+  expect(stored.get('theme')).toBe('dracula')
+})
+
+test('a pin the store would not take stays on screen and the pin tab says it was not saved', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  pinStore(on, {}, { isSaveFailing: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'turn-1' })
+  await ui.press({ key: 'turn-pin' })
+  await ui.press({ key: 'tab-pin' })
+  expect(await ui.find({ type: 'Text', text: /^저장하지 못했다 \(.+\)\. 이 세션이 끝나면 사라진다$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Markdown' })).toBeDefined()
+})
+
+test('/board pin pins what was pasted after it, drawn as the terminal showed it, once', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  const stored = pinStore(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const pasted = '  - 바뀐 동작: 턴에서 Changes로 가려면\r\n    키를 두 번 누른다'
+  const answer = await $.command.run({ command: 'board', args: 'pin ' + pasted })
+  expect(answer.text).toMatch(/pin했다/)
+  await $.command.run({ command: 'board', args: 'pin ' + pasted })
+  const [pin] = stored.get('pins:sid-1')?.pins ?? []
+  expect(stored.get('pins:sid-1')?.pins).toHaveLength(1)
+  expect(pin).toMatchObject({ isPasted: true, text: '- 바뀐 동작: 턴에서 Changes로 가려면\n    키를 두 번 누른다' })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-pin' })
+  expect(await ui.find({ type: 'Text', text: /⚑ 붙여 넣음/ })).toBeDefined()
+  expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: pin.text })).toBeDefined()
+  await ui.press({ key: 'pin-del-paste-' + pin.at })
+  expect(stored.has('pins:sid-1')).toBe(false)
+})
+
+test('/board pin with nothing pasted says how to use it', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+  const stored = pinStore(on)
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const answer = await $.command.run({ command: 'board', args: 'pin   ' })
+  expect(answer.text).toMatch(/붙여 넣는다/)
+  expect(stored.has('pins:sid-1')).toBe(false)
 })
 
 test('an empty session says nothing has happened yet', async ($, on) => {
@@ -634,7 +783,7 @@ test('the tabs are plain buttons with their own brackets, the open one in the ac
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
   expect(tabs.map((b) => [b.key, b.props.plain, b.props.variant, b.props.hotkey])).toEqual(
-    ['work', 'orch', 'agents', 'changes', 'diff', 'flow'].map((n) => ['tab-' + n, true, undefined, undefined]),
+    ['work', 'orch', 'agents', 'changes', 'diff', 'flow', 'pin'].map((n) => ['tab-' + n, true, undefined, undefined]),
   )
   expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props).toMatchObject({ color: 'cyan', bold: true })
   expect((await ui.find({ type: 'Text', text: '[Flow]' }))?.props.dimColor).toBe(true)
@@ -644,7 +793,7 @@ test('the tabs are plain buttons with their own brackets, the open one in the ac
   expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props.dimColor).toBe(true)
 })
 
-test('the six tabs come in order', async ($, on) => {
+test('the seven tabs come in order', async ($, on) => {
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
   on('fs.exists', () => ({ value: false }))
@@ -652,8 +801,8 @@ test('the six tabs come in order', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
-  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-orch', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow'])
-  for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
+  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-orch', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow', 'tab-pin'])
+  for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow', 'Pin']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
 })
 
 test('the person\'s moves cycle the tabs while the ring stays on its anchor', async ($, on) => {
@@ -665,7 +814,7 @@ test('the person\'s moves cycle the tabs while the ring stays on its anchor', as
 
   const ui = await $.ui.mount(PANE)
   const selected = async () => {
-    for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow']) {
+    for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow', 'Pin']) {
       if ((await ui.find({ type: 'Text', text: '[' + label + ']' }))?.props.bold) return label
     }
   }
@@ -679,12 +828,12 @@ test('the person\'s moves cycle the tabs while the ring stays on its anchor', as
   expect(await selected()).toBe('Orch')
   await move('tab-work')
   expect(await selected()).toBe('Agents')
-  // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Flow
+  // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Pin
   expect((await move()).deny).toBeDefined()
   await move()
   expect(await selected()).toBe('Work')
   await move()
-  expect(await selected()).toBe('Flow')
+  expect(await selected()).toBe('Pin')
   await move('tab-work')
   expect(await selected()).toBe('Work')
   // A click aims at what it hit and leaves the tab to its press
