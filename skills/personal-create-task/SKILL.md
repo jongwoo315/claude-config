@@ -130,7 +130,8 @@ if repo_url:
 # h3 gray_background, h2 앞 빈 문단, 구분선·취소선 금지. 아래는 그 규칙을
 # 적용한 형태다.
 payload = {
-    'parent': {'database_id': '29241e6165c0801f9529cabf8cad919b'},
+    # database_id + 2022-06-28은 400이 난다 — 이 DB는 data source가 2개다 (2026-10-22 실측)
+    'parent': {'type': 'data_source_id', 'data_source_id': '29241e61-65c0-80e4-aaf5-000bcafbb440'},
     'properties': properties,
     'children': [
         {
@@ -162,7 +163,7 @@ result = subprocess.run(
     ['curl', '-s', '-X', 'POST', 'https://api.notion.com/v1/pages',
      '-H', 'Authorization: Bearer $NOTION_API_KEY',
      '-H', 'Content-Type: application/json',
-     '-H', 'Notion-Version: 2022-06-28',
+     '-H', 'Notion-Version: 2026-03-11',
      '-d', json.dumps(payload)],
     capture_output=True, text=True
 )
