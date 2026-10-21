@@ -4,8 +4,11 @@
 
 - 개발 작업(기능·버그·리팩터링) 시작 → **`dev-workflow` 스킬**. 파이프라인·게이트·orch 운용·
   티켓 프로퍼티·`docs/plans` 파일 규칙이 전부 거기 있다.
-- 티켓을 2개 이상 한 번에 만들 때(에픽 + 하위 티켓) → **`ticket-breakdown` 스킬**. 평문 요청이어도
-  스킬로 만든다. 에픽은 Notion이면 `프로젝트` select, Jira면 실제 Epic이다.
+- 프로젝트는 **walking skeleton**으로 진행한다. 입력부터 최종 출력까지 끝까지 도는 흐름을 먼저
+  만들고(단계는 stub이어도 된다), 이후 작업은 「어느 stub을 실제 구현으로 바꾸나」로 정한다.
+  끝까지 도는 흐름이 아직 없는데 한 단계만 깊게 파는 티켓이면 그 사실을 먼저 말한다.
+  티켓을 2개 이상 한 번에 만들 때는 **`ticket-breakdown` 스킬**(평문 요청이어도). 에픽은
+  Notion이면 `프로젝트` select, Jira면 실제 Epic이다.
 - **판단 기록은 `rules/before-work.md`(착수 전) · `rules/after-pr.md`(PR 후) · `rules/problem-found.md`(상시)**. 스킬을
   호출하지 않아도 발동하므로 rules에 둔다.
 
