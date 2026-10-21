@@ -1,5 +1,5 @@
 import { THEMES } from './themes.js'
-import { addTool, agentRows, changeRows, countLines, cutDiff, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from './model.js'
+import { agentRows, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, turnRows } from './model.js'
 
 const PANE = 'work-board'
 const PLANS_DIR = 'docs/plans'
@@ -13,18 +13,19 @@ const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
-const TABS = ['work', 'plan', 'agents', 'changes', 'diff', 'flow']
+const TABS = ['work', 'orch', 'agents', 'changes', 'diff', 'flow']
 const RING = 'ring'
 const INDENT = 1 // the body's left indent: the width of RING, drawn before the tabs
-let plan = null // { name, tasks } of the newest *-plan-*.md in docs/plans, or null
-let turns = []
+let orchTasks = [] // orch's queue as loadOrch reads it, for the band
+let tmuxSession = null // the tmux session this one runs in: orch tasks started from it name it their parent
+let isWorking = false // between turn.start and turn.complete: the newest turn is still running
+let turnFilter = null // the turn (index in turnRows) the changes and diff tabs are narrowed to, or null
 let seenAgents = []
 let hasRunningAgent = false
 let flowAt = null // mtime of the newest archify candidate, or null
 let selected = null // the path the changes tab last picked, shown on the diff tab
 
 const MARK = { in_progress: '◐', pending: '○', completed: '●', unknown: '·' }
-const ORDER = { in_progress: 0, pending: 1, unknown: 1, completed: 2 }
 // The tags rules/after-pr.md puts on a changed-flow diagram
 const tagColor = (tag) => (tag === '새로 생김' ? theme().add : tag === '없어짐' ? theme().del : /바뀜|좁아짐/.test(tag) ? theme().warn : undefined)
 const agentColor = (status) => {
@@ -32,16 +33,46 @@ const agentColor = (status) => {
   return { running: t.warn, waiting: t.warn, completed: t.add, failed: t.del, killed: t.del }[status]
 }
 
-// Reads the newest plan file under the session's working directory. No plan, no Task list.
-async function loadPlan($) {
-  // A relative path doesn't resolve against the session's directory, so build it from cwd
-  const dir = (await $.session.cwd()) + '/' + PLANS_DIR
+// Reads the newest plan file under a worktree. No plan, no Task list.
+async function loadPlan($, base) {
+  const dir = base + '/' + PLANS_DIR
   if (!(await $.fs.exists(dir))) return null
   const files = (await $.fs.list(dir)).filter((f) => f.kind === 'file' && /-plan-.*\.md$/.test(f.name))
   if (files.length === 0) return null
   const newest = files.sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
   const tasks = parsePlanTasks(await $.fs.read(dir + '/' + newest.name))
   return tasks.length > 0 ? { name: newest.name, tasks } : null
+}
+
+// The tmux session this one runs in, read the way orch reads a task's parent (orch/lib/task.sh)
+async function loadTmuxSession($) {
+  const pane = await $.env.get('TMUX_PANE')
+  if (!pane) return null
+  const out = await $.process.run(['tmux', 'display-message', '-pt', pane, '#{session_name}'])
+  return out.exitCode === 0 ? out.stdout.trim() || null : null
+}
+
+// The orch tasks started from tmux session parent (~/.claude/orch/queue/task-*.json), running
+// first, each with its worktree's plan. An orch session starts none, so it sees none.
+// Plans live in the worktrees orch runs, not under the main session's directory.
+const ORCH_ORDER = { running: 0, queued: 1, failed: 2, done: 3 }
+async function loadOrch($, parent) {
+  const queue = (await $.env.get('HOME')) + '/.claude/orch/queue'
+  if (parent === null || !(await $.fs.exists(queue))) return []
+  const tasks = []
+  for (const f of await $.fs.list(queue)) {
+    if (f.kind !== 'file' || !/^task-.*\.json$/.test(f.name)) continue
+    let task
+    try {
+      task = JSON.parse(await $.fs.read(queue + '/' + f.name))
+    } catch {
+      continue // orch is rewriting it, or it is gone: the next read has it
+    }
+    if (task.parent !== parent) continue
+    const plan = task.target ? await loadPlan($, task.target).catch(() => null) : null
+    tasks.push({ ...task, plan })
+  }
+  return tasks.sort((a, b) => (ORCH_ORDER[a.status] ?? 4) - (ORCH_ORDER[b.status] ?? 4))
 }
 
 // The newest archify candidate.json of this session: archify's default <cwd>/.archify, or this
@@ -99,7 +130,11 @@ const why = (text) => {
 // say (no repo, git failing) the rows are the transcript's edited files alone and `note` says why.
 async function loadChanges($) {
   const cwd = await $.session.cwd()
-  const files = fileRows(await $.session.messages(), cwd, await $.env.get('HOME'))
+  const messages = await $.session.messages()
+  // A picked turn narrows to its own messages. A cd made in an earlier turn is not seen then, so a
+  // relative path a Bash command wrote resolves against the session's directory
+  const turn = turnFilter === null ? undefined : turnRows(messages)[turnFilter]
+  const files = fileRows(turn ? messages.slice(turn.start, turn.end) : messages, cwd, await $.env.get('HOME'))
   const withoutGit = (note) => ({
     changed: files.edited.map((f) => ({ ...f, rel: null, add: null, del: null, isBinary: false, isUntracked: false })),
     settled: [],
@@ -159,12 +194,21 @@ export function register(on) {
     if (typeof saved === 'string' && Object.hasOwn(THEMES, saved)) themeName = saved
     // The pane opens only when asked (/board): a docked pane always on screen
     // was drawn over by the / typeahead. The band above the prompt sums it up meanwhile.
-    plan = await loadPlan($)
+    tmuxSession = await loadTmuxSession($).catch(() => null)
+    orchTasks = await loadOrch($, tmuxSession).catch(() => [])
     flowAt = await loadFlowAt($)
     $.ui.invalidate('ui.render')
     // Subagent status changes don't arrive as events, so poll while one is running
     $.clock.every(2000, () => {
       if (hasRunningAgent) $.ui.invalidate('ui.render')
+    })
+    // Nor do orch's: its queue files change under a task's own session
+    $.clock.every(5000, async () => {
+      const latest = await loadOrch($, tmuxSession).catch(() => orchTasks)
+      if (JSON.stringify(latest) !== JSON.stringify(orchTasks)) {
+        orchTasks = latest
+        $.ui.invalidate('ui.render')
+      }
     })
     return next(e)
   })
@@ -188,25 +232,15 @@ export function register(on) {
     return { text: '테마를 ' + name + '(으)로 바꿨다' }
   })
 
+  // The turns themselves come from the transcript (turnRows); only whether one is running is kept here
   on('turn.start', async ($, e, next) => {
-    turns = startTurn(turns, e.turnId, e.text)
+    isWorking = true
     $.ui.invalidate('ui.render')
     return next(e)
   })
 
-  on('tool.call', async ($, e, next) => {
-    // A subagent's calls carry agentId; the timeline is the main conversation's
-    if (!e.agentId) {
-      turns = addTool(turns, e.tool)
-      $.ui.invalidate('ui.render')
-    }
-    return next(e)
-  })
-
   on('turn.complete', async ($, e, next) => {
-    turns = endTurn(turns, e.turnId, e.durationMs)
-    // The plan may have changed during the turn (a box ticked, a new plan written)
-    plan = await loadPlan($)
+    isWorking = false
     flowAt = await loadFlowAt($)
     $.ui.invalidate('ui.render')
     return next(e)
@@ -237,7 +271,10 @@ export function register(on) {
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
     // width table counts them as two. ✎ and ⇢ are the marks the changes and flow tabs use.
     const parts = []
-    if (plan) parts.push('✓ Plan ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length)
+    const orchCounts = Object.keys(ORCH_ORDER)
+      .map((status) => [status, orchTasks.filter((t) => t.status === status).length])
+      .filter(([, n]) => n > 0)
+    if (orchCounts.length > 0) parts.push('⚙ Orch ' + orchCounts.map(([status, n]) => n + ' ' + status).join(', '))
     const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
     if (edited.length > 0) parts.push('✎ Changes ' + edited.length)
     const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
@@ -257,7 +294,7 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No plan, changes, agents or flow yet'] })] }),
+            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No orch task, changes, agents or flow yet'] })] }),
           ],
         }),
         ...(below ? [below] : []),
@@ -297,35 +334,59 @@ export function register(on) {
     const line = (text, { dimColor, ...style } = {}) => Text({ wrap: 'truncate-end', ...style, ...(dimColor ? muted() : {}), children: [text] })
 
     let body
-    if (tab === 'plan' && !plan) {
-      body = [line('docs/plans에 *-plan-*.md가 없다 (## Task 제목이 있는 plan만 보인다)', { dimColor: true })]
-    } else if (tab === 'plan') {
-      const sorted = [...plan.tasks].sort((a, b) => ORDER[a.status] - ORDER[b.status])
-      const done = plan.tasks.filter((t) => t.status === 'completed').length
-      body = [
-        line('plan: ' + plan.name, { dimColor: true }),
-        Text({ children: [' '] }),
-        ...sorted.map((t) =>
-          line(MARK[t.status] + ' ' + t.text, { dimColor: t.status === 'completed', bold: t.status === 'in_progress' }),
-        ),
-        Text({ children: [' '] }),
-        line('완료 ' + done + '/' + plan.tasks.length, { dimColor: true }),
-      ]
-    } else if (tab === 'work') {
+    if (tab === 'orch') {
+      const tasks = await loadOrch($, tmuxSession).catch(() => [])
+      const ORCH_MARK = { running: '◐', queued: '○', done: '●', failed: '✗' }
+      const progress = (plan) => '  plan ' + plan.tasks.filter((t) => t.status === 'completed').length + '/' + plan.tasks.length
       body =
-        turns.length === 0
-          ? [line('아직 턴이 없다 (이 패널을 불러온 뒤부터 보인다)', { dimColor: true })]
-          : [...turns].reverse().flatMap((t) => {
-              const tools = Object.entries(t.tools)
-                .map(([name, n]) => name + ' ' + n)
-                .join(' · ')
+        tasks.length === 0
+          ? [line('이 세션이 띄운 orch 태스크가 없다 (orch clean이 끝난 태스크를 지운다)', { dimColor: true })]
+          : tasks.flatMap((t) => {
+              const steps = t.steps?.length ?? 0
+              const step = t.status === 'done' ? steps : Math.min((t.cursor ?? 0) + 1, steps)
+              const head = (ORCH_MARK[t.status] ?? '·') + ' ' + t.id + '  ' + t.status + '  step ' + step + '/' + steps + (t.plan ? progress(t.plan) : '')
+              // A running task's Tasks under it, in the plan's order so the next one reads below the done ones
+              const tasksOf = t.status === 'running' && t.plan ? t.plan.tasks : []
               return [
-                line((t.isRunning ? '◐ ' : '● ') + seconds(t.durationMs).padEnd(4) + ' ' + (t.prompt || '(빈 프롬프트)'), {
-                  bold: t.isRunning,
-                }),
-                line('       ' + (tools || '도구 없음'), { dimColor: true }),
+                line(head, { bold: t.status === 'running', dimColor: t.status === 'done', color: t.status === 'failed' ? theme().del : undefined }),
+                ...tasksOf.map((task) =>
+                  Box({ key: 'orch-' + t.id + '-' + task.id, paddingLeft: 2, children: [line(MARK[task.status] + ' ' + task.text, { dimColor: task.status === 'completed', bold: task.status === 'in_progress' })] }),
+                ),
               ]
             })
+    } else if (tab === 'work') {
+      // A transcript that can't be read leaves the tab with the reason, not the whole pane undrawn
+      const messages = await $.session.messages().catch((err) => ({ error: '대화 기록을 못 읽었다' + why(err?.message ?? err) }))
+      const turns = messages.error ? [] : turnRows(messages)
+      const cwd = turns.length > 0 ? await $.session.cwd() : null
+      const home = turns.length > 0 ? await $.env.get('HOME') : null
+      // Newest first, a letter on each of the first 26: it opens the changes tab narrowed to that turn
+      body =
+        turns.length === 0
+          ? [line(messages.error ?? '아직 턴이 없다', { dimColor: true })]
+          : turns
+              .map((t, i) => ({ t, i }))
+              .reverse()
+              .flatMap(({ t, i }, n) => {
+                const isRunning = isWorking && i === turns.length - 1
+                const edited = fileRows(messages.slice(t.start, t.end), cwd, home).edited.length
+                const tools = Object.entries(t.tools).map(([name, count]) => name + ' ' + count)
+                const summary = [...tools, ...(edited > 0 ? ['파일 ' + edited] : [])].join(' · ') || '도구 없음'
+                return [
+                  Button({
+                    key: 'turn-' + i,
+                    plain: true,
+                    ...(n < 26 ? { hotkey: String.fromCharCode(97 + n) } : {}),
+                    onPress: () => {
+                      turnFilter = i
+                      tab = 'changes'
+                      redraw()
+                    },
+                    children: [Text({ wrap: 'truncate-end', bold: isRunning, children: [(isRunning ? '◐ ' : '● ') + (i + 1) + '  ' + (t.prompt || '(빈 프롬프트)')] })],
+                  }),
+                  Box({ key: 'turn-summary-' + i, paddingLeft: 5, children: [line(summary, { dimColor: true })] }),
+                ]
+              })
     } else if (tab === 'changes') {
       const { changed, settled, read, note } = await loadChanges($)
       // The ring stays off the pane's buttons (see ui.focus), so a row is picked by its letter
@@ -377,10 +438,25 @@ export function register(on) {
         settled.length > 0 ? [line('커밋했거나 이 repo 밖 ' + settled.length, { dimColor: true }), ...settled.map(settledLine)] : [],
         read.map(readLine),
       ].filter((g) => g.length > 0)
+      const filterRow =
+        turnFilter === null
+          ? []
+          : [
+              Box({
+                flexDirection: 'row',
+                columnGap: 1,
+                children: [
+                  line('턴 ' + (turnFilter + 1) + '만 보는 중 ·', { color: theme().accent }),
+                  Button({ key: 'turn-filter-off', plain: true, hotkey: '0', onPress: () => ((turnFilter = null), redraw()), children: [Text({ ...muted(), children: ['전체 보기'] })] }),
+                ],
+              }),
+              Text({ children: [' '] }),
+            ]
       body =
         changed.length + settled.length + read.length === 0
-          ? [line('아직 건드린 파일이 없다', { dimColor: true })]
+          ? [...filterRow, line(turnFilter === null ? '아직 건드린 파일이 없다' : '이 턴은 파일을 건드리지 않았다', { dimColor: true })]
           : [
+              ...filterRow,
               line('변경 ' + changed.length + (settled.length > 0 ? ' · 커밋했거나 repo 밖 ' + settled.length : '') + ' · 읽은 파일 ' + read.length, { bold: true }),
               Text({ children: [' '] }),
               ...groups.flatMap((g, i) => (i === 0 ? g : [Text({ children: [' '] }), ...g])),
@@ -397,6 +473,7 @@ export function register(on) {
         : [
             line(file.path, { bold: true }),
             line('Changes 탭에서 행 앞 글자를 누르면 다른 파일', { dimColor: true }),
+            ...(turnFilter === null ? [] : [line('턴 ' + (turnFilter + 1) + '의 파일 중에서 고른다. diff는 그 턴만이 아니라 HEAD 대비 전체다', { dimColor: true })]),
             Text({ children: [' '] }),
             ...(diff.error
               ? [line(diff.error, { dimColor: true })]
@@ -591,7 +668,7 @@ export function register(on) {
           flexDirection: 'row',
           children: [
             ringStop,
-            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('plan', 'Plan'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow')] }),
+            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('orch', 'Orch'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow')] }),
           ],
         }),
         Text({ children: [' '] }),

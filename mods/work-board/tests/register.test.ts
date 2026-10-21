@@ -29,98 +29,144 @@ const PLAN = `# plan
 - [ ] draw
 `
 
-test('a plan in docs/plans shows its Task list on the plan tab', async ($, on) => {
+// orch's queue: A runs its first of two steps in a worktree with a plan, B is done and has none.
+// Both were started from tmux session main; C from another session, so this one never shows it
+const QUEUE = '/home/jw/.claude/orch/queue'
+const ORCH_TASKS = {
+  'task-A.json': { id: 'A', target: '/wt/A', steps: ['s1', 's2'], cursor: 0, status: 'running', parent: 'main' },
+  'task-B.json': { id: 'B', target: '/wt/B', steps: ['s1'], cursor: 0, status: 'done', parent: 'main' },
+  'task-C.json': { id: 'C', target: '/wt/C', steps: ['s1'], cursor: 0, status: 'running', parent: 'other' },
+}
+// The tmux session this one runs in, as orch's own parent lookup reads it
+function tmuxSession(on, name) {
+  on('process.run', ($, e) => (e.argv[0] === 'tmux' ? ok(name + '\n') : failed(1)))
+}
+function orchSession(on, { tasks = ORCH_TASKS, session = 'main' } = {}) {
   mock.clock(on)
   on('session.start', () => ({ cwd: '/work' }))
   on('command.register', () => ({ value: undefined }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.cwd', () => ({ value: '/work' }))
-  on('fs.exists', ($, e) => ({ value: e.path === '/work/docs/plans' }))
-  on('fs.list', () => ({
-    value: [
-      { name: '1013-design-x.md', kind: 'file', size: 1, mtimeMs: 9, isLink: false },
-      { name: '1014-plan-old.md', kind: 'file', size: 1, mtimeMs: 1, isLink: false },
-      { name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false },
-    ],
-  }))
-  on('fs.read', ($, e) => ({ value: e.path === '/work/docs/plans/1014-plan-new.md' ? PLAN : '## Task 9 — wrong file\n' }))
+  on('session.id', () => ({ value: 'sid-1' }))
+  on('env.get', ($, e) => ({ value: { HOME: '/home/jw', TMUX_PANE: '%1' }[e.name] }))
+  tmuxSession(on, session)
   on('agent.list', () => ({ value: [] }))
+  on('session.messages', () => ({ value: [] }))
+  on('fs.exists', ($, e) => ({ value: e.path === QUEUE || e.path === '/wt/A/docs/plans' }))
+  on('fs.list', ($, e) => {
+    if (e.path === QUEUE) return { value: [...Object.keys(tasks), 'notes.txt'].map((name) => ({ name, kind: 'file', size: 1, mtimeMs: 1, isLink: false })) }
+    if (e.path === '/wt/A/docs/plans') {
+      return {
+        value: [
+          { name: '1014-plan-old.md', kind: 'file', size: 1, mtimeMs: 1, isLink: false },
+          { name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false },
+        ],
+      }
+    }
+    return { value: [] }
+  })
+  on('fs.read', ($, e) => {
+    const name = e.path.slice(QUEUE.length + 1)
+    if (e.path.startsWith(QUEUE)) return { value: JSON.stringify(tasks[name]) }
+    return { value: e.path === '/wt/A/docs/plans/1014-plan-new.md' ? PLAN : '## Task 9 — wrong file\n' }
+  })
+}
 
+test('the orch tab lists the queued tasks, running first, with step and plan progress', async ($, on) => {
+  orchSession(on)
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-plan' })
-  expect(await ui.find({ type: 'Text', text: /1014-plan-new\.md/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /● Task 1 — 뼈대/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /○ Task 2 — 그리기/ })).toBeDefined()
+  await ui.press({ key: 'tab-orch' })
+  const rows = (await ui.findAll({ type: 'Text', text: /^[◐●○✗] / })).map((t) => t.children.join(''))
+  expect(rows).toEqual(['◐ A  running  step 1/2  plan 1/2', '● Task 1 — 뼈대', '○ Task 2 — 그리기', '● B  done  step 1/1'])
   expect(await ui.find({ type: 'Text', text: /Task 9/ })).toBeUndefined()
 })
 
-test('the work tab shows the turn log even when the session has a plan', async ($, on) => {
-  mock.clock(on)
-  on('session.start', () => ({ cwd: '/work' }))
-  on('command.register', () => ({ value: undefined }))
-  on('session.cwd', () => ({ value: '/work' }))
-  on('fs.exists', ($, e) => ({ value: e.path === '/work/docs/plans' }))
-  on('fs.list', () => ({ value: [{ name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false }] }))
-  on('fs.read', () => ({ value: PLAN }))
-  on('agent.list', () => ({ value: [] }))
-  on('turn.start', ($, e) => ({ turnId: e.turnId }))
-
+test('the orch tab says so when orch has no task', async ($, on) => {
+  orchSession(on, { tasks: {} })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  await $.turn.start({ turnId: 't1', text: 'fix the login bug' })
 
   const ui = await $.ui.mount(PANE)
-  expect(await ui.find({ type: 'Text', text: /fix the login bug/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Task 1/ })).toBeUndefined()
+  await ui.press({ key: 'tab-orch' })
+  expect(await ui.find({ type: 'Text', text: /orch 태스크가 없다/ })).toBeDefined()
 })
 
-test('the plan tab says so when docs/plans has no plan', async ($, on) => {
-  on('session.cwd', () => ({ value: '/work' }))
-  on('fs.exists', () => ({ value: false }))
-  on('agent.list', () => ({ value: [] }))
+test('an orch session sees no task: none was started from its tmux session', async ($, on) => {
+  orchSession(on, { session: 'claude-orch-A' })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(PANE)
-  await ui.press({ key: 'tab-plan' })
-  expect(await ui.find({ type: 'Text', text: /docs\/plans에 \*-plan-\*\.md가 없다/ })).toBeDefined()
+  await ui.press({ key: 'tab-orch' })
+  expect(await ui.findAll({ type: 'Text', text: /^[◐●○✗] / })).toEqual([])
+  expect(await ui.find({ type: 'Text', text: /orch 태스크가 없다/ })).toBeDefined()
 })
 
-test('without a plan the work tab shows a timeline of turns and their tools', async ($, on) => {
-  on('session.cwd', () => ({ value: '/work' }))
-  on('fs.exists', () => ({ value: false }))
+// Two turns: the first reads b.js and edits a.js, the second writes new.txt (see repoSession)
+const said = (text: string) => ({ role: 'user', text, toolUses: [] })
+const did = (tool: string, input: object) => ({ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'x', tool, input }] })
+const TURNS = [
+  said('fix the login bug\nwith details'),
+  did('Read', { file_path: '/work/b.js' }),
+  did('Edit', { file_path: '/work/a.js' }),
+  said('<command-name>/board</command-name>'),
+  said('add a new file'),
+  did('Write', { file_path: '/work/new.txt' }),
+]
+
+test('the work tab rebuilds the turns from the transcript, newest first, with their tools and edited files', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+
+  const ui = await $.ui.mount(PANE)
+  const rows = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('turn-'))
+  expect(rows.map((b) => [b.key, b.props.hotkey])).toEqual([['turn-1', 'a'], ['turn-0', 'b']])
+  expect(await ui.find({ type: 'Text', text: /2 {2}add a new file/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /1 {2}fix the login bug/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /with details|command-name/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'Read 1 · Edit 1 · 파일 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Write 1 · 파일 1' })).toBeDefined()
+})
+
+test('the newest turn is marked running until the turn completes', async ($, on) => {
+  repoSession(on, { messages: TURNS })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('tool.call', () => ({ result: 'ok' }))
   on('turn.complete', () => ({ text: '' }))
-  on('agent.list', () => ({ value: [] }))
 
-  await $.turn.start({ turnId: 't1', text: 'fix the login bug\nwith details' })
-  await $.tool.call({ tool: 'Read', file_path: 'a.py' })
-  await $.tool.call({ tool: 'Read', file_path: 'b.py' })
-  await $.tool.call({ tool: 'Edit', file_path: 'a.py', old_string: 'x', new_string: 'y' })
-  await $.turn.complete({ turnId: 't1', answer: 'done', durationMs: 12000, isAborted: false, usage: null })
-
+  await $.turn.start({ turnId: 't2', text: 'add a new file' })
   const ui = await $.ui.mount(PANE)
-  expect(await ui.find({ type: 'Text', text: /fix the login bug/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Read 2 · Edit 1/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /12s/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /◐ 2/ })).toBeDefined()
+  await $.turn.complete({ turnId: 't2', answer: '', durationMs: 1, isAborted: false, usage: null })
+  expect(await ui.find({ type: 'Text', text: /◐/ })).toBeUndefined()
 })
 
-test('a subagent tool call is not counted in the main timeline', async ($, on) => {
-  on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('tool.call', () => ({ result: 'ok' }))
-  on('agent.list', () => ({ value: [] }))
-
-  await $.turn.start({ turnId: 't1', text: 'look around' })
-  await $.tool.call({ tool: 'Grep', pattern: 'x', agentId: 'sub-1' })
-  await $.tool.call({ tool: 'Bash', command: 'ls' })
+test('a turn opens the changes tab with only the files it touched; 0 shows them all again', async ($, on) => {
+  repoSession(on, { messages: TURNS })
 
   const ui = await $.ui.mount(PANE)
-  expect(await ui.find({ type: 'Text', text: /Bash 1/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Grep/ })).toBeUndefined()
+  await ui.press({ key: 'turn-0' })
+  expect(await ui.find({ type: 'Text', text: /턴 1만 보는 중/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-a.js' })).toBeDefined()
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'b.js' })).toBeDefined()
+  expect((await ui.find({ type: 'Button', key: 'turn-filter-off' }))?.props.hotkey).toBe('0')
+
+  await ui.press({ key: 'turn-filter-off' })
+  expect(await ui.find({ type: 'Text', text: /턴 1만 보는 중/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Button', key: 'change-new.txt' })).toBeDefined()
+})
+
+test('with a turn picked the diff tab picks from its files and says the diff is the whole change', async ($, on) => {
+  repoSession(on, { messages: TURNS })
+
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'turn-1' })
+  await ui.press({ key: 'tab-diff' })
+  expect(await ui.find({ type: 'Text', text: 'new.txt' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /그 턴만이 아니라 HEAD 대비 전체다/ })).toBeDefined()
 })
 
 test('an empty session says nothing has happened yet', async ($, on) => {
   on('agent.list', () => ({ value: [] }))
+  on('session.messages', () => ({ value: [] }))
   const ui = await $.ui.mount(PANE)
   expect(await ui.find({ type: 'Text', text: /아직 턴이 없다/ })).toBeDefined()
 })
@@ -495,21 +541,22 @@ const BAND = {
 } as const
 
 // A session with a plan of two Tasks (one done), one edited file and one running subagent
-function bandSession(on, opened, { hasPlan = true, beneath = true } = {}) {
+function bandSession(on, opened, { hasOrch = true, beneath = true, orch = [{ id: 'A', target: '/wt/A', steps: ['s1'], cursor: 0, status: 'running', parent: 'main' }] } = {}) {
   on('session.start', () => ({ cwd: '/work' }))
   mock.clock(on)
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
-  on('env.get', () => ({ value: '/home/jw' }))
+  on('env.get', ($, e) => ({ value: { HOME: '/home/jw', TMUX_PANE: '%1' }[e.name] }))
+  tmuxSession(on, 'main')
   on('command.register', () => ({ value: undefined }))
   on('ui.open', ($, e) => {
     opened.push(e)
     return { value: { isPlaced: true } }
   })
-  on('fs.exists', ($, e) => ({ value: hasPlan && e.path === '/work/docs/plans' }))
-  on('fs.list', ($, e) =>
-    ({ value: e.path === '/work/docs/plans' ? [{ name: '1014-plan-new.md', kind: 'file', size: 1, mtimeMs: 5, isLink: false }] : [] }))
-  on('fs.read', () => ({ value: PLAN }))
+  const queue = '/home/jw/.claude/orch/queue'
+  on('fs.exists', ($, e) => ({ value: hasOrch && e.path === queue }))
+  on('fs.list', ($, e) => ({ value: e.path === queue ? orch.map((t) => ({ name: 'task-' + t.id + '.json', kind: 'file', size: 1, mtimeMs: 5, isLink: false })) : [] }))
+  on('fs.read', ($, e) => ({ value: JSON.stringify(orch.find((t) => e.path === queue + '/task-' + t.id + '.json')) }))
   on('agent.list', () => ({ value: [{ id: 'a', description: 'explore', type: 'Explore', status: 'running' }] }))
   on('session.messages', () => ({
     value: [{ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Edit', input: { file_path: '/work/x.js' } }] }],
@@ -525,7 +572,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '✓ Plan 1/2 · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '⚙ Orch 1 running · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
 })
 
 test('the band draws no button, so ctrl+x tab goes straight to an open pane; /board opens it with the keyboard', async ($, on) => {
@@ -540,9 +587,19 @@ test('the band draws no button, so ctrl+x tab goes straight to an open pane; /bo
   expect(opened.map((e) => [e.id, e.focus, e.closeOnEscape])).toEqual([['work-board', true, true]])
 })
 
-test('the band leaves out the work part when the session has no plan', async ($, on) => {
+test('the band counts the orch tasks of this session by status, done ones too', async ($, on) => {
   const opened = []
-  bandSession(on, opened, { hasPlan: false })
+  const task = (id, status, parent = 'main') => ({ id, target: '/wt/' + id, steps: ['s1'], cursor: 0, status, parent })
+  bandSession(on, opened, { orch: [task('A', 'done'), task('B', 'running'), task('C', 'done'), task('D', 'running', 'other')] })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const ui = await $.ui.mount(BAND)
+  expect(await ui.find({ type: 'Text', text: '⚙ Orch 1 running, 2 done · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
+})
+
+test('the band leaves out the orch part when no orch task runs', async ($, on) => {
+  const opened = []
+  bandSession(on, opened, { hasOrch: false })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
@@ -577,7 +634,7 @@ test('the tabs are plain buttons with their own brackets, the open one in the ac
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
   expect(tabs.map((b) => [b.key, b.props.plain, b.props.variant, b.props.hotkey])).toEqual(
-    ['work', 'plan', 'agents', 'changes', 'diff', 'flow'].map((n) => ['tab-' + n, true, undefined, undefined]),
+    ['work', 'orch', 'agents', 'changes', 'diff', 'flow'].map((n) => ['tab-' + n, true, undefined, undefined]),
   )
   expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props).toMatchObject({ color: 'cyan', bold: true })
   expect((await ui.find({ type: 'Text', text: '[Flow]' }))?.props.dimColor).toBe(true)
@@ -595,8 +652,8 @@ test('the six tabs come in order', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
-  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-plan', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow'])
-  for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
+  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-orch', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow'])
+  for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
 })
 
 test('the person\'s moves cycle the tabs while the ring stays on its anchor', async ($, on) => {
@@ -608,7 +665,7 @@ test('the person\'s moves cycle the tabs while the ring stays on its anchor', as
 
   const ui = await $.ui.mount(PANE)
   const selected = async () => {
-    for (const label of ['Work', 'Plan', 'Agents', 'Changes', 'Diff', 'Flow']) {
+    for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow']) {
       if ((await ui.find({ type: 'Text', text: '[' + label + ']' }))?.props.bold) return label
     }
   }
@@ -619,7 +676,7 @@ test('the person\'s moves cycle the tabs while the ring stays on its anchor', as
   expect(await selected()).toBe('Work')
   // From nothing, next aims at the anchor; from the anchor, at tab-work
   await move('ring')
-  expect(await selected()).toBe('Plan')
+  expect(await selected()).toBe('Orch')
   await move('tab-work')
   expect(await selected()).toBe('Agents')
   // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Flow

@@ -1,7 +1,5 @@
 // Pure state updates for the work board. No $ and no drawing here, so tests can call them directly.
 
-// The work tab shows a timeline of turns. A plan's Tasks are on the plan tab.
-
 // "## Task N ..." headings of a dev-workflow plan. Status comes from the "- [x]" / "- [ ]" boxes under
 // each heading: all checked = completed, some = in_progress, none = pending, no boxes = unknown.
 export function parsePlanTasks(markdown) {
@@ -27,24 +25,22 @@ export function parsePlanTasks(markdown) {
   }))
 }
 
-const MAX_TURNS = 20
-
-// A turn: { id, prompt (first line), tools: { Read: 2, ... }, durationMs, isRunning }
-export function startTurn(turns, id, text) {
-  const prompt = (text ?? '').split('\n')[0].trim()
-  return [...turns, { id, prompt, tools: {}, durationMs: null, isRunning: true }].slice(-MAX_TURNS)
-}
-
-// Counts a tool call against the turn that is running now
-export function addTool(turns, tool) {
-  const last = turns[turns.length - 1]
-  if (!last || !last.isRunning) return turns
-  const tools = { ...last.tools, [tool]: (last.tools[tool] ?? 0) + 1 }
-  return [...turns.slice(0, -1), { ...last, tools }]
-}
-
-export function endTurn(turns, id, durationMs) {
-  return turns.map((t) => (t.id === id ? { ...t, durationMs: durationMs ?? null, isRunning: false } : t))
+// The work tab's turns, rebuilt from the transcript so a reload or a resume keeps them. A turn starts at
+// a prompt: a user message with text that is no tool result and no engine markup (<command-name>, ...).
+// { prompt (first line), start, end (message indexes, end exclusive), tools: { Read: 2, ... } }
+export function turnRows(messages) {
+  const turns = []
+  messages.forEach((m, i) => {
+    const isPrompt = m.role === 'user' && m.text.trim() !== '' && !m.text.trimStart().startsWith('<') && !(m.toolResults?.length > 0)
+    if (isPrompt) {
+      if (turns.length > 0) turns[turns.length - 1].end = i
+      turns.push({ prompt: m.text.split('\n')[0].trim(), start: i, end: messages.length, tools: {} })
+    } else if (turns.length > 0) {
+      const tools = turns[turns.length - 1].tools
+      for (const use of m.toolUses ?? []) tools[use.tool] = (tools[use.tool] ?? 0) + 1
+    }
+  })
+  return turns
 }
 
 // $.agent.list() drops an agent once it has finished, so keep every agent we have seen.

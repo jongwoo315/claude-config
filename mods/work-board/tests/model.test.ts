@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { addTool, agentRows, bashTargets, changeRows, countLines, cutDiff, displayWidth, endTurn, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, startTurn } from '../hooks/model.js'
+import { agentRows, bashTargets, changeRows, countLines, cutDiff, displayWidth, fileRows, flowRows, mergeAgents, parseNumstat, parsePlanTasks, parseStatus, turnRows } from '../hooks/model.js'
 
 const PLAN = `# plan
 
@@ -43,26 +43,25 @@ test('parsePlanTasks of a file with no Task headings is empty', async () => {
   expect(parsePlanTasks('# notes\n\n- [ ] a\n')).toEqual([])
 })
 
-test('a turn counts the tools called during it and ends with its duration', async () => {
-  let turns = startTurn([], 't1', 'fix the bug\nmore detail')
-  turns = addTool(turns, 'Read')
-  turns = addTool(turns, 'Read')
-  turns = addTool(turns, 'Edit')
-  turns = endTurn(turns, 't1', 12000)
-  expect(turns).toEqual([
-    { id: 't1', prompt: 'fix the bug', tools: { Read: 2, Edit: 1 }, durationMs: 12000, isRunning: false },
+const prompt = (text) => ({ role: 'user', text, toolUses: [] })
+const call = (...tools) => ({ role: 'assistant', text: '', toolUses: tools.map((tool) => ({ tool_use_id: 'u', tool, input: {} })) })
+const result = () => ({ role: 'user', text: '', toolUses: [], toolResults: [{ tool_use_id: 'u', text: 'ok', isError: false }] })
+
+test('turnRows starts a turn at each prompt and counts the tools until the next one', async () => {
+  const messages = [prompt('fix the bug\nmore detail'), call('Read', 'Read'), result(), call('Edit'), result(), prompt('commit'), call('Bash'), result()]
+  expect(turnRows(messages)).toEqual([
+    { prompt: 'fix the bug', start: 0, end: 5, tools: { Read: 2, Edit: 1 } },
+    { prompt: 'commit', start: 5, end: 8, tools: { Bash: 1 } },
   ])
 })
 
-test('startTurn keeps only the newest turns', async () => {
-  let turns = []
-  for (let i = 0; i < 25; i++) turns = startTurn(turns, 't' + i, 'p' + i)
-  expect(turns.length).toBe(20)
-  expect(turns[0].id).toBe('t5')
+test('turnRows does not start a turn at a tool result or a message the engine wrote', async () => {
+  const messages = [prompt('go'), call('Read'), result(), prompt('<command-name>/board</command-name>'), { role: 'user', text: 'tool output text', toolUses: [], toolResults: [{ tool_use_id: 'u', text: 'x' }] }, call('Edit')]
+  expect(turnRows(messages)).toEqual([{ prompt: 'go', start: 0, end: 6, tools: { Read: 1, Edit: 1 } }])
 })
 
-test('addTool with no running turn changes nothing', async () => {
-  expect(addTool([], 'Read')).toEqual([])
+test('turnRows of a conversation with no prompt yet is empty', async () => {
+  expect(turnRows([])).toEqual([])
 })
 
 test('mergeAgents keeps agents the live list dropped and takes live status over stored', async () => {
