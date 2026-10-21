@@ -13,7 +13,8 @@ const muted = () => (theme().muted ? { color: theme().muted } : { dimColor: true
 
 // What the pane shows. Module variables: a reload of this file (a save during development) empties them.
 let tab = 'work'
-const TABS = ['work', 'orch', 'agents', 'changes', 'diff', 'flow', 'pin']
+// The tab row, the order left/right walks and the band's order; a tab's label is its name capitalized
+const TABS = ['work', 'pin', 'changes', 'diff', 'flow', 'agents', 'orch']
 const RING = 'ring'
 const INDENT = 1 // the body's left indent: the width of RING, drawn before the tabs
 let orchTasks = [] // orch's queue as loadOrch reads it, for the band
@@ -321,17 +322,18 @@ export function register(on) {
     const { Box, Text, Button } = $.ui.resolve(e)
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
     // width table counts them as two. ✎ and ⇢ are the marks the changes and flow tabs use.
+    // In the tabs' order (TABS)
     const parts = []
+    if (pins.length > 0) parts.push('⚑ Pin ' + pins.length)
+    const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
+    if (edited.length > 0) parts.push('✎ Changes ' + edited.length)
+    if (flowAt !== null) parts.push('⇢ Flow ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + 'm ago')
+    const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
+    if (running > 0) parts.push('✢ Agents ' + running + ' running')
     const orchCounts = Object.keys(ORCH_ORDER)
       .map((status) => [status, orchTasks.filter((t) => t.status === status).length])
       .filter(([, n]) => n > 0)
     if (orchCounts.length > 0) parts.push('⚙ Orch ' + orchCounts.map(([status, n]) => n + ' ' + status).join(', '))
-    const { edited } = fileRows(await $.session.messages(), await $.session.cwd(), await $.env.get('HOME'))
-    if (edited.length > 0) parts.push('✎ Changes ' + edited.length)
-    const running = mergeAgents(seenAgents, await $.agent.list()).filter((a) => a.status === 'running').length
-    if (running > 0) parts.push('✢ Agents ' + running + ' running')
-    if (flowAt !== null) parts.push('⇢ Flow ' + Math.max(0, Math.round(((await $.clock.now()) - flowAt) / 60000)) + 'm ago')
-    if (pins.length > 0) parts.push('⚑ Pin ' + pins.length)
     // The band has one instance: draw what the plugins beneath drew (prompt-rail) under this line.
     // With no plugin beneath, next(e) is the engine's own band; if it fails the line is drawn alone
     const below = await next(e).catch(() => undefined)
@@ -346,7 +348,7 @@ export function register(on) {
           columnGap: 2,
           width: e.props.bodyColumns,
           children: [
-            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No orch task, changes, agents, flow or pins yet'] })] }),
+            Box({ flexShrink: 1, children: [Text({ ...muted(), wrap: 'truncate-end', children: [parts.join(' · ') || '✧ No pins, changes, flow, agents or orch task yet'] })] }),
           ],
         }),
         ...(below ? [below] : []),
@@ -786,7 +788,7 @@ export function register(on) {
           flexDirection: 'row',
           children: [
             ringStop,
-            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: [tabButton('work', 'Work'), tabButton('orch', 'Orch'), tabButton('agents', 'Agents'), tabButton('changes', 'Changes'), tabButton('diff', 'Diff'), tabButton('flow', 'Flow'), tabButton('pin', 'Pin')] }),
+            Box({ flexDirection: 'row', columnGap: 1, flexGrow: 1, children: TABS.map((name) => tabButton(name, name[0].toUpperCase() + name.slice(1))) }),
           ],
         }),
         Text({ children: [' '] }),

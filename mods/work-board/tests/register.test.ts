@@ -225,7 +225,7 @@ test('p pins the reply of the opened turn to the pin tab, the band and the store
   await ui.press({ key: 'turn-pin' })
   expect(stored.get('pins:sid-1')?.pins).toEqual([PINNED])
   expect(await ui.find({ type: 'Text', text: 'pin 풀기' })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: /⚑ Pin 1$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^⚑ Pin 1 · / })).toBeDefined()
 
   await ui.press({ key: 'tab-pin' })
   expect(await ui.find({ type: 'Text', text: /⚑ 턴 2 {2}add a new file/ })).toBeDefined()
@@ -721,7 +721,7 @@ test('the band sums up the four tabs in one line', async ($, on) => {
 
   const ui = await $.ui.mount(BAND)
   // No archify diagram in this session, so the flow part is left out
-  expect(await ui.find({ type: 'Text', text: '⚙ Orch 1 running · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✎ Changes 1 · ✢ Agents 1 running · ⚙ Orch 1 running' })).toBeDefined()
 })
 
 test('the band draws no button, so ctrl+x tab goes straight to an open pane; /board opens it with the keyboard', async ($, on) => {
@@ -743,7 +743,7 @@ test('the band counts the orch tasks of this session by status, done ones too', 
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
 
   const ui = await $.ui.mount(BAND)
-  expect(await ui.find({ type: 'Text', text: '⚙ Orch 1 running, 2 done · ✎ Changes 1 · ✢ Agents 1 running' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✎ Changes 1 · ✢ Agents 1 running · ⚙ Orch 1 running, 2 done' })).toBeDefined()
 })
 
 test('the band leaves out the orch part when no orch task runs', async ($, on) => {
@@ -783,7 +783,7 @@ test('the tabs are plain buttons with their own brackets, the open one in the ac
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
   expect(tabs.map((b) => [b.key, b.props.plain, b.props.variant, b.props.hotkey])).toEqual(
-    ['work', 'orch', 'agents', 'changes', 'diff', 'flow', 'pin'].map((n) => ['tab-' + n, true, undefined, undefined]),
+    ['work', 'pin', 'changes', 'diff', 'flow', 'agents', 'orch'].map((n) => ['tab-' + n, true, undefined, undefined]),
   )
   expect((await ui.find({ type: 'Text', text: '[Work]' }))?.props).toMatchObject({ color: 'cyan', bold: true })
   expect((await ui.find({ type: 'Text', text: '[Flow]' }))?.props.dimColor).toBe(true)
@@ -801,20 +801,19 @@ test('the seven tabs come in order', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const tabs = (await ui.findAll({ type: 'Button' })).filter((b) => b.key?.startsWith('tab-'))
-  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-orch', 'tab-agents', 'tab-changes', 'tab-diff', 'tab-flow', 'tab-pin'])
-  for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow', 'Pin']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
+  expect(tabs.map((b) => b.key)).toEqual(['tab-work', 'tab-pin', 'tab-changes', 'tab-diff', 'tab-flow', 'tab-agents', 'tab-orch'])
+  for (const label of ['Work', 'Pin', 'Changes', 'Diff', 'Flow', 'Agents', 'Orch']) expect(await ui.find({ type: 'Text', text: '[' + label + ']' })).toBeDefined()
 })
 
 test('the person\'s moves cycle the tabs while the ring stays on its anchor', async ($, on) => {
-  on('session.cwd', () => ({ value: '/work' }))
+  // The walk passes the changes tab, which reads the transcript and git
+  repoSession(on, { messages: [] })
   on('session.id', () => ({ value: 'sid-1' }))
-  on('fs.exists', () => ({ value: false }))
-  on('agent.list', () => ({ value: [] }))
   on('ui.focus', () => ({}))
 
   const ui = await $.ui.mount(PANE)
   const selected = async () => {
-    for (const label of ['Work', 'Orch', 'Agents', 'Changes', 'Diff', 'Flow', 'Pin']) {
+    for (const label of ['Work', 'Pin', 'Changes', 'Diff', 'Flow', 'Agents', 'Orch']) {
       if ((await ui.find({ type: 'Text', text: '[' + label + ']' }))?.props.bold) return label
     }
   }
@@ -825,15 +824,15 @@ test('the person\'s moves cycle the tabs while the ring stays on its anchor', as
   expect(await selected()).toBe('Work')
   // From nothing, next aims at the anchor; from the anchor, at tab-work
   await move('ring')
-  expect(await selected()).toBe('Orch')
+  expect(await selected()).toBe('Pin')
   await move('tab-work')
-  expect(await selected()).toBe('Agents')
-  // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Pin
+  expect(await selected()).toBe('Changes')
+  // Previous aims at the close mark, which is kept off and is no stop: Work wraps to Orch
   expect((await move()).deny).toBeDefined()
   await move()
   expect(await selected()).toBe('Work')
   await move()
-  expect(await selected()).toBe('Pin')
+  expect(await selected()).toBe('Orch')
   await move('tab-work')
   expect(await selected()).toBe('Work')
   // A click aims at what it hit and leaves the tab to its press
