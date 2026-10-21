@@ -96,9 +96,14 @@ async function loadOrch($, parent) {
 // The newest archify candidate.json of this session: archify's default <cwd>/.archify, or this
 // session's scratchpad (rules/after-pr.md keeps company diagrams there) — either its .archify or a
 // directory straight under it, since -o names any folder. Another session's is not this work.
+// The scratchpad's path names the session; <cwd>/.archify is every session's that opened the cwd,
+// so a folder there counts only when this session's tool calls name it (a Write of its candidate, a finalize)
 async function loadFlow($) {
   const sid = await $.session.id()
-  const roots = [(await $.session.cwd()) + '/.archify']
+  const shared = (await $.session.cwd()) + '/.archify'
+  const roots = [shared]
+  const messages = await $.session.messages().catch(() => [])
+  const said = JSON.stringify(messages.flatMap((m) => (m.toolUses ?? []).map((use) => use.input)))
   try {
     for (const tmp of await $.fs.list(TMP)) {
       if (tmp.kind !== 'dir' || !tmp.name.startsWith('claude-')) continue
@@ -115,7 +120,7 @@ async function loadFlow($) {
   for (const root of roots) {
     if (!(await $.fs.exists(root))) continue
     for (const dir of await $.fs.list(root)) {
-      if (dir.kind !== 'dir') continue
+      if (dir.kind !== 'dir' || (root === shared && !said.includes(dir.name))) continue
       const files = await $.fs.list(root + '/' + dir.name)
       const candidate = files.find((f) => f.name === 'candidate.json')
       if (candidate && (!newest || candidate.mtimeMs > newest.mtimeMs)) {

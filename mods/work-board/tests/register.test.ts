@@ -543,7 +543,13 @@ const OTHER_SESSION = JSON.stringify({ diagram_type: 'workflow', meta: { title: 
 const MINUTE = 60000
 
 // A file system with an old diagram in the cwd and a newer one in this session's scratchpad
-function archifyFs(on, files) {
+// messages: the transcript. By default this session wrote every diagram under the cwd's .archify,
+// as archify's own Write of its candidate does; another session's there is left out of it
+function archifyFs(on, files, { messages = null } = {}) {
+  const written = Object.keys(files).filter((path) => path.startsWith('/work/.archify/'))
+  on('session.messages', () => ({
+    value: messages ?? written.map((file_path) => ({ role: 'assistant', text: '', toolUses: [{ tool_use_id: 'w', tool: 'Write', input: { file_path } }] })),
+  }))
   on('session.cwd', () => ({ value: '/work' }))
   on('session.id', () => ({ value: 'sid-1' }))
   on('clock.now', () => ({ value: 100 * MINUTE }))
@@ -585,6 +591,34 @@ test('the flow tab draws the newest archify diagram of this session', async ($, 
   expect(await ui.find({ type: 'Text', text: /→ 패널 그리기/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'HTML: ' + scratch + '/files-flow.html' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /남의 세션|옛 그림/ })).toBeUndefined()
+})
+
+test('a diagram another session left in the cwd is not this session\'s flow', async ($, on) => {
+  // ~/prv/.archify keeps every session's diagrams: the newest there was another session's (2026-10-21)
+  archifyFs(
+    on,
+    {
+      '/work/.archify/workflow-mine-1/candidate.json': { text: CANDIDATE, mtimeMs: 88 * MINUTE },
+      '/work/.archify/dataflow-theirs-2/candidate.json': { text: OTHER_SESSION, mtimeMs: 99 * MINUTE },
+    },
+    {
+      messages: [
+        // archify's finalize, run from Bash on the folder it was given
+        { role: 'assistant', text: '', toolUses: [{ tool_use_id: 'b', tool: 'Bash', input: { command: 'node archify.mjs finalize .archify/workflow-mine-1' } }] },
+      ],
+    },
+  )
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: /파일 탭 흐름 · 12분 전/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /남의 세션/ })).toBeUndefined()
+})
+
+test('the flow tab leaves the cwd\'s diagrams alone when this session wrote none of them', async ($, on) => {
+  archifyFs(on, { '/work/.archify/dataflow-theirs-2/candidate.json': { text: OTHER_SESSION, mtimeMs: 99 * MINUTE } }, { messages: [] })
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'tab-flow' })
+  expect(await ui.find({ type: 'Text', text: /archify 그림이 없다/ })).toBeDefined()
 })
 
 test('the flow tab finds a diagram written straight under the scratchpad', async ($, on) => {
