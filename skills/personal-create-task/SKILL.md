@@ -83,12 +83,16 @@ docs/plans/MMDD-design-<short-topic>.md
 ```bash
 NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 
-curl -s -X POST "https://api.notion.com/v1/databases/29241e6165c0801f9529cabf8cad919b/query" \
+curl -s "https://api.notion.com/v1/data_sources/29241e61-65c0-80e4-aaf5-000bcafbb440" \
   -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{"page_size": 100}' | jq -r '[.results[].properties.프로젝트.select.name] | unique | .[]'
+  -H "Notion-Version: 2026-03-11" | jq -r '.properties["프로젝트"].select.options[].name'
 ```
+
+**옛 방식(`/v1/databases/{id}/query` + `2022-06-28`)은 쓰지 않는다.** 이 DB는 data source가 2개라
+`validation_error: Databases with multiple data sources are not supported in this API version`이
+난다. 게다가 옛 jq 식 `.properties.프로젝트`는 한글 키를 따옴표 없이 써서 jq가 문법 오류를 낸다.
+지금 방식은 페이지를 훑지 않고 select 옵션 목록을 바로 읽으므로 `page_size` 100 제한에도 안 걸린다
+(2026-10-21 실측).
 
 ### 3. Git 저장소 URL 감지
 
