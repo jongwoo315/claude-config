@@ -32,6 +32,8 @@ cookies.json
 /skills/book-to-skill
 /skills/generative-ai-with-langchain
 /skills/archify
+# ego(lite) 앱이 첫 실행 때 만든 심링크다. 내용은 ~/.local/share/ego/ego-skills 에 있고 repo 밖이다.
+/skills/ego-browser
 
 # claude.ai 계정 스킬을 Claude Code가 세션마다 내려받는 곳. 폴더 이름에 org·account UUID가 들어간다.
 /skills/synced/
