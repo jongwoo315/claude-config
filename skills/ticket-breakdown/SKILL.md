@@ -36,6 +36,10 @@ description: Use when creating 2 or more tickets at once — an epic (프로젝�
 - LLM stub을 실제 LLM으로 바꾼 뒤에는 eval 점수를 보며 한 단계씩 고친다. 그 티켓의 통과 기준은
   plan에 세 구간으로 적는다(`rules/before-work.md` §실패 징후가 수치면 임계값을 못 박는다)
 
+**skeleton 티켓이 끝나면 나머지 티켓의 순서와 범위를 다시 본다.** skeleton 리포트에서 가장 문제가
+큰 stub을 다음 티켓으로 당기고, 필요 없어진 티켓은 지우거나 범위를 줄인다. 처음 정한 순서는
+skeleton을 돌려 보기 전의 추측이다 — 그대로 두면 틀린 것을 늦게 안다(upgrade-impact-rag #97).
+
 **skeleton을 쓰지 않는 경우** — 목록 맨 위에 이유를 한 줄 적고 그냥 나눈다.
 
 - 가능성을 보는 단계다(되는지 모른다) → spike 티켓 하나로 먼저 확인한다
