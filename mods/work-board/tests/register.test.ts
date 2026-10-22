@@ -798,6 +798,51 @@ test('the band keeps what another mod draws beneath it', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: 'prompt rail' })).toBeDefined()
 })
 
+test('/board off hides the band and the pane and is kept in the store; /board on brings them back', async ($, on) => {
+  const opened = []
+  const closed = []
+  const stored = new Map()
+  bandSession(on, opened)
+  on('ui.close', ($, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  on('store.get', ($, e) => ({ value: stored.get(e.key) }))
+  on('store.set', ($, e) => {
+    stored.set(e.key, e.value)
+    return { value: undefined }
+  })
+  on('store.delete', ($, e) => {
+    stored.delete(e.key)
+    return { value: undefined }
+  })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  expect((await $.command.run({ command: 'board', args: 'off' })).text).toMatch(/껐다/)
+  expect(closed).toEqual(['work-board'])
+  expect(stored.get('off')).toBe(true)
+  const band = await $.ui.mount(BAND)
+  expect(await band.find({ type: 'Text', text: /Changes/ })).toBeUndefined()
+  expect(await band.find({ type: 'Text', text: 'prompt rail' })).toBeDefined()
+  expect((await $.command.run({ command: 'board', args: '' })).text).toMatch(/꺼져 있다/)
+  expect(opened).toEqual([])
+
+  expect((await $.command.run({ command: 'board', args: 'on' })).text).toMatch(/켰다/)
+  expect(stored.has('off')).toBe(false)
+  const back = await $.ui.mount(BAND)
+  expect(await back.find({ type: 'Text', text: /Changes 1/ })).toBeDefined()
+})
+
+test('a session starts off when the store says the board was turned off', async ($, on) => {
+  const opened = []
+  bandSession(on, opened)
+  on('store.get', ($, e) => ({ value: e.key === 'off' ? true : undefined }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  const band = await $.ui.mount(BAND)
+  expect(await band.find({ type: 'Text', text: /Changes/ })).toBeUndefined()
+})
+
 test('the band draws its line alone when nothing is drawn beneath it', async ($, on) => {
   const opened = []
   bandSession(on, opened, { beneath: false })

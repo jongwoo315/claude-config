@@ -20,6 +20,9 @@ const INDENT = 1 // the body's left indent: the width of RING, drawn before the 
 let orchTasks = [] // orch's queue as loadOrch reads it, for the band
 let tmuxSession = null // the tmux session this one runs in: orch tasks started from it name it their parent
 let isWorking = false // between turn.start and turn.complete: the newest turn is still running
+// /board off: no band, no pane, no polling. Kept in the store under 'off' so every session starts off;
+// /board itself stays registered, or there would be nothing left to turn it back on with
+let isOff = false
 let turnFilter = null // the turn (index in turnRows) the changes and diff tabs are narrowed to, or null
 let detailTurn = null // the turn (index in turnRows) the work tab has opened, or null for the list
 // This session's pins, kept in the store under pinKey ('pins:<session id>'): a turn's reply
@@ -229,7 +232,8 @@ function seconds(ms) {
 
 export function register(on) {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'board', description: 'Open the work board, or pick its colors', argumentHint: '[theme [name] | pin <pasted text>]', immediate: true })
+    await $.command.register({ name: 'board', description: 'Open the work board, turn it on or off, or pick its colors', argumentHint: '[on | off | theme [name] | pin <pasted text>]', immediate: true })
+    isOff = (await $.store.get('off').catch(() => undefined)) === true
     // The saved theme is a nicety: a store that can't be read leaves the classic colors
     const saved = await $.store.get('theme').catch(() => undefined)
     if (typeof saved === 'string' && Object.hasOwn(THEMES, saved)) themeName = saved
@@ -247,10 +251,11 @@ export function register(on) {
     $.ui.invalidate('ui.render')
     // Subagent status changes don't arrive as events, so poll while one is running
     $.clock.every(2000, () => {
-      if (hasRunningAgent) $.ui.invalidate('ui.render')
+      if (hasRunningAgent && !isOff) $.ui.invalidate('ui.render')
     })
     // Nor do orch's: its queue files change under a task's own session
     $.clock.every(5000, async () => {
+      if (isOff) return
       const latest = await loadOrch($, tmuxSession).catch(() => orchTasks)
       if (JSON.stringify(latest) !== JSON.stringify(orchTasks)) {
         orchTasks = latest
@@ -262,6 +267,21 @@ export function register(on) {
 
   on('command.run', { command: 'board' }, async ($, e) => {
     const [sub, name] = e.args.trim().split(/\s+/)
+    if (sub === 'off' || sub === 'on') {
+      isOff = sub === 'off'
+      if (isOff) await $.ui.close({ id: PANE }).catch(() => {})
+      else orchTasks = await loadOrch($, tmuxSession).catch(() => orchTasks)
+      $.ui.invalidate('ui.render')
+      const said = isOff ? '보드를 껐다. /board on으로 다시 켠다' : '보드를 켰다'
+      try {
+        if (isOff) await $.store.set('off', true)
+        else await $.store.delete('off')
+      } catch {
+        return { text: said + '. 저장하지 못해서 새 세션에서는 이전 상태로 열린다' }
+      }
+      return { text: said }
+    }
+    if (isOff) return { text: '보드가 꺼져 있다. /board on으로 켠다' }
     // A part of a reply: the engine sees no selection with fullscreen off, but the terminal copies
     // one from its scrollback, and it comes back pasted after the command
     if (sub === 'pin') {
@@ -323,7 +343,7 @@ export function register(on) {
 
   // One line above the prompt summing up the tabs, and a button to open them
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
+    if (e.props.hasSurvey || isOff) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     // One-cell symbols in the family Claude Code draws with (✻ ⏺), East Asian Width N so no
     // width table counts them as two. ✎ and ⇢ are the marks the changes and flow tabs use.
