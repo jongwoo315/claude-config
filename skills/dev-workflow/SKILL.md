@@ -241,16 +241,38 @@ A0에서 받은 jw 기준이 plan 맨 위에 있고, 실패 징후 첫 항목이
 
 ### Approval
 
+**요약은 메시지 본문에 마크다운으로 먼저 쓰고, AskUserQuestion에는 질문 한 줄만 넣는다.**
+질문 칸은 마크다운이 안 그려지고 들여쓰기가 사라진다. 데스크탑 앱에서는 비례 폰트로 줄이 접혀
+`/`·`→`로 이은 줄이 한 덩어리로 읽혔다(2026-10-22 #71 Kickoff). 메시지 본문은 CLI·데스크탑
+둘 다 제목·불릿을 그린다. 아래 틀은 코드 블록으로 감싸지 말고 그대로 출력한다.
+
+```markdown
+## Kickoff — <ID> <title>
+
+**Tier <X>** — <one-line rationale>
+
+**jw 기준**
+- 원문: 「<A0 원문>」
+- 잴 방법: <무엇을 무엇과 비교하나>
+  - 통과: <구간>
+  - 다시 잰다: <구간>. <그때 할 일>
+  - 미완: <구간>
+- <착수 때 실측 등 판정에 쓸 사실, 있을 때만>
+
+**Plan** /Users/jw/<절대 경로>/docs/plans/<ID>-MMDD-plan-<topic>.md
+1. <Task 1 — 한 줄>
+2. <Task 2 — 한 줄>
+
+**범위 밖**
+- <뺀 것 — 한 줄씩>
+
+**티켓** <새로 만들 DEV-XXXX / #NN "<title>" 또는 기존 티켓>, 브랜치 `<branch>`
+```
+
+- 세 구간은 `/`로 잇지 않고 하위 불릿 하나씩 쓴다(`rules/after-pr.md` §쓰는 법과 같다)
+- plan 경로는 절대 경로 전체로 쓴다
+
 **AskUserQuestion:**
-```
-Tier: [X] — [one-line rationale]
-jw 기준: <A0 원문>
-  → 잴 방법: <실패 징후 첫 항목 — 임계값 세 구간>
-Plan: docs/plans/<ID>-MMDD-plan-<topic>.md
-  - Task 1: ...
-  - Task 2: ...
-Ticket to create: DEV-XXXX / #NN "<title>" [default fields]
-```
 > "이 계획으로 무인 실행할까요?"
 > - go — 티켓 생성 + orch 위임 (무인 실행 시작)
 > - adjust — plan/tier 수정 후 다시 확인
