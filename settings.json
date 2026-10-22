@@ -49,12 +49,7 @@
           },
           {
             "type": "command",
-            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE 'mysql.*(-P\\s*13035|:13035|rds-prod[^-]).*-D\\s*plab'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Direct connection to plab production DB detected — confirm?\"}}'; exit 0; fi",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qiE '(mysql|psql)' && echo \"$cmd\" | grep -qiE '(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE)\\s'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"CUD SQL operation detected — confirm execution?\"}}'; exit 0; fi",
+            "command": "/Users/jw/.claude/hooks/sql-guard.sh",
             "timeout": 5
           }
         ]
