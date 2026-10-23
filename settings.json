@@ -247,6 +247,7 @@
       }
     }
   },
+  "outputStyle": "Bullet",
   "effortLevel": "high",
   "modelSettings": {
     "claude-sonnet-5": {
