@@ -184,42 +184,34 @@ echo "Repo URL: $REPO_URL"
 
 **Case A: Remote가 있는 경우**
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 REPO_URL=$(git remote get-url origin 2>/dev/null | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
 BRANCH=$(git -C "$WT" branch --show-current)
 BRANCH_URL="${REPO_URL}/tree/${BRANCH}"
 
 TODAY=$(date +%Y-%m-%d)
 
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": { "select": { "name": "진행 중" } },
-      "작업일": { "date": { "start": "'$TODAY'" } },
-      "Git 저장소": { "url": "'$REPO_URL'" },
-      "Git 브랜치": { "url": "'$BRANCH_URL'" }
-    }
-  }'
+# 값은 환경변수로 넘기고 JSON은 python이 만든다 — shell에서 JSON에 변수를 끼우지 않는다
+TODAY="$TODAY" REPO_URL="$REPO_URL" BRANCH_URL="$BRANCH_URL" python3 -c '
+import json, os
+e = os.environ
+print(json.dumps({"properties": {
+    "상태": {"select": {"name": "진행 중"}},
+    "작업일": {"date": {"start": e["TODAY"]}},
+    "Git 저장소": {"url": e["REPO_URL"]},
+    "Git 브랜치": {"url": e["BRANCH_URL"]},
+}}, ensure_ascii=False))' | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID -
 ```
 
 **Case B: Remote 생성이 실패한 경우 (네트워크·권한 오류)**
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 TODAY=$(date +%Y-%m-%d)
 
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": { "select": { "name": "진행 중" } },
-      "작업일": { "date": { "start": "'$TODAY'" } }
-    }
-  }'
+TODAY="$TODAY" python3 -c '
+import json, os
+print(json.dumps({"properties": {
+    "상태": {"select": {"name": "진행 중"}},
+    "작업일": {"date": {"start": os.environ["TODAY"]}},
+}}, ensure_ascii=False))' | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID -
 ```
 
 - `PAGE_UUID`: 2a/2b 단계에서 반환된 Notion 페이지 ID
@@ -280,22 +272,18 @@ PR 생성 직후에는 `Git 브랜치`, `PR`, `Git 저장소`만 업데이트한
 **`상태`와 `작업일 종료일`은 이 시점에서 업데이트하지 않는다.**
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 REPO_URL=$(git remote get-url origin 2>/dev/null | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
 BRANCH_NAME=$(git branch --show-current)
 BRANCH_URL="${REPO_URL}/tree/${BRANCH_NAME}"
 
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "Git 브랜치": { "url": "'$BRANCH_URL'" },
-      "Git 저장소": { "url": "'$REPO_URL'" },
-      "PR": { "url": "<PR_URL>" }
-    }
-  }'
+PR_URL="<PR_URL>" REPO_URL="$REPO_URL" BRANCH_URL="$BRANCH_URL" python3 -c '
+import json, os
+e = os.environ
+print(json.dumps({"properties": {
+    "Git 브랜치": {"url": e["BRANCH_URL"]},
+    "Git 저장소": {"url": e["REPO_URL"]},
+    "PR": {"url": e["PR_URL"]},
+}}, ensure_ascii=False))' | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID -
 ```
 
 ### PR Merge 후
@@ -305,24 +293,18 @@ PR이 main에 merge된 후에 `상태 → 완료`와 `작업일 종료일`을 �
 **주의:** `작업일`은 date range 프로퍼티. setup-work에서 `start`만 설정했으므로, 여기서 `start`를 유지하면서 `end`를 추가해야 한다. 기존 `start` 값을 먼저 조회한 후 `end`와 함께 설정한다.
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 TODAY=$(date +%Y-%m-%d)
 
 # 기존 작업일 시작일 조회
-START_DATE=$(curl -s -X GET "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Notion-Version: 2022-06-28" | jq -r '.properties."작업일".date.start // "'$TODAY'"')
+START_DATE=$("$HOME/.claude/tools/notion-api/notion-api" GET /v1/pages/$PAGE_UUID | jq -r '.properties."작업일".date.start // "'$TODAY'"')
 
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": { "select": { "name": "완료" } },
-      "작업일": { "date": { "start": "'$START_DATE'", "end": "'$TODAY'" } }
-    }
-  }'
+START_DATE="$START_DATE" TODAY="$TODAY" python3 -c '
+import json, os
+e = os.environ
+print(json.dumps({"properties": {
+    "상태": {"select": {"name": "완료"}},
+    "작업일": {"date": {"start": e["START_DATE"], "end": e["TODAY"]}},
+}}, ensure_ascii=False))' | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID -
 ```
 
 ## Error Handling

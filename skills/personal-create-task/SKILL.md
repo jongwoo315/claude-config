@@ -29,13 +29,11 @@ description: Creates a new task in the personal Notion database (프로젝트 �
 - `NOTION_API_KEY` 환경변수 설정 (`~/.zshenv`)
 - Brainstorming 완료 (design.md 파일 존재)
 
-## API Key 추출
+## Notion 호출 도구
 
-**주의:** `source ~/.zshenv`는 zle hook 경고가 대량 출력되므로 사용하지 않음.
-
-```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-```
+모든 Notion REST 호출은 `"$HOME/.claude/tools/notion-api/notion-api" METHOD /v1/PATH [BODY]`로 한다.
+BODY는 JSON 파일 경로 또는 `-`(stdin)다. 키와 API 버전은 도구가 정하므로 여기서 지정하지 않는다.
+HTTP 400 이상이면 응답 본문을 stderr로 내고 종료 코드 1로 끝난다.
 
 ## Database Property Reference
 
@@ -81,14 +79,10 @@ docs/plans/MMDD-design-<short-topic>.md
 
 기존 프로젝트 목록 조회:
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-
-curl -s "https://api.notion.com/v1/data_sources/29241e61-65c0-80e4-aaf5-000bcafbb440" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Notion-Version: 2026-03-11" | jq -r '.properties["프로젝트"].select.options[].name'
+"$HOME/.claude/tools/notion-api/notion-api" GET /v1/data_sources/29241e61-65c0-80e4-aaf5-000bcafbb440 | jq -r '.properties["프로젝트"].select.options[].name'
 ```
 
-**옛 방식(`/v1/databases/{id}/query` + `2022-06-28`)은 쓰지 않는다.** 이 DB는 data source가 2개라
+**옛 방식(`/v1/databases/{id}/query` + 옛 API 버전 2022-06-28)은 쓰지 않는다.** 버전은 도구가 정한다. 이 DB는 data source가 2개라
 `validation_error: Databases with multiple data sources are not supported in this API version`이
 난다. 게다가 옛 jq 식 `.properties.프로젝트`는 한글 키를 따옴표 없이 써서 jq가 문법 오류를 낸다.
 지금 방식은 페이지를 훑지 않고 select 옵션 목록을 바로 읽으므로 `page_size` 100 제한에도 안 걸린다
@@ -107,12 +101,11 @@ remote가 있으면 `Git 저장소` 프로퍼티에 포함. 없으면 생략 —
 **주의:** JSON을 shell 변수로 조립하면 trailing comma 등으로 invalid JSON이 될 수 있음. 반드시 python3으로 JSON을 구성할 것.
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 TODAY=$(date +%Y-%m-%d)
 REPO_URL=$(git remote get-url origin 2>/dev/null | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
 
 python3 -c "
-import json, subprocess, sys
+import json, os, subprocess, sys
 
 properties = {
     '태스크': {'title': [{'text': {'content': '<TASK_NAME>'}}]},
@@ -130,7 +123,7 @@ if repo_url:
 # h3 gray_background, h2 앞 빈 문단, 구분선·취소선 금지. 아래는 그 규칙을
 # 적용한 형태다.
 payload = {
-    # database_id + 2022-06-28은 400이 난다 — 이 DB는 data source가 2개다 (2026-10-22 실측)
+    # database_id + 옛 API 버전(2022-06-28)은 400이 난다 — 이 DB는 data source가 2개다 (2026-10-22 실측)
     'parent': {'type': 'data_source_id', 'data_source_id': '29241e61-65c0-80e4-aaf5-000bcafbb440'},
     'properties': properties,
     'children': [
@@ -160,14 +153,13 @@ payload = {
 }
 
 result = subprocess.run(
-    ['curl', '-s', '-X', 'POST', 'https://api.notion.com/v1/pages',
-     '-H', 'Authorization: Bearer $NOTION_API_KEY',
-     '-H', 'Content-Type: application/json',
-     '-H', 'Notion-Version: 2026-03-11',
-     '-d', json.dumps(payload)],
-    capture_output=True, text=True
+    [os.path.expanduser('~/.claude/tools/notion-api/notion-api'), 'POST', '/v1/pages', '-'],
+    input=json.dumps(payload), capture_output=True, text=True
 )
 print(result.stdout)
+if result.returncode:
+    print(result.stderr, file=sys.stderr)
+    sys.exit(result.returncode)
 "
 ```
 

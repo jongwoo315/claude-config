@@ -14,13 +14,11 @@ description: Updates an existing personal Notion task page - properties and/or b
 - `NOTION_API_KEY` 환경변수 설정 (`~/.zshenv`)
 - 기존 Notion 태스크 페이지 (URL 또는 Page ID)
 
-## API Key 추출
+## Notion 호출 도구
 
-**주의:** `source ~/.zshenv`는 zle hook 경고가 대량 출력되므로 사용하지 않음.
-
-```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-```
+모든 Notion REST 호출은 `"$HOME/.claude/tools/notion-api/notion-api" METHOD /v1/PATH [BODY]`로 한다.
+BODY는 JSON 파일 경로 또는 `-`(stdin)다. 키와 API 버전은 도구가 정하므로 여기서 지정하지 않는다.
+HTTP 400 이상이면 응답 본문을 stderr로 내고 종료 코드 1로 끝난다.
 
 ## Property Update Reference
 
@@ -55,11 +53,7 @@ PAGE_UUID="${PAGE_ID:0:8}-${PAGE_ID:8:4}-${PAGE_ID:12:4}-${PAGE_ID:16:4}-${PAGE_
 ### 2. 기존 페이지 정보 조회
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-
-curl -s -X GET "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Notion-Version: 2022-06-28" | jq '{
+"$HOME/.claude/tools/notion-api/notion-api" GET /v1/pages/$PAGE_UUID | jq '{
     id: .id,
     url: .url,
     dev_id: .properties.ID.unique_id.number,
@@ -78,45 +72,37 @@ curl -s -X GET "https://api.notion.com/v1/pages/$PAGE_UUID" \
 업데이트할 프로퍼티만 포함하여 PATCH 요청:
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "<PROPERTY_NAME>": <PROPERTY_VALUE>
-    }
-  }'
+"$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID - <<'EOF'
+{
+  "properties": {
+    "<PROPERTY_NAME>": <PROPERTY_VALUE>
+  }
+}
+EOF
 ```
 
 **예시 - 상태를 "진행 중"으로 변경:**
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": { "select": { "name": "진행 중" } }
-    }
-  }'
+"$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID - <<'EOF'
+{
+  "properties": {
+    "상태": { "select": { "name": "진행 중" } }
+  }
+}
+EOF
 ```
 
 **예시 - 여러 프로퍼티 동시 업데이트:**
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": { "select": { "name": "진행 중" } },
-      "Git 브랜치": { "url": "https://github.com/owner/repo/tree/feature/DEV-42-desc" },
-      "Git 저장소": { "url": "https://github.com/owner/repo" }
-    }
-  }'
+"$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID - <<'EOF'
+{
+  "properties": {
+    "상태": { "select": { "name": "진행 중" } },
+    "Git 브랜치": { "url": "https://github.com/owner/repo/tree/feature/DEV-42-desc" },
+    "Git 저장소": { "url": "https://github.com/owner/repo" }
+  }
+}
+EOF
 ```
 
 ### 4. 블록 콘텐츠 추가 (선택)
@@ -124,49 +110,47 @@ curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
 Brainstorming 요약 등 페이지 본문에 콘텐츠를 추가할 때 사용:
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
-
-curl -s -X PATCH "https://api.notion.com/v1/blocks/$PAGE_UUID/children" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "children": [
-      {
-        "object": "block",
-        "type": "divider",
-        "divider": {}
-      },
-      {
-        "object": "block",
-        "type": "heading_2",
-        "heading_2": {
-          "rich_text": [{ "text": { "content": "Brainstorming Summary" } }]
-        }
-      },
-      {
-        "object": "block",
-        "type": "paragraph",
-        "paragraph": {
-          "rich_text": [{ "text": { "content": "<SUMMARY>" } }]
-        }
-      },
-      {
-        "object": "block",
-        "type": "heading_3",
-        "heading_3": {
-          "rich_text": [{ "text": { "content": "Design Document" } }]
-        }
-      },
-      {
-        "object": "block",
-        "type": "paragraph",
-        "paragraph": {
-          "rich_text": [{ "text": { "content": "<repo-root>/docs/plans/YYMMDD-<topic>-design.md" } }]
-        }
+"$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/blocks/$PAGE_UUID/children - <<'EOF'
+{
+  "children": [
+    {
+      "object": "block",
+      "type": "paragraph",
+      "paragraph": { "rich_text": [] }
+    },
+    {
+      "object": "block",
+      "type": "heading_2",
+      "heading_2": {
+        "rich_text": [{ "text": { "content": "Brainstorming Summary" } }],
+        "color": "yellow_background"
       }
-    ]
-  }'
+    },
+    {
+      "object": "block",
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [{ "text": { "content": "<SUMMARY>" } }]
+      }
+    },
+    {
+      "object": "block",
+      "type": "heading_3",
+      "heading_3": {
+        "rich_text": [{ "text": { "content": "Design Document" } }],
+        "color": "gray_background"
+      }
+    },
+    {
+      "object": "block",
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [{ "text": { "content": "<repo-root>/docs/plans/<NN>-MMDD-design-<short-topic>.md" } }]
+      }
+    }
+  ]
+}
+EOF
 ```
 
 **`<repo-root>`** = `$(git rev-parse --show-toplevel)` 실행 결과 (절대 경로).
@@ -192,22 +176,19 @@ Notion 페이지가 업데이트되었습니다:
 **필수 업데이트 체크리스트 (누락 금지):**
 
 ```bash
-NOTION_API_KEY=$(grep 'export NOTION_API_KEY' ~/.zshenv | head -1 | sed 's/export NOTION_API_KEY=//' | tr -d '"' | tr -d "'" | xargs)
 REPO_URL=$(git remote get-url origin 2>/dev/null | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
 BRANCH_NAME=$(git branch --show-current)
 
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "properties": {
-      "상태": {"select": {"name": "완료"}},
-      "Git 저장소": {"url": "'"$REPO_URL"'"},
-      "Git 브랜치": {"url": "'"$REPO_URL/tree/$BRANCH_NAME"'"},
-      "PR": {"url": "<PR_URL>"}
-    }
-  }'
+# 값은 환경변수로 넘기고 JSON은 python이 만든다 — shell에서 JSON에 변수를 끼우지 않는다
+PR_URL="<PR_URL>" REPO_URL="$REPO_URL" BRANCH_NAME="$BRANCH_NAME" python3 -c '
+import json, os
+e = os.environ
+print(json.dumps({"properties": {
+    "상태": {"select": {"name": "완료"}},
+    "Git 저장소": {"url": e["REPO_URL"]},
+    "Git 브랜치": {"url": e["REPO_URL"] + "/tree/" + e["BRANCH_NAME"]},
+    "PR": {"url": e["PR_URL"]},
+}}, ensure_ascii=False))' | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_UUID -
 ```
 
 | 프로퍼티 | 값 | 필수 |

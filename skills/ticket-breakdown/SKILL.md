@@ -68,10 +68,8 @@ skeleton을 돌려 보기 전의 추측이다 — 그대로 두면 틀린 것을
 
 ```bash
 # 선행 작업 걸기 — PAGE_ID가 PREV_ID를 선행으로 갖는다
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_ID" \
-  -H "Authorization: Bearer $NOTION_API_KEY" -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  --data-binary @<(python3 -c "import json;print(json.dumps({'properties':{'선행 작업':{'relation':[{'id':'$PREV_ID'}]}}}))")
+python3 -c "import json;print(json.dumps({'properties':{'선행 작업':{'relation':[{'id':'$PREV_ID'}]}}}))" \
+  | "$HOME/.claude/tools/notion-api/notion-api" PATCH /v1/pages/$PAGE_ID -
 ```
 
 - 선행이 둘 이상이면 relation 배열에 같이 넣는다. 덮어쓰기라서 나눠 보내면 앞의 것이 지워진다
