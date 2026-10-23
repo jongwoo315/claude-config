@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Notion REST 호출은 이 스크립트로만 한다. 버전과 키 고르기를 여기 한 곳에서 정한다.
+#
+#   notion-api [--work] METHOD /v1/PATH [BODY]   BODY = JSON 파일 경로 또는 - (stdin)
+#   notion-api [--work] ds DATABASE_ID           data source id를 한 줄에 하나씩
+#
+# 키: 기본 NOTION_API_KEY. --work 이거나 현재 디렉터리가 ~/plab·~/work 아래면 PLAB_WOZ_NOTION_API_KEY.
+#     값은 ~/.zshenv에서 먼저 읽고, 없을 때만 환경변수를 쓴다 — 환경변수는 세션을 시작할 때
+#     물려받은 값이라 세션 도중 키를 바꾸면 오래된 값이 남는다.
+# HTTP 4xx·5xx면 응답 본문을 stderr로 내고 종료 코드 1. 입력이 틀리면 2.
+# NOTION_API_DRY_RUN=1 이면 부르지 않고 무엇을 부를지만 한 줄로 낸다.
+set -euo pipefail
+
+NOTION_VERSION="2026-03-11"
+BASE="https://api.notion.com"
+
+usage() {
+  echo "usage: notion-api [--work] METHOD /v1/PATH [BODY|-]" >&2
+  echo "       notion-api [--work] ds DATABASE_ID" >&2
+  exit 2
+}
+
+tmpfiles=()
+cleanup() { [ ${#tmpfiles[@]} -eq 0 ] || rm -f "${tmpfiles[@]}"; }
+trap cleanup EXIT
+newtmp() { local f; f=$(mktemp); tmpfiles+=("$f"); echo "$f"; }
+
+work=0
+if [ "${1:-}" = "--work" ]; then work=1; shift; fi
+case "$PWD/" in "$HOME/plab/"* | "$HOME/work/"*) work=1 ;; esac
+key_var=NOTION_API_KEY
+[ "$work" = 1 ] && key_var=PLAB_WOZ_NOTION_API_KEY
+
+# 키 값(key)과 출처(key_src: zshenv|env|none)를 채운다
+ZSHENV=${NOTION_API_ZSHENV:-$HOME/.zshenv}
+key="" key_src=none
+resolve_key() {
+  if [ -f "$ZSHENV" ] && command -v zsh >/dev/null; then
+    # env -u: 물려받은 값을 지워야 zshenv에 없는 키를 zshenv 것으로 잘못 읽지 않는다
+    key=$(env -u "$key_var" zsh -fc 'source "$1" >/dev/null 2>&1; printenv "$2"' _ "$ZSHENV" "$key_var" 2>/dev/null || true)
+    if [ -n "$key" ]; then key_src=zshenv; return; fi
+  fi
+  key=${!key_var:-}
+  if [ -n "$key" ]; then key_src=env; fi
+}
+
+# METHOD PATH [BODYFILE] — 응답 본문을 stdout으로
+call() {
+  local method=$1 path=$2 body=${3:-} bytes=0
+  [ -n "$body" ] && bytes=$(wc -c <"$body" | tr -d ' ')
+  resolve_key
+  if [ "${NOTION_API_DRY_RUN:-}" = 1 ]; then
+    echo "$method $BASE$path version=$NOTION_VERSION key=$key_var from=$key_src body=$bytes"
+    return 0
+  fi
+  if [ -z "$key" ]; then echo "notion-api: $key_var is empty" >&2; exit 2; fi
+  local out code
+  out=$(newtmp)
+  local args=(-sS -o "$out" -w '%{http_code}' -X "$method" -H "Notion-Version: $NOTION_VERSION")
+  [ -n "$body" ] && args+=(-H 'Content-Type: application/json' --data-binary "@$body")
+  # 키는 curl 인자가 아니라 stdin 설정으로 넘긴다 — 인자에 두면 ps 출력에 보인다
+  if ! code=$(printf 'header = "Authorization: Bearer %s"\n' "$key" | curl -K - "${args[@]}" "$BASE$path"); then
+    echo "notion-api: curl failed: $method $path" >&2
+    exit 1
+  fi
+  if [ "$code" -ge 400 ]; then
+    cat "$out" >&2
+    echo >&2
+    echo "notion-api: HTTP $code $method $path" >&2
+    exit 1
+  fi
+  cat "$out"
+}
+
+[ $# -ge 2 ] || usage
+
+if [ "$1" = ds ]; then
+  [ $# -eq 2 ] || usage
+  if [ "${NOTION_API_DRY_RUN:-}" = 1 ]; then call GET "/v1/databases/$2"; exit 0; fi
+  call GET "/v1/databases/$2" |
+    python3 -c 'import sys, json; [print(s["id"]) for s in json.load(sys.stdin).get("data_sources", [])]'
+  exit 0
+fi
+
+method=$1 path=$2 body=""
+case "$method" in GET | POST | PATCH | DELETE) ;; *) usage ;; esac
+case "$path" in /v1/*) ;; *) usage ;; esac
+if [ $# -ge 3 ]; then
+  if [ "$3" = - ]; then
+    body=$(newtmp)
+    cat >"$body"
+  elif [ -f "$3" ]; then
+    body=$3
+  else
+    echo "notion-api: body file not found: $3" >&2
+    exit 2
+  fi
+fi
+[ $# -le 3 ] || usage
+
+call "$method" "$path" "$body"
