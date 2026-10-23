@@ -19,8 +19,6 @@ Execute this script:
 #!/bin/bash
 # set -e 제거: 개별 sync 실패가 전체 스크립트를 중단시키지 않도록
 
-API_KEY="${NOTION_API_KEY:?NOTION_API_KEY not set}"
-
 CLAUDE_MD_BLOCK="2e841e61-65c0-80cf-88ce-d95d075f1694"
 RTK_MD_BLOCK="31641e61-65c0-8061-8eac-c407f6132c09"
 SETTINGS_BLOCK="2ee41e61-65c0-80de-9510-f0e819fa4dba"
@@ -64,11 +62,7 @@ with open('/tmp/notion_payload.json', 'w') as f:
     json.dump(payload, f)
 "
 
-  /usr/bin/curl -s -X PATCH "https://api.notion.com/v1/blocks/$block_id" \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Notion-Version: 2022-06-28" \
-    -H "Content-Type: application/json" \
-    -d @/tmp/notion_payload.json > "$resp_file"
+  "$HOME/.claude/tools/notion-api/notion-api" PATCH "/v1/blocks/$block_id" /tmp/notion_payload.json > "$resp_file"
 }
 
 echo "=== Syncing Claude Config to Notion ==="
@@ -170,6 +164,6 @@ echo "Drag zip files (commands, command-scripts, skills, hooks, rules, kimi-tool
 ## Notes
 
 - Notion API has 2000 char limit per rich_text block, so content is chunked
-- Uses `NOTION_API_KEY` env var (defined in `~/.zshenv`)
+- Calls go through `~/.claude/tools/notion-api/notion-api` (it picks the key and API version)
 - Zip files require manual drag & drop (Notion API doesn't support file uploads)
 - `commands/sc/` is excluded (SuperClaude commands are managed separately)

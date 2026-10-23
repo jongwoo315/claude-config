@@ -33,13 +33,7 @@ Notion URL에서 페이지의 모든 콘텐츠를 추출하여 `docs/plans/`에 
 | `notion.so/plabfootball/*` | `PLAB_WOZ_NOTION_API_KEY` | `~/.zshenv` |
 | 기타 | `NOTION_API_KEY` | `~/.zshenv` |
 
-**중요:** `.env` 파일의 키는 무시하고 반드시 `~/.zshenv`에서 직접 읽어야 함 (환경변수가 outdated될 수 있음)
-
-```bash
-# ~/.zshenv에서 직접 키 추출 (현재 env 무시)
-PLAB_KEY=$(grep -E '^export PLAB_WOZ_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
-NOTION_KEY=$(grep -E '^export NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
-```
+키 선택과 API 버전은 `notion-api` 도구가 처리한다. plabfootball URL이면 `--work`를 붙인다.
 
 ## Process
 
@@ -69,33 +63,19 @@ IS_PLAB=$(echo "$NOTION_URL" | grep -q "notion.so/plabfootball" && echo "true" |
 **병렬로 실행할 수 있는 요청들:**
 
 ```bash
-# ~/.zshenv에서 직접 키 추출 (현재 env 무시 - outdated 방지)
-PLAB_KEY=$(grep -E '^export PLAB_WOZ_NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
-NOTION_KEY=$(grep -E '^export NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
-
-# 워크스페이스에 따라 API 키 선택
-if [ "$IS_PLAB" = "true" ]; then
-  API_KEY="$PLAB_KEY"
-  echo "Using PLAB_WOZ_NOTION_API_KEY for plabfootball workspace"
-else
-  API_KEY="$NOTION_KEY"
-  echo "Using NOTION_API_KEY for personal workspace"
-fi
+# plabfootball 워크스페이스면 --work (키 선택은 도구가 한다)
+NOTION_API="$HOME/.claude/tools/notion-api/notion-api"
+WORK_FLAG=""
+[ "$IS_PLAB" = "true" ] && WORK_FLAG="--work"
 
 # 1) 페이지 속성 조회
-curl -s -X GET "https://api.notion.com/v1/pages/$PAGE_UUID" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Notion-Version: 2022-06-28" > page_properties.json &
+"$NOTION_API" $WORK_FLAG GET "/v1/pages/$PAGE_UUID" > page_properties.json &
 
 # 2) 페이지 블록(콘텐츠) 조회
-curl -s -X GET "https://api.notion.com/v1/blocks/$PAGE_UUID/children?page_size=100" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Notion-Version: 2022-06-28" > page_blocks.json &
+"$NOTION_API" $WORK_FLAG GET "/v1/blocks/$PAGE_UUID/children?page_size=100" > page_blocks.json &
 
 # 3) 댓글 조회
-curl -s -X GET "https://api.notion.com/v1/comments?block_id=$PAGE_UUID" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Notion-Version: 2022-06-28" > page_comments.json &
+"$NOTION_API" $WORK_FLAG GET "/v1/comments?block_id=$PAGE_UUID" > page_comments.json &
 
 wait
 ```
@@ -108,9 +88,7 @@ wait
 # has_children: true인 블록은 재귀 조회 필요
 fetch_children() {
   local block_id="$1"
-  curl -s -X GET "https://api.notion.com/v1/blocks/$block_id/children?page_size=100" \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Notion-Version: 2022-06-28"
+  "$NOTION_API" $WORK_FLAG GET "/v1/blocks/$block_id/children?page_size=100"
 }
 
 # 병렬로 하위 블록 조회 (토글, callout, column 등)

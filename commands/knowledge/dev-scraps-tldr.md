@@ -12,7 +12,8 @@ Dev Scraps DB의 미완료 페이지를 읽고, 적응형 TL;DR을 생성하여 
 
 **Database:** Dev Scraps
 **Database ID:** `76e9673e-d91b-41b2-9779-c0940040f542`
-**API Key:** `NOTION_API_KEY`
+**Data Source ID:** `35232b99-ebe7-458e-9ee2-8ff4154b2782`
+**호출 방법:** `"$HOME/.claude/tools/notion-api/notion-api"` (버전과 키는 이 도구가 정한다)
 
 > **NOTE:** 2025-01-18 이전 페이지들은 이 스킬의 대상이 아님. 수동으로 처리하거나 별도로 관리할 것.
 
@@ -34,25 +35,21 @@ Parse invocation argument:
 ### Step 2: Query Pages
 
 ```bash
-source ~/.zshenv
-notion_key=$(printenv NOTION_API_KEY)
-DB_ID="76e9673e-d91b-41b2-9779-c0940040f542"
+DS_ID="35232b99-ebe7-458e-9ee2-8ff4154b2782"
 
-curl -s -X POST "https://api.notion.com/v1/databases/$DB_ID/query" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "filter": {
-      "and": [
-        { "property": "완료", "checkbox": { "equals": false } },
-        { "property": "작성일", "date": { "on_or_after": "2025-01-18" } },
-        { "property": "카테고리", "select": { "does_not_equal": "📖 Materials" } }
-      ]
-    },
-    "sorts": [{ "property": "작성일", "direction": "ascending" }],
-    "page_size": 10
-  }'
+"$HOME/.claude/tools/notion-api/notion-api" POST "/v1/data_sources/$DS_ID/query" - <<'EOF'
+{
+  "filter": {
+    "and": [
+      { "property": "완료", "checkbox": { "equals": false } },
+      { "property": "작성일", "date": { "on_or_after": "2025-01-18" } },
+      { "property": "카테고리", "select": { "does_not_equal": "📖 Materials" } }
+    ]
+  },
+  "sorts": [{ "property": "작성일", "direction": "ascending" }],
+  "page_size": 10
+}
+EOF
 ```
 
 For single page mode, skip this and fetch the page directly via `GET /v1/pages/{page_id}`.
@@ -69,9 +66,7 @@ URL: {URL 또는 "없음"}
 
 ```bash
 PAGE_ID="<page_id>"
-curl -s "https://api.notion.com/v1/blocks/$PAGE_ID/children?page_size=100" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28"
+"$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/$PAGE_ID/children?page_size=100"
 ```
 
 Paginate with `next_cursor` if `has_more=true`. Concatenate all text from blocks.
@@ -139,14 +134,10 @@ URL: {URL 또는 "없음"}
 
 ```bash
 # Get all block IDs
-curl -s "https://api.notion.com/v1/blocks/$PAGE_ID/children?page_size=100" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28"
+"$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/$PAGE_ID/children?page_size=100"
 
 # Delete each block
-curl -s -X DELETE "https://api.notion.com/v1/blocks/<BLOCK_ID>" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28"
+"$HOME/.claude/tools/notion-api/notion-api" DELETE /v1/blocks/<BLOCK_ID>
 ```
 
 Paginate and delete ALL blocks. Delete sequentially to avoid race conditions.
@@ -154,11 +145,9 @@ Paginate and delete ALL blocks. Delete sequentially to avoid race conditions.
 **6b. Append TL;DR blocks:**
 
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/blocks/$PAGE_ID/children" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{ "children": [ <BLOCKS> ] }'
+"$HOME/.claude/tools/notion-api/notion-api" PATCH "/v1/blocks/$PAGE_ID/children" - <<'EOF'
+{ "children": [ <BLOCKS> ] }
+EOF
 ```
 
 **Block structure pattern:**
@@ -239,11 +228,9 @@ URL이 1개뿐이면 참고링크 섹션 생략 (URL property에만 유지).
 **6c. Mark 완료:**
 
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/pages/$PAGE_ID" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{ "properties": { "완료": { "checkbox": true } } }'
+"$HOME/.claude/tools/notion-api/notion-api" PATCH "/v1/pages/$PAGE_ID" - <<'EOF'
+{ "properties": { "완료": { "checkbox": true } } }
+EOF
 ```
 
 ### Step 7: Next Page (Interactive Batch Only)
@@ -262,7 +249,7 @@ After saving, AskUserQuestion: "다음 페이지로 진행할까요?"
 
 | Situation | Action |
 |---|---|
-| NOTION_API_KEY 없음 | `~/.zshenv`에서 설정 안내 |
+| `notion-api`가 키가 비었다고 종료 (exit 2) | `~/.zshenv`에서 설정 안내 |
 | URL fetch fails | Use existing content, warn user |
 | No content + no URL | Skip, report |
 | No content + URL fetch fails | Skip, report |

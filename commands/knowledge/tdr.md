@@ -37,8 +37,7 @@ h3 `gray_background`, h2 앞 빈 문단, 구분선·취소선 금지.
 - **Database ID:** `2fb41e61-65c0-8110-9a8c-d08cde96fc24`
 - **Data Source ID:** `2fb41e61-65c0-81bb-ba97-000b9a63c13c`
 - **Template ID:** `2fb41e61-65c0-8029-a97b-e718778c6c03` (default template)
-- **API Version:** `2025-09-03`
-- **API Key:** `NOTION_API_KEY` (from `~/.zshenv`)
+- **호출 방법:** `"$HOME/.claude/tools/notion-api/notion-api"` (버전과 키는 이 도구가 정한다)
 
 **Properties:**
 
@@ -72,18 +71,14 @@ AskUserQuestion으로 모드 선택:
 Dev Scraps DB에서 `주제 = Session TIL`인 최근 항목을 조회하여 사용자가 선택:
 
 ```bash
-source ~/.zshenv
-notion_key=$(printenv NOTION_API_KEY)
-
-curl -s -X POST "https://api.notion.com/v1/databases/76e9673e-d91b-41b2-9779-c0940040f542/query" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "filter": { "property": "주제", "select": { "equals": "Session TIL" } },
-    "sorts": [{ "property": "작성일", "direction": "descending" }],
-    "page_size": 10
-  }' | jq '[.results[] | {id: .id, title: .properties["제목"].title[0].plain_text, date: .properties["작성일"].date.start}]'
+# Dev Scraps data source: 35232b99-ebe7-458e-9ee2-8ff4154b2782
+"$HOME/.claude/tools/notion-api/notion-api" POST /v1/data_sources/35232b99-ebe7-458e-9ee2-8ff4154b2782/query - <<'EOF' | jq '[.results[] | {id: .id, title: .properties["제목"].title[0].plain_text, date: .properties["작성일"].date.start}]'
+{
+  "filter": { "property": "주제", "select": { "equals": "Session TIL" } },
+  "sorts": [{ "property": "작성일", "direction": "descending" }],
+  "page_size": 10
+}
+EOF
 ```
 
 조회된 페이지 목록을 사용자에게 보여주고 AskUserQuestion으로 선택받기.
@@ -91,9 +86,7 @@ curl -s -X POST "https://api.notion.com/v1/databases/76e9673e-d91b-41b2-9779-c09
 선택된 페이지의 블록을 조회하여 toggle 항목(의사결정/갓챠) 목록 추출:
 
 ```bash
-curl -s "https://api.notion.com/v1/blocks/<PAGE_ID>/children?page_size=100" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28" \
+"$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/<PAGE_ID>/children?page_size=100" \
   | jq '[.results[] | select(.type == "toggle") | {id: .id, title: (.toggle.rich_text[0].plain_text)}]'
 ```
 
@@ -102,9 +95,7 @@ curl -s "https://api.notion.com/v1/blocks/<PAGE_ID>/children?page_size=100" \
 선택된 toggle의 children(상황/선택/근거 또는 Before/After/So What)을 읽어 TDR Context/Decision 초안으로 변환:
 
 ```bash
-curl -s "https://api.notion.com/v1/blocks/<TOGGLE_ID>/children" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28" \
+"$HOME/.claude/tools/notion-api/notion-api" GET /v1/blocks/<TOGGLE_ID>/children \
   | jq '[.results[].bulleted_list_item.rich_text | map(.plain_text) | join("")]'
 ```
 
@@ -221,7 +212,7 @@ TDR 초안이 완성되었습니다. AI 리뷰로 품질을 높일까요?
 Template 기반 2-phase 저장. Template이 구조(heading 색상, 빈 줄 spacer, 테이블)를 제공하고, 실제 내용만 업데이트.
 
 ```bash
-API_KEY=$(grep -E '^export NOTION_API_KEY=' ~/.zshenv | cut -d'=' -f2)
+NOTION_API="$HOME/.claude/tools/notion-api/notion-api"
 DS_ID="2fb41e61-65c0-81bb-ba97-000b9a63c13c"
 TEMPLATE_ID="2fb41e61-65c0-8029-a97b-e718778c6c03"
 TODAY=$(date +%Y-%m-%d)
@@ -230,18 +221,14 @@ TODAY=$(date +%Y-%m-%d)
 #### Phase 1: 페이지 생성 (Template 기반)
 
 ```bash
-curl -s -X POST "https://api.notion.com/v1/pages" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2025-09-03" \
-  -d '<PAYLOAD>'
+"$NOTION_API" POST /v1/pages <PAYLOAD_FILE>
 ```
 
 **Payload 구조:**
 
 ```json
 {
-  "parent": { "data_source_id": "<DS_ID>" },
+  "parent": { "type": "data_source_id", "data_source_id": "<DS_ID>" },
   "template": { "type": "template_id", "template_id": "<TEMPLATE_ID>" },
   "properties": {
     "제목": { "title": [{ "text": { "content": "<TITLE>" } }] },
@@ -262,9 +249,7 @@ Template 블록이 비동기로 적용되므로 **3초 대기** 후 블록을 �
 
 ```bash
 sleep 3
-curl -s "https://api.notion.com/v1/blocks/<PAGE_ID>/children?page_size=100" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Notion-Version: 2025-09-03"
+"$NOTION_API" GET "/v1/blocks/<PAGE_ID>/children?page_size=100"
 ```
 
 **Template 블록 구조 (15 blocks):**
@@ -292,37 +277,26 @@ curl -s "https://api.notion.com/v1/blocks/<PAGE_ID>/children?page_size=100" \
 1. **단순 섹션** (Context, Decision, Results, Lessons): placeholder paragraph를 실제 내용으로 업데이트
 
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/blocks/<BLOCK_ID>" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2025-09-03" \
-  -d '{"paragraph": {"rich_text": [{"text": {"content": "<ACTUAL_CONTENT>"}}]}}'
+"$NOTION_API" PATCH /v1/blocks/<BLOCK_ID> <BODY_FILE>
+# BODY: {"paragraph": {"rich_text": [{"text": {"content": "<ACTUAL_CONTENT>"}}]}}
 ```
 
 2. **다중 paragraph 섹션**: 첫 번째 paragraph 업데이트 후, 추가 블록은 spacer 앞에 삽입
 
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/blocks/<PAGE_ID>/children" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2025-09-03" \
-  -d '{"children": [<ADDITIONAL_BLOCKS>], "after": "<PREV_BLOCK_ID>"}'
+"$NOTION_API" PATCH /v1/blocks/<PAGE_ID>/children <BODY_FILE>
+# BODY: {"children": [<ADDITIONAL_BLOCKS>], "after": "<PREV_BLOCK_ID>"}
 ```
 
 3. **Options 테이블**: template 테이블 삭제 → heading 뒤에 실제 데이터 테이블 삽입
 
 ```bash
 # 삭제
-curl -s -X DELETE "https://api.notion.com/v1/blocks/<TEMPLATE_TABLE_ID>" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Notion-Version: 2025-09-03"
+"$NOTION_API" DELETE /v1/blocks/<TEMPLATE_TABLE_ID>
 
 # 새 테이블 삽입 (heading 뒤에)
-curl -s -X PATCH "https://api.notion.com/v1/blocks/<PAGE_ID>/children" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2025-09-03" \
-  -d '{"children": [<TABLE_BLOCK>], "after": "<OPTIONS_HEADING_ID>"}'
+"$NOTION_API" PATCH /v1/blocks/<PAGE_ID>/children <BODY_FILE>
+# BODY: {"children": [<TABLE_BLOCK>], "after": "<OPTIONS_HEADING_ID>"}
 ```
 
 **Options 테이블 블록 구조:**

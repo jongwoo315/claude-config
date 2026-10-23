@@ -13,7 +13,8 @@ AI가 대체할 수 없는 **의사결정 과정과 근거**를 기록하는 것
 
 **Database:** Dev Scraps
 **Database ID:** `76e9673e-d91b-41b2-9779-c0940040f542`
-**API Key:** `NOTION_API_KEY`
+**Data Source ID:** `35232b99-ebe7-458e-9ee2-8ff4154b2782`
+**호출 방법:** `"$HOME/.claude/tools/notion-api/notion-api"` (버전과 키는 이 도구가 정한다)
 
 **Properties Mapping:**
 | Dev Scraps Property | Value |
@@ -34,7 +35,7 @@ AI가 대체할 수 없는 **의사결정 과정과 근거**를 기록하는 것
 
 ## Prerequisites
 
-- `NOTION_API_KEY` 환경변수 설정
+- `NOTION_API_KEY` 환경변수 설정 (`notion-api` 도구가 읽는다)
 - 본문 서식은 **`rules/apis.md` §페이지 작성 포맷**을 따른다 — h2
   `yellow_background`, h3 `gray_background`, h2 앞 빈 문단, 구분선·취소선 금지
 
@@ -173,23 +174,13 @@ AI가 대체할 수 없는 **의사결정 과정과 근거**를 기록하는 것
 ### 3. 오늘 날짜 페이지 조회
 
 ```bash
-source ~/.zshenv
-notion_key=$(printenv NOTION_API_KEY)
-DB_ID="76e9673e-d91b-41b2-9779-c0940040f542"
+DS_ID="35232b99-ebe7-458e-9ee2-8ff4154b2782"
 TODAY=$(date +%Y-%m-%d)
 
-curl -s -X POST "https://api.notion.com/v1/databases/$DB_ID/query" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d "{
-    \"filter\": {
-      \"and\": [
-        { \"property\": \"주제\", \"select\": { \"equals\": \"Session TIL\" } },
-        { \"property\": \"작성일\", \"date\": { \"equals\": \"$TODAY\" } }
-      ]
-    }
-  }"
+python3 -c 'import json, sys; print(json.dumps({"filter": {"and": [
+  {"property": "주제", "select": {"equals": "Session TIL"}},
+  {"property": "작성일", "date": {"equals": sys.argv[1]}}]}}))' "$TODAY" \
+  | "$HOME/.claude/tools/notion-api/notion-api" POST "/v1/data_sources/$DS_ID/query" -
 ```
 
 - 결과가 있으면 → Step 4a (기존 페이지에 추가)
@@ -202,9 +193,7 @@ curl -s -X POST "https://api.notion.com/v1/databases/$DB_ID/query" \
 ```bash
 PAGE_ID="<existing_page_id>"
 
-curl -s -X GET "https://api.notion.com/v1/blocks/$PAGE_ID/children?page_size=100" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28"
+"$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/$PAGE_ID/children?page_size=100"
 ```
 
 블록이 100개 초과 시 `next_cursor`로 페이지네이션.
@@ -220,11 +209,8 @@ curl -s -X GET "https://api.notion.com/v1/blocks/$PAGE_ID/children?page_size=100
 
 새 카테고리가 필요한 경우:
 ```bash
-curl -s -X PATCH "https://api.notion.com/v1/blocks/$PAGE_ID/children" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
+"$HOME/.claude/tools/notion-api/notion-api" PATCH "/v1/blocks/$PAGE_ID/children" - <<'EOF'
+  {
     "children": [
       {
         "object": "block",
@@ -279,7 +265,8 @@ curl -s -X PATCH "https://api.notion.com/v1/blocks/$PAGE_ID/children" \
         }
       }
     ]
-  }'
+  }
+EOF
 ```
 
 기존 카테고리에 항목만 추가하는 경우, 해당 카테고리의 마지막 블록 이후(페이지 끝 또는 다음 heading_2 이전)에 append합니다.
@@ -288,32 +275,26 @@ curl -s -X PATCH "https://api.notion.com/v1/blocks/$PAGE_ID/children" \
 
 ```bash
 TODAY=$(date +%Y-%m-%d)
-DB_ID="76e9673e-d91b-41b2-9779-c0940040f542"
+DS_ID="35232b99-ebe7-458e-9ee2-8ff4154b2782"
 
-curl -s -X POST "https://api.notion.com/v1/pages" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d '{
-    "parent": { "database_id": "'$DB_ID'" },
+# <CATEGORY_SECTIONS_AND_ITEMS>는 아래 JSON 문자열에 채워 넣고 json.dumps로 보낸다 (TODAY 같은 값을 문자열에 이어 붙이지 않는다)
+python3 - "$TODAY" "$DS_ID" <<'PY' | "$HOME/.claude/tools/notion-api/notion-api" POST /v1/pages -
+import json, sys
+today, ds_id = sys.argv[1:3]
+children = json.loads(r'''[
+    <CATEGORY_SECTIONS_AND_ITEMS>
+]''')
+print(json.dumps({
+    "parent": {"type": "data_source_id", "data_source_id": ds_id},
     "properties": {
-      "제목": {
-        "title": [{ "text": { "content": "'$TODAY' TIL" } }]
-      },
-      "작성일": {
-        "date": { "start": "'$TODAY'" }
-      },
-      "주제": {
-        "select": { "name": "Session TIL" }
-      },
-      "카테고리": {
-        "select": { "name": "✍️ In Action" }
-      }
+        "제목": {"title": [{"text": {"content": f"{today} TIL"}}]},
+        "작성일": {"date": {"start": today}},
+        "주제": {"select": {"name": "Session TIL"}},
+        "카테고리": {"select": {"name": "✍️ In Action"}},
     },
-    "children": [
-      <CATEGORY_SECTIONS_AND_ITEMS>
-    ]
-  }'
+    "children": children,
+}))
+PY
 ```
 
 **children 블록 구조 (카테고리별):**
@@ -425,7 +406,7 @@ TIL이 Notion에 저장되었습니다:
 
 | 상황 | 대응 |
 |------|------|
-| NOTION_API_KEY 없음 | `~/.zshenv`에서 설정 안내 |
+| `notion-api`가 키가 비었다고 종료 (exit 2) | `~/.zshenv`에서 설정 안내 |
 | 권한 오류 | Integration이 Dev Scraps 페이지에 연결되어 있는지 확인 안내 |
 | 추출 항목 0개 | "이 세션에서 기록할 시니어 관점의 인사이트가 없습니다" 표시 |
 | 기존 페이지 블록 100개 초과 | `next_cursor`로 페이지네이션하여 전체 블록 읽기 |

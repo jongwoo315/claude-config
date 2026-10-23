@@ -108,8 +108,7 @@ done
   드래그 전 확인하려면:
 
   ```bash
-  curl -s "https://api.notion.com/v1/blocks/ab4c5445dede4062ab1fcb0a98e6ece0/children?page_size=100" \
-    -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" \
+  "$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/ab4c5445dede4062ab1fcb0a98e6ece0/children?page_size=100" \
     | jq -r '.results[] | select(.type|test("heading_3|file")) | .type'
   ```
 - Notion API는 파일 업로드를 지원하지 않아 드래그 앤 드롭이 필수다

@@ -13,7 +13,7 @@ description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(�
 기존 `knowledge:dev-scraps-tldr`과 구분: 그건 **이미 있는 페이지**를 요약으로 교체하고,
 이건 **URL에서 새 페이지를 만든다.**
 
-**API Key:** `NOTION_API_KEY` (`~/prv` 컨텍스트)
+**호출 방법:** `"$HOME/.claude/tools/notion-api/notion-api"` (버전과 키는 이 도구가 정한다)
 
 ### 대상 DB 2개 — 내용에 따라 갈라진다
 
@@ -136,14 +136,15 @@ fetch-rendered.sh "<URL>" > "$SCRATCHPAD/page.txt"
 DB마다 프로퍼티 구성과 select 옵션이 다르다. 보낼 DB를 정한 뒤 그 DB의 스키마를 조회해
 ① `주제` 옵션 목록 ② `본문 길이` 존재 여부를 확인한다.
 
-```bash
-source ~/.zshenv
-notion_key=$(printenv NOTION_API_KEY)
-DB_ID="<Dev 또는 Liv Scraps ID>"
+DB의 `properties`는 database가 아니라 data source에서 읽는다. database id로 data source id를
+먼저 얻는다 (Liv Scraps의 data source id는 하드코딩하지 않고 매번 조회한다).
 
-curl -s "https://api.notion.com/v1/databases/$DB_ID" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Notion-Version: 2022-06-28" \
+```bash
+NOTION_API="$HOME/.claude/tools/notion-api/notion-api"
+DB_ID="<Dev 또는 Liv Scraps ID>"
+DS_ID=$("$NOTION_API" ds "$DB_ID" | head -1)   # 4c의 parent에도 쓴다
+
+"$NOTION_API" GET "/v1/data_sources/$DS_ID" \
   | jq '{주제: .properties["주제"].select.options | map(.name),
          has_길이: (.properties | has("본문 길이")),
          관련: .properties["관련"].multi_select.options | map(.name)}'
@@ -205,13 +206,9 @@ curl -s "https://api.notion.com/v1/databases/$DB_ID" \
 **4c. 페이지 생성:**
 
 ```bash
-curl -s -X POST "https://api.notion.com/v1/pages" \
-  -H "Authorization: Bearer $notion_key" \
-  -H "Content-Type: application/json" \
-  -H "Notion-Version: 2022-06-28" \
-  -d @- <<'JSON' | jq '{id, url}'
+"$HOME/.claude/tools/notion-api/notion-api" POST /v1/pages - <<'JSON' | jq '{id, url}'
 {
-  "parent": { "database_id": "<4a에서 정한 DB ID>" },
+  "parent": { "type": "data_source_id", "data_source_id": "<4a에서 얻은 DS ID>" },
   "icon": { "type": "emoji", "emoji": "<주제 매핑표에서>" },
   "properties": {
     "제목":      { "title": [{ "text": { "content": "<원문 제목>" } }] },
@@ -277,7 +274,7 @@ payload 파일을 만든 뒤 `--data-binary @file`로 보내는 편이 따옴표
 
 | 상황 | 조치 |
 | --- | --- |
-| `NOTION_API_KEY` 없음 | `~/.zshenv` 설정 안내 후 중단 |
+| `notion-api`가 키가 비었다고 종료 (exit 2) | `~/.zshenv` 설정 안내 후 중단 |
 | WebFetch 실패 (네트워크/4xx) | 헤드리스 Chrome 폴백 (Step 1c) |
 | WebFetch 성공했는데 본문 빈약 (CSR) | 헤드리스 Chrome 폴백 (Step 1c). 껍데기로 요약 금지 |
 | `fetch-rendered.sh` exit 1 (빈 DOM) | 중단. 붙여넣기 / 건너뛰기 제시 |
