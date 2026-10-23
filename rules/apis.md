@@ -1,14 +1,24 @@
 ## Notion API
 
-- `~/work/*`, `~/plab/*` 또는 plab/plabfootball 관련 Notion 페이지 → `PLAB_WOZ_NOTION_API_KEY`
-- `~/prv/*` 및 그 외 → `NOTION_API_KEY`
+**Notion REST 호출은 `"$HOME/.claude/tools/notion-api/notion-api"`로만 한다.** `curl`로 직접
+부르지 않는다. API 버전과 키 고르기는 도구가 정한다.
+
+```bash
+notion-api [--work] METHOD /v1/PATH [BODY|-]   # BODY = JSON 파일 경로, - 는 stdin
+notion-api [--work] ds DATABASE_ID             # data source id 출력
+```
+
+- 키는 `~/plab`·`~/work` 아래면 회사 키, 그 외는 개인 키를 도구가 고른다. 다른 디렉터리에서
+  plab/plabfootball 페이지를 다룰 때만 `--work`를 붙인다
+- DB 조회·페이지 생성은 database id가 아니라 **data source id**로 한다
+  (`/v1/data_sources/{ds}/query`, `parent.data_source_id`)
 
 ### 자주 쓰는 페이지
 
-| 페이지        | 용도                        | Database ID                            |
-| ------------- | --------------------------- | -------------------------------------- |
-| 프로젝트 진행 | 개인 태스크 트래킹 (DEV-xx) | `29241e61-65c0-801f-9529-cabf8cad919b` |
-| Dev Scraps    | TIL, 개념 정리, 기술 스크랩 | `76e9673e-d91b-41b2-9779-c0940040f542` |
+| 페이지        | 용도                        | Database ID                            | Data source ID                         |
+| ------------- | --------------------------- | -------------------------------------- | -------------------------------------- |
+| 프로젝트 진행 | 개인 태스크 트래킹 (DEV-xx) | `29241e61-65c0-801f-9529-cabf8cad919b` | `29241e61-65c0-80e4-aaf5-000bcafbb440` |
+| Dev Scraps    | TIL, 개념 정리, 기술 스크랩 | `76e9673e-d91b-41b2-9779-c0940040f542` | `35232b99-ebe7-458e-9ee2-8ff4154b2782` |
 
 **프로젝트 작업 컨텍스트에서는 "프로젝트 진행" 페이지를 최우선으로 참고할 것.**
 
@@ -43,7 +53,7 @@
 ```
 
 **shell에서 JSON을 직접 조립하지 말 것.** 한글 프로퍼티명과 긴 본문이 섞여 따옴표
-사고가 난다. python으로 payload 파일을 만든 뒤 `--data-binary @file`로 보낸다.
+사고가 난다. python으로 payload 파일을 만든 뒤 도구에 파일 경로로 넘긴다.
 
 #### 기존 블록 고치기 — `PATCH /v1/blocks/{block_id}`
 
