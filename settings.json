@@ -219,7 +219,8 @@
     "caveman@caveman": true,
     "architecture-diagram@architecture-diagram-skill": true,
     "ponytail@ponytail": true,
-    "cc-plugin-you-should-know@builtin": true
+    "cc-plugin-you-should-know@builtin": true,
+    "ralph-wiggum@synced": false
   },
   "extraKnownMarketplaces": {
     "claudeclaw": {
