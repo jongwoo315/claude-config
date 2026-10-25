@@ -375,7 +375,7 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 | 배포본 *(source distribution)* | **`sdist`**, **소스 배포 파일** | `-본` 조립 — `제출본`·`축약본` 행과 같은 자리. 파일 0건. `korean-harvest` 10-17, jw 판정 10-19 |
 | 밀렸다 *(overridden — 규칙·지시가)* | **이 규칙이 우선해서 따르지 않았다** | 위 `이긴다`(wins) 행의 반대쪽이다 — 우선순위를 승부로 옮긴 같은 직역. **순위가 밀렸다는 정상** — `cheongyak-rag` 2곳(합친 순위가 밀렸다)이 이쪽이다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
 | 되돌림 *(regex backtracking)* | **백트래킹**, **`catastrophic backtracking`** | 정규식 쪽은 음차가 정착했다. `되돌림`은 롤백으로 먼저 읽힌다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
-| 걸음 수 상한 *(step limit)* · 직접 훑기 *(hand-written scan)* | **반복 횟수 상한**, **직접 짠 파서** | `걸음`은 걷는 동작이고 `훑기`는 무엇을 하는지 안 말한다. 같은 문장이 두 비유를 겹쳤다. **`먼저 훑기`(위 `정찰` 행의 대체어)는 정상** — 탐색 뜻이다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 걸음 수 상한 · 직접 훑기 *(step limit, hand-written scan)* | **반복 횟수 상한**, **직접 짠 파서** | `걸음`은 걷는 동작이고 `훑기`는 무엇을 하는지 안 말한다. 같은 문장이 두 비유를 겹쳤다. **`먼저 훑기`(위 `정찰` 행의 대체어)는 정상** — 탐색 뜻이다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
 | 안쪽 주소 *(internal address)* | **내부 주소** | 보안(SSRF) 쪽 정착어가 있다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
 | 바로 올림 *(escalate — 알림 라우팅)* | **즉시 알림**, **바로 알린다** | `올림`은 반올림·위로 올리기로 먼저 읽힌다. 백틱 안에서 나왔지만 `~/.claude`·`~/prv` 코드에는 0건이라 식별자가 아니다. `~/plab`은 이 기기(Mac mini)에 없어 못 셌다. `korean-sweep-plab` 10-25, jw 판정 10-25 |
 | 띠 *(band — Claude Code UI)* | **`band`** 원어 그대로 | 채팅 11회로 **UI 이름으로 굳어 가던 중**이었다 — 위 `기권` 행과 같은 처지. plugin-authoring 스킬 설명도 `band`다. 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
