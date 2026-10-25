@@ -373,6 +373,24 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 | 재개값 *(resume value)* | **`resume` 값**, **재개할 때 넘기는 값** | `-값` 조립 — `추적값` 행과 같은 자리. 파일 0건. `korean-harvest` 10-17, jw 판정 10-19 |
 | 리듀서 *(reducer — LangGraph)* | **`reducer`** 원어 그대로 | 음차. 코드 이름도 `reducer`라 원어를 두면 글과 코드가 같은 이름을 쓴다. 파일 0건. `korean-harvest` 10-17, jw 판정 10-19 |
 | 배포본 *(source distribution)* | **`sdist`**, **소스 배포 파일** | `-본` 조립 — `제출본`·`축약본` 행과 같은 자리. 파일 0건. `korean-harvest` 10-17, jw 판정 10-19 |
+| 밀렸다 *(overridden — 규칙·지시가)* | **이 규칙이 우선해서 따르지 않았다** | 위 `이긴다`(wins) 행의 반대쪽이다 — 우선순위를 승부로 옮긴 같은 직역. **순위가 밀렸다는 정상** — `cheongyak-rag` 2곳(합친 순위가 밀렸다)이 이쪽이다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 되돌림 *(regex backtracking)* | **백트래킹**, **`catastrophic backtracking`** | 정규식 쪽은 음차가 정착했다. `되돌림`은 롤백으로 먼저 읽힌다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 걸음 수 상한 *(step limit)* · 직접 훑기 *(hand-written scan)* | **반복 횟수 상한**, **직접 짠 파서** | `걸음`은 걷는 동작이고 `훑기`는 무엇을 하는지 안 말한다. 같은 문장이 두 비유를 겹쳤다. **`먼저 훑기`(위 `정찰` 행의 대체어)는 정상** — 탐색 뜻이다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 안쪽 주소 *(internal address)* | **내부 주소** | 보안(SSRF) 쪽 정착어가 있다. 파일 0건. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 바로 올림 *(escalate — 알림 라우팅)* | **즉시 알림**, **바로 알린다** | `올림`은 반올림·위로 올리기로 먼저 읽힌다. 백틱 안에서 나왔지만 `~/.claude`·`~/prv` 코드에는 0건이라 식별자가 아니다. `~/plab`은 이 기기(Mac mini)에 없어 못 셌다. `korean-sweep-plab` 10-25, jw 판정 10-25 |
+| 띠 *(band — Claude Code UI)* | **`band`** 원어 그대로 | 채팅 11회로 **UI 이름으로 굳어 가던 중**이었다 — 위 `기권` 행과 같은 처지. plugin-authoring 스킬 설명도 `band`다. 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
+| 차례 *(focus — UI 항목이 선택된 상태)* | **선택되면**, **포커스가 오면** | `차례`는 순번이라 「✕ 차례에 Enter」가 무슨 뜻인지 안 잡힌다. **순서 뜻은 정상** — `~/prv` 165곳(대부분 청약 법령 데이터)이 이쪽이다. 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
+| 껍데기 *(thin wrapper — 함수를 감싸는 API)* | **얇은 `wrapper`** | 「껍데기만 남았다」는 한국어가 원래 쓰는 비유라 §비유 절에는 안 걸린다. 걸리는 이유는 그 자리에 `wrapper`라는 정착어가 있다는 것이다. **알맹이가 빈 것 뜻은 정상** — `url-scrap.md`의 SPA 껍데기, 빈 껍데기 DB는 안 걸린다. 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
+| 천장 *(ceiling — 지표의)* | **상한** | 영어 비유 직역. 수량에 쓰는 `상한`은 위 `상한` 행에서도 정상이다. 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
+| 몫 *(the share — 문서 원문 번역)* | **비율**, **엔진이 정한 만큼** | 문서의 `share`를 그대로 옮겼다. **사람에게 돌아가는 일 뜻은 정상** — 「판정은 사람 몫」(`~/.claude` 9곳 전부 이쪽). 파일 0건. `korean-sweep` 10-25, jw 판정 10-25 |
+| 다중화 *(HTTP/2 multiplexing)* | **`multiplexing`** 원어 그대로 | 한국어 IT에서 `다중화`는 이중화·HA(DB 다중화)로 먼저 읽힌다. 한 단어에 개념이 둘이라 `채널` 행과 같은 자리. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 센티널 *(sentinel)* | **`sentinel`** 원어 그대로 | 음차 — `하네스`·`시임` 행과 같은 자리. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 채움값 *(fill value — numpy)* | **`fill_value`** | `-값` 조립 — `추적값`·`재개값` 행과 같은 자리. 코드 이름과 맞춘다. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 타이핑 *(typing — 타입 힌트)* | **타입 힌트**, **타입 검사** | 키보드 입력으로 먼저 읽힌다. **키보드 입력 뜻은 정상** — `~/.claude` 2곳·`~/prv` 8곳 전부 이쪽. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 매니페스트 *(manifest)* | **`manifest`** 원어 그대로 | 음차가 꽤 퍼져 있지만 「퍼졌다」는 09-19에 뒤집힌 근거다(아래 `다크 런치`·`방언` 기록). 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 경보 *(alert — Dependabot·모니터링)* | **`alert`**, **알림** | `경보`는 사이렌·공습경보 쪽 말이다. **`오경보`(false alarm)는 사전어라 정상** — `~/.claude` 4곳 전부 이쪽. `upgrade-impact-rag` `bumpcheck/judge/run.py:89`(경보가 샌 것) 1곳은 전용 세션 repo라 세기만 했다. `korean-harvest` 10-24, jw 판정 10-25 |
+| 재잠금 · 다시 잠갔다 *(re-lock — lockfile)* | **lockfile 재생성**, **lockfile을 다시 만들었다** | 자물쇠 비유 직역. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 위층 *(upper tier — 가설)* | **상위 단계**, **`hypothesis tier`** | 건물 비유 직역. **건물 뜻은 정상** — `cheongyak-rag` 법령 데이터 11곳(최하층 우선배정)이 이쪽. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
 
 `회수`를 원뜻으로 쓰는 것은 정상 — *"위임을 회수했다"* ○ / *"문서가
 회수되면"* ✗.
@@ -448,7 +466,7 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 
 ### 패턴 — 비유로 일반 어휘를 대체하지 말 것
 
-`비-`·`X선`보다 넓다. 위 교정 표에서 **어원이 비유인 것만 36행**이다.
+`비-`·`X선`보다 넓다. 위 교정 표에서 **어원이 비유인 것만 41행**이다.
 
 | 행 | 원어 | 어느 분야 비유 |
 | --- | --- | --- |
@@ -488,6 +506,11 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 | 평평해진다 | flatten | 기하 |
 | 구원이 아니라 | saving grace | 종교 |
 | 모서리 상황 | edge case | 기하 |
+| 밀렸다 (규칙이) | overridden | 승부 |
+| 걸음 수 상한 | step limit | 걷기 |
+| 천장 (지표의) | ceiling | 건축 |
+| 위층 (가설) | upper tier | 건축 |
+| 재잠금 | re-lock | 자물쇠 |
 
 전부 **영어 비유를 한국어 단어로 그대로 옮긴 것**이다. 영어에서는 닳아서 비유로 안
 읽히는 말인데, 한국어로 옮기면 비유가 되살아나 읽는 쪽이 원래 분야를 먼저 떠올린다.
