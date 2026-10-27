@@ -69,13 +69,16 @@ notion-api [--work] ds DATABASE_ID             # data source id 출력
 `annotations`까지 옮긴다** — 안 그러면 굵게·링크가 조용히 사라진다.
 
 **블록 순서는 못 바꾼다.** 이동 API가 없다. 중간에 끼워 넣을 때는 append에
-`after`를 준다. 이미 있는 블록을 위로 올리려면 새로 만들고 원본을 지우는 수밖에
+`position`을 준다. 이미 있는 블록을 위로 올리려면 새로 만들고 원본을 지우는 수밖에
 없으므로, **페이지를 다시 짤 땐 옮기지 말고 위에 새로 쌓는 쪽이 싸다.**
 
 ```json
 PATCH /v1/blocks/{page_id}/children
-{"children": [...], "after": "<이 블록 바로 뒤에 넣는다>"}
+{"children": [...], "position": {"type": "after_block", "after_block": {"id": "<이 블록 바로 뒤에 넣는다>"}}}
 ```
+
+옛 꼴 `"after": "<id>"`는 `notion-api`가 쓰는 버전(`2026-03-11`)에서 400
+(`body.after should be not present`)으로 거절된다 (2026-10-27 실측).
 
 #### 크기 제한 — 페이지가 아니라 **요청 하나**에 걸린다
 
