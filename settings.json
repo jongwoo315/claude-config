@@ -220,7 +220,8 @@
     "architecture-diagram@architecture-diagram-skill": true,
     "ponytail@ponytail": true,
     "cc-plugin-you-should-know@builtin": true,
-    "ralph-wiggum@synced": false
+    "ralph-wiggum@synced": false,
+    "token-optimizer@alexgreensh-token-optimizer": true
   },
   "extraKnownMarketplaces": {
     "claudeclaw": {
@@ -245,6 +246,12 @@
       "source": {
         "source": "github",
         "repo": "DietrichGebert/ponytail"
+      }
+    },
+    "alexgreensh-token-optimizer": {
+      "source": {
+        "source": "github",
+        "repo": "alexgreensh/token-optimizer"
       }
     }
   },
