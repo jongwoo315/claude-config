@@ -198,6 +198,18 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   **Skip for Tier A.** Ignore brainstorming's own "→ writing-plans" transition; plan is A4's job.
 - **Explore** — `dispatching-parallel-agents` (`Task(subagent_type=Explore)`) **only if** Tier C or
   brainstorm flags unknowns. Focused scope per agent, structured output. Else skip.
+- **끝까지 도는 흐름 — plan을 쓰기 전에 본다.** 이 레포에 입력부터 최종 출력까지 도는 흐름이 이미
+  있나? 없으면(새 프로젝트의 첫 티켓) 이 티켓이 walking skeleton이고, plan은 `ticket-breakdown` §1을
+  따른다. **티켓이 하나뿐이어도 그렇다** — `ticket-breakdown`은 티켓 2개 이상일 때만 불려서,
+  brainstorm에서 티켓 하나로 바로 온 경로에서는 그 규칙이 안 걸린다.
+  - Task 1이 입력부터 최종 출력까지 잇는다. 단계는 stub이어도 된다. 깊은 로직은 Task 2 이후이거나 다음 티켓이다
+  - 범위에서 뺀 단계도 stub 자리는 남긴다(값이 nil인 필드, 빈 화면). 그래야 다음 티켓이 「어느 stub을 바꾸나」가 된다
+  - stub이라 측정값이 낮은 것은 정상이라고 plan에 적는다. 안 적으면 루프가 점수를 올리려고 stub을 채운다
+  - 흐름이 이미 있으면 이 티켓이 바꾸는 stub 이름을 plan 메타에 적는다. 흐름 밖에서 단계 하나만 따로 깊게
+    만드는 티켓이면 Kickoff에서 그 사실을 먼저 말한다
+  - 2026-10-28 #154(with-whom)에서 빠졌다. brainstorm에서 티켓 하나로 바로 왔고, plan이 제목 해석·측정
+    (Task 1~3)을 먼저, 앱·EventKit 연결(Task 4)을 나중에 두었다. 장소·사진은 stub 자리 없이 「다음 티켓」으로만
+    뺐다. Kickoff를 그대로 통과했고, dispatch 뒤에 jw가 「walking skeleton 방식이냐」고 물어서 드러났다
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/<ID>-MMDD-plan-<short-topic>.md`
   (`<ID>` = `DEV-XXXX` 또는 `<NN>`. 날짜는 **`MMDD`**, **type이 topic보다 앞**.
   전체 규칙은 이 파일 아래 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
@@ -238,6 +250,7 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
 
 A0에서 받은 jw 기준이 plan 맨 위에 있고, 실패 징후 첫 항목이 그걸 재는지 확인한다. 없으면
 보여 주기 전에 고친다. 예전의 Beat 1(착수 전 예측 3개)은 2026-09-30에 걷어냈다 — A0가 그 자리다.
+A4 「끝까지 도는 흐름」 판정이 plan의 Task 순서에 들어갔는지도 같이 본다. 아래 틀의 **흐름** 줄이 그걸 jw에게 보여 주는 자리다.
 
 ### Approval
 
@@ -250,6 +263,8 @@ A0에서 받은 jw 기준이 plan 맨 위에 있고, 실패 징후 첫 항목이
 ## Kickoff — <ID> <title>
 
 **Tier <X>** — <one-line rationale>
+
+**흐름** <이 티켓이 처음 만든다 — Task N에서 끝까지 이어진다. stub으로 둔 단계: …> 또는 <이미 있다 — 바꾸는 stub: <이름>>
 
 **jw 기준**
 - 원문: 「<A0 원문>」
