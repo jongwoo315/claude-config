@@ -359,6 +359,7 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 ```bash
 ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running; high stuck-timeout
 orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
+orch wait <id>   # 바로 이어서, Bash run_in_background: true — 빠뜨리면 Phase C로 안 넘어간다 (§자동 진행)
 ```
 
 ⚠️ **orch daemon은 스크립트를 메모리에 물고 돈다 — 코드 수정이 재시작 없이는 반영되지 않는다.**
@@ -478,6 +479,12 @@ orch wait <id>      # Bash run_in_background: true
 신호다 — 상태 트리거(C1, G2a)는 그대로 유효하다. 새 세션에서 `orch ls`에 `running`인 이 워크플로의
 태스크가 보이면 `orch wait`를 다시 건다.
 
+**dispatch 코드 블록에 `orch wait` 줄을 같이 둔 이유.** 이 절은 2026-10-08부터 있었는데 2026-10-29
+cheongyak-rag #80에서 지켜지지 않았다. 구현 루프가 23:30에 끝났는데 jw가 「왜 리뷰로 안 넘어갔냐」고
+물을 때까지 아무도 리뷰를 띄우지 않았다. 그 세션은 compact 뒤 이 스킬을 잘린 채로 받아서 dispatch
+블록(Phase B)까지만 봤고, 90줄 아래에 있는 이 절은 못 봤다. 규칙이 실행할 명령과 떨어져 있으면
+문서가 잘릴 때 같이 사라진다.
+
 ---
 
 ## Phase C — Review Dispatch (두 번째 orch 세션)
@@ -538,6 +545,7 @@ tmux capture-pane -ept claude-orch-<ID> | grep -a '❯' | tail -1 | sed 's/\x1b/
 
 ```bash
 ORCH_TASK_ID="<ID>-review" orch add <워크트리 절대경로> "<아래 quote-safe 한 줄>"
+orch wait <ID>-review   # 바로 이어서, Bash run_in_background: true — 빠뜨리면 G2a로 안 넘어간다 (§자동 진행)
 ```
 
 `ORCH_TASK_ID`가 없으면 id 충돌 경로로 빠져 tmux 세션이 `claude-orch-<ID>-1`이 되고, 그 이름은
