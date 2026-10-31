@@ -218,6 +218,11 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   PR-creation step (personal mode: include the "update Notion PR property" step).
   **plan 본문 첫 절은 `## jw 기준`** — A0 답 원문. 그 바로 아래 `## 통과 기준`이 온다.
   `## 실패 징후` 첫 항목은 jw 기준을 재는 것이고 임계값 세 구간을 붙인다.
+  **결과 기준과 Done criteria를 섞지 않는다.** 결과 수치의 세 구간(통과·재측정·미완)은 `## 통과 기준`·
+  `## 실패 징후`에만 쓰고, Done criteria에는 「측정을 돌려 값과 구간을 리포트·PR 본문에 적었다」처럼
+  루프가 해낼 수 있는 일만 쓴다. 결과 수치가 Done criteria에 들어가면 미완이 나왔을 때 루프가 거짓말
+  없이는 끝낼 수 없다 — 2026-10-31 #102 재작업이 64.7%(미완 구간)에서 RALPH_DONE을 못 내고 Stop hook에
+  9번 다시 돌려졌고, orch는 `running`에 머물렀다.
   Done criteria에 모드별 한 줄을 넣는다 — 루프는 rules가 아니라 plan을 따른다:
   - `~/prv`: 「PR 본문 맨 위에 `## 착수 전 기준 (jw)` 절 — plan의 `## jw 기준` 원문 + 그 기준으로 잰 결과」
   - `~/plab`·`~/work`: 「`docs/plans/`는 커밋하지 않는다. 파일을 지정해 add한다」
@@ -231,6 +236,11 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   > keep working. Do NOT use superpowers:executing-plans or subagent-driven-development.
   > Emit `<promise>RALPH_DONE</promise>` ONLY when every Done-criteria item and every Pre-PR check
   > is genuinely true AND the PR has been created — never to escape the loop.
+  > RALPH_DONE means the work is finished, NOT that the result passed. If an honest measurement
+  > lands in a below-pass band of the plan (re-measure or 미완), and the plan step for that band has
+  > been carried out, write the band and the measured value verbatim in the report and at the top of
+  > the PR body, then emit RALPH_DONE. Judging the result is jw's call at the gate, not yours.
+  > Do not keep iterating to push a number over a threshold the plan's tasks no longer cover.
   > Before emitting it, stop every background shell you started (TaskStop tool). A shell left
   > running keeps the session in `bg` state, and orch never marks the step done.
   > On a HARD, retry-proof API error (OpenAI insufficient_quota, 401/403, exhausted billing), STOP —
