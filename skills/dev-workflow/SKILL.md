@@ -451,11 +451,23 @@ tmux ls 2>/dev/null | grep claude-orch-
   > 세션(`<ID>-review`)을 띄우고, 리뷰가 끝나면 판단 로그를 띄웁니다. 다른 작업을 바로
   > 시작하셔도 됩니다."
 - Do NOT talk to the orch session. Its only output is the worktree commit + PR.
-- **Seed delivery can be swallowed by a heavy startup banner** (spawn.sh readiness race — the
-  welcome/NOTICE screen eats early keystrokes, and submit_step can't tell a swallowed seed from a
-  submitted one). If `orch logs <id>` shows an empty `❯` with the ralph line never sent, resend once
-  via `tmux send-keys -t <sess> -- "<ralph line>"; tmux send-keys -t <sess> C-m` — a dispatch action,
-  not ticket work.
+- **첫 줄(ralph 줄)이 제출되지 않을 때가 있다.** 시작 화면이 다시 그려지면서 키 입력을 먹는다.
+  `orch logs <id>`로 입력창을 보고 경우에 맞게 한 번만 손댄다. dispatch 조치라 티켓 작업이 아니다.
+
+  | 입력창 | 조치 |
+  | --- | --- |
+  | 빈 `❯` — ralph 줄이 안 들어갔다 | 줄을 다시 보낸다. `tmux send-keys -t <sess> -- "<ralph line>"; tmux send-keys -t <sess> C-m` |
+  | ralph 줄이 다 쓰였는데 제출만 안 됐다 | `tmux send-keys -t <sess> C-m` 한 번. 줄을 다시 보내지 않는다 — 입력창에 두 번 쓰인다 |
+
+  - 둘째 경우는 대개 orch가 혼자 처리한다. `submit_step`이 Enter를 31번 보내도 working이 안 오면
+    `daemon.log`에 `UNSENT`를 쓰고, daemon이 3초마다 Enter를 10분(`ORCH_UNSENT_SECS`) 더 보낸다.
+    그 사이 제출되면 `submitted late by daemon retry`가 찍히고 태스크는 그대로 돈다
+  - 10분 안에 안 되면 태스크를 `failed`로 바꾸고 tmux 상태줄에 띄운다. `orch wait`는 `FAILED`로 끝난다
+  - `failed`가 된 세션에 C-m을 보내 살리지 않는다. daemon은 `failed` 태스크를 더 보지 않아서 그 세션이
+    끝나도 `done`이 되지 않는다. `orch rm <id>`(세션도 같이 죽인다) 뒤 같은 줄로 `orch add`하고
+    `orch wait`를 다시 건다. 제출이 안 됐으면 워크트리는 그대로라 위 `orphan` 확인만 거치면 된다
+  - 2026-11-02 `166-kapt`가 이 경우였다. 고치기 전 orch는 `UNSENT`만 쓰고 태스크를 `running`에 뒀고,
+    ralph 줄이 입력창에 쓰인 채 85분 멈춰 있다가 main 세션이 C-m 한 번을 보내서야 제출됐다
 
 ### 자동 진행 — `orch wait`
 
@@ -479,7 +491,7 @@ orch wait <id>      # Bash run_in_background: true
 | `DONE <id> <HEAD>` (구현) | C1 통과 | 묻지 않고 C2 — 리뷰 dispatch, 그 리뷰의 `orch wait`를 다시 건다 |
 | `DONE <id> <HEAD>` (`-review`) | 리뷰 끝 | G2a — 판단 로그 블록을 띄우고 멈춘다. 판정은 jw 몫이라 여기서 자동은 끝난다 |
 | `BG_STUCK <id> <분>` | 턴은 끝났는데 백그라운드 shell이 남아 `running`에 묶였다 | C1 「남은 shell을 본다」 — 멈춘 것이면 죽이고 `orch wait`를 다시 건다 |
-| `FAILED <id>` | daemon이 session died·stuck으로 판정 | jw에게 알린다. `orch logs <id>`의 마지막 화면을 같이 보여준다 |
+| `FAILED <id>` | daemon이 session died·stuck·첫 줄 제출 실패로 판정 | jw에게 알린다. `orch logs <id>`의 마지막 화면을 같이 보여준다 |
 | `GONE <id>` | 태스크 파일이 없다 (`orch rm` 등) | jw에게 알린다 |
 
 깨어나는 신호는 task-notification이라 jw 입력이 아니다. 하지만 여기서 하는 일(C2 dispatch, G2a
