@@ -20,6 +20,6 @@ assert_eq "$after" "$before" "rm with no id deletes nothing"
 out=$("$ORCH" start --max abc 2>&1); rc=$?
 assert_eq "$rc" "1" "start --max abc rejected"
 assert_contains "$out" "invalid --max" "explains invalid max"
-[ ! -f "$ORCH_ROOT/daemon.pid" ] && ok "no pidfile written on invalid max" || { fail "pidfile written despite invalid max"; rm -f "$ORCH_ROOT/daemon.pid"; }
+[ ! -f "$ORCH_PIDFILE" ] && ok "no pidfile written on invalid max" || fail "pidfile written despite invalid max"
 
 finish
