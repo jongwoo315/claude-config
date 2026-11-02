@@ -37,7 +37,7 @@ submit_step() {
   $ORCH_TMUX send-keys -t "$sess" C-m
   local j=0
   while [ $j -lt 30 ]; do
-    sleep 0.8
+    sleep "${ORCH_SUBMIT_DELAY:-0.8}"
     [ "$(st_get_state "$sess")" = "working" ] &&
       [ "$(st_get_state_at "$sess")" != "$before" ] && break
     $ORCH_TMUX send-keys -t "$sess" C-m
@@ -52,6 +52,13 @@ submit_step() {
   if [ $j -ge 30 ]; then
     printf '%s submit %s: UNSENT after %d enters — no working transition\n' \
       "$(date '+%F %T')" "$sess" "$((j+1))" >&2
+    # Hand the rest to the daemon instead of giving up silently. Returning here used
+    # to leave the task `running` with the prompt typed in the box and nobody told —
+    # 166-kapt sat like that for 85 minutes until a human sent one Enter (2026-11-02).
+    # orch_watch_failures keeps sending Enter every tick while this stamp exists and
+    # marks the task failed after ORCH_UNSENT_SECS, which also ends `orch wait`.
+    st_set "$sess" @orch_unsent_at "$(orch_now 2>/dev/null || date +%s)"
+    return 1
   elif [ $j -gt 0 ]; then
     printf '%s submit %s: submitted after %d retries\n' \
       "$(date '+%F %T')" "$sess" "$j" >&2

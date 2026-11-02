@@ -6,6 +6,9 @@
 # Debounce: require idle to have persisted >= ORCH_IDLE_DEBOUNCE seconds.
 : "${ORCH_IDLE_DEBOUNCE:=5}"
 : "${ORCH_STUCK_SECS:=1200}"   # 20 min
+# How long the daemon keeps re-sending Enter for a prompt submit_step could not
+# submit before it fails the task. 166-kapt went through on one Enter 85 min later.
+: "${ORCH_UNSENT_SECS:=600}"  # 10 min
 . "$ORCH_HOME/lib/task.sh"
 . "$ORCH_HOME/lib/state.sh"
 . "$ORCH_HOME/lib/spawn.sh"
@@ -76,7 +79,7 @@ orch_notify() {   # override-able; default tmux message + bell
 }
 
 orch_watch_failures() {
-  local id sess state now seen
+  local id sess state now seen unsent
   now=$(orch_now)
   for id in $(task_list_by_status running); do
     sess=$(task_get "$id" session)
@@ -86,6 +89,21 @@ orch_watch_failures() {
       continue
     fi
     state=$(st_get_state "$sess")
+    # submit_step gave up on this session's prompt (see @orch_unsent_at there).
+    unsent=$(st_get "$sess" @orch_unsent_at)
+    if [ -n "$unsent" ]; then
+      if [ "$state" = "working" ]; then
+        st_unset "$sess" @orch_unsent_at
+        printf '%s submit %s: submitted late by daemon retry\n' "$(date '+%F %T')" "$sess" >&2
+      elif [ $((now - unsent)) -ge "$ORCH_UNSENT_SECS" ]; then
+        task_set "$id" status failed
+        orch_notify "task $id prompt never submitted (${ORCH_UNSENT_SECS}s)"
+        continue
+      else
+        $ORCH_TMUX send-keys -t "$sess" C-m
+        continue
+      fi
+    fi
     if [ "$state" = "working" ]; then
       # Measure "stuck" against orch's OWN clock (@orch_seen_at), stamped when we
       # first observe working — NOT the hook's @claude_state_at. @claude_state_at
