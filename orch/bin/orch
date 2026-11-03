@@ -117,7 +117,7 @@ case "$cmd" in
     [ -n "${1:-}" ] || { echo "usage: orch wait <id>" >&2; exit 1; }
     id="$1"; f="$ORCH_QUEUE/task-$id.json"
     iv="${ORCH_WAIT_INTERVAL:-60}"; bg_stale="${ORCH_WAIT_BG_STALE:-900}"
-    T="${ORCH_TMUX:-tmux}"; prev=''
+    T="${ORCH_TMUX:-tmux}"; prev=''; bg_since=''
     while :; do
       [ -e "$f" ] || { echo "GONE $id"; exit 3; }
       st=$(jq -r .status "$f"); dir=$(jq -r .target "$f"); sess=$(jq -r '.session // empty' "$f")
@@ -125,10 +125,16 @@ case "$cmd" in
         failed) echo "FAILED $id"; exit 2 ;;
         running)
           prev=''
+          # 백그라운드가 남은 시간은 이 wait 가 직접 잰다. @claude_state_at 은 상태가 바뀐
+          # 시각이라 ralph 루프에서는 루프 시작 시각으로 남아 있다 — 그걸 쓰면 시작 15분 뒤
+          # bg 가 생기는 순간 BG_STUCK 이 나고, 다시 건 wait 도 첫 확인에서 바로 끝난다
+          # (2026-11-03 DEV-10654).
           if [ -n "$sess" ] && [ "$($T show -t "$sess" -qv @claude_bg 2>/dev/null)" = 1 ]; then
-            at=$($T show -t "$sess" -qv @claude_state_at 2>/dev/null)
-            age=$(( $(date +%s) - ${at:-$(date +%s)} ))
+            now=$(date +%s); bg_since="${bg_since:-$now}"
+            age=$(( now - bg_since ))
             [ "$age" -ge "$bg_stale" ] && { echo "BG_STUCK $id $((age / 60))"; exit 4; }
+          else
+            bg_since=''
           fi ;;
         done)
           head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
