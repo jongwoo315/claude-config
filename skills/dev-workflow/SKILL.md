@@ -210,6 +210,13 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   - 2026-10-28 #154(with-whom)에서 빠졌다. brainstorm에서 티켓 하나로 바로 왔고, plan이 제목 해석·측정
     (Task 1~3)을 먼저, 앱·EventKit 연결(Task 4)을 나중에 두었다. 장소·사진은 stub 자리 없이 「다음 티켓」으로만
     뺐다. Kickoff를 그대로 통과했고, dispatch 뒤에 jw가 「walking skeleton 방식이냐」고 물어서 드러났다
+- **개념 표 — `docs/concepts.md`.** 이 티켓이 새로 만들거나 바꾸는 개념(판정값·축·유형·상태 같은 목록, 단계 이름)을
+  plan을 쓰기 전에 고른다. 있으면 Done criteria에 「`docs/concepts.md`의 그 표를 고친다(없으면 만든다)」를 넣는다
+  - 표 한 행 = 개념 하나: 이름(코드 식별자) · 뜻 한 줄 · 정의한 파일·줄 · 만든 티켓
+  - 루프는 rules가 아니라 plan을 따르므로, plan에 없으면 표가 갱신되지 않는다
+  - `~/plab`·`~/work`에서는 커밋하지 않는다. `docs/plans/`처럼 `.git/info/exclude`에 넣는다
+  - 2026-11-03 cheongyak-rag #81 착수 때 jw가 축 7개·특별공급 유형 6개·판정값 5개를 처음 알았다. #79부터 Kickoff와
+    판단 로그가 「축」을 아는 말처럼 썼고, 무엇이 7개인지는 바탕 설계와 코드에만 있었다
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/<ID>-MMDD-plan-<short-topic>.md`
   (`<ID>` = `DEV-XXXX` 또는 `<NN>`. 날짜는 **`MMDD`**, **type이 topic보다 앞**.
   전체 규칙은 이 파일 아래 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
@@ -277,6 +284,8 @@ A4 「끝까지 도는 흐름」 판정이 plan의 Task 순서에 들어갔는�
 **Tier <X>** — <one-line rationale>
 
 **흐름** <이 티켓이 처음 만든다 — Task N에서 끝까지 이어진다. stub으로 둔 단계: …> 또는 <이미 있다 — 바꾸는 stub: <이름>>
+
+**새로 만드는 개념** <없다> 또는 <개념마다 표 한 장 — 이름 · 뜻 한 줄. 목록이면 항목 전부를 적는다(「축 7개」가 아니라 7개 각각)>
 
 **jw 기준**
 - 원문: 「<A0 원문>」
