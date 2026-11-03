@@ -36,7 +36,7 @@ AWS 리소스의 CloudWatch 메트릭을 수집하여 건강 상태를 리포트
 | `--analyze "..."` | (없으면 monitor) | 변경 영향 분석 모드 |
 | `--minutes N` | monitor=15 | Monitor 모드 메트릭 수집 기간 (분 단위, 예: 60=1시간, 1440=1일) |
 | `--days N` | analyze=7 | Analyze 모드 메트릭 수집 기간 (일 단위) |
-| `--resource TYPE` | 전체 | 특정 타입만 조회 (ec2-asg, rds, elasticache, elasticbeanstalk) |
+| `--resource TYPE` | 전체 | 특정 타입만 조회 (ec2-asg, rds, elasticache, elasticbeanstalk, ecs) |
 | `--pr N` | (없으면 로컬) | GitHub PR 번호 기반 migration 충돌 감지 (원격 브랜치 vs production 비교) |
 
 ## Instructions
@@ -193,6 +193,10 @@ aws cloudwatch get-metric-statistics \
 
 #### 타입: elasticache
 
+YAML의 `role`은 적은 날 기준이다. failover하면 primary가 바뀌므로 리포트에는
+`describe-replication-groups`의 `NodeGroupMembers[].CurrentRole`을 쓴다.
+`cluster_id`가 `CacheClusterNotFound`면 노드가 교체된 것이다 — 그 사실을 리포트에 적고 YAML을 고친다.
+
 ```bash
 # 클러스터 정보
 aws elasticache describe-cache-clusters \
@@ -283,6 +287,37 @@ aws elasticbeanstalk describe-environment-resources \
 | Health가 `health_critical` 목록에 포함 | ⛔ CRITICAL | "환경 불안정 (Health: X)" |
 | Health가 `health_warning` 목록에 포함 | ⚠️ HIGH | "환경 경고 상태 (Health: X)" |
 | 현재 인스턴스 = MinSize | ⚠️ HIGH | "Auto Scaling 여유 없음 (현재 X/X)" |
+
+#### 타입: ecs
+
+```bash
+# 서비스 상태 + 진행 중 배포
+aws ecs describe-services --cluster <cluster> --services <service> \
+  --region $AWS_REGION --profile $AWS_PROFILE \
+  --query 'services[0].{Desired:desiredCount,Running:runningCount,Pending:pendingCount,Rollout:deployments[0].rolloutState,Events:events[:3][].message}' \
+  --output json
+
+# CPU / 메모리 (서비스 단위)
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/ECS --metric-name CPUUtilization \
+  --dimensions Name=ClusterName,Value=<cluster> Name=ServiceName,Value=<service> \
+  --period $PERIOD --statistics Average Maximum \
+  --start-time $START_TIME --end-time $END_TIME \
+  --region $AWS_REGION --profile $AWS_PROFILE --output json
+# MemoryUtilization 도 같은 형태로 조회
+```
+
+`Rollout`이 `None`이면 CodeDeploy blue/green 서비스다. 진행 중 배포는 `events`의
+taskSet 메시지로 본다.
+
+**판정:**
+
+| 조건 | 심각도 | 메시지 |
+|------|--------|--------|
+| Running < Desired 이고 진행 중 배포 없음 | ⛔ CRITICAL | "태스크 부족 (X/Y)" |
+| Rollout = `FAILED` | ⛔ CRITICAL | "배포 실패" |
+| Pending > 0 또는 Rollout = `IN_PROGRESS` | ℹ️ INFO | "배포 진행 중" |
+| CPU 또는 Memory 평균 > 70% | ⚠️ HIGH | "여유 부족 (평균 X%)" |
 
 #### EB 배포 중 Migration 상태 모니터링
 
@@ -596,7 +631,7 @@ aws_profile: default
 region: ap-northeast-2
 
 resources:
-  - type: ec2-asg        # ec2-asg | rds | elasticache | elasticbeanstalk
+  - type: ec2-asg        # ec2-asg | rds | elasticache | elasticbeanstalk | ecs
     name: "설명"
     asg_name: my-asg
 
