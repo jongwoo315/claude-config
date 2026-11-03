@@ -1,0 +1,28 @@
+#!/bin/zsh
+# archify HTML 을 판단 로그용 PNG 한 장으로 찍는다 — 휴대폰에서 보기 위해서다.
+#   archify-png <in.html> <out.png> [width]
+#
+# 화면용 조작 막대·노드 목록(.no-print 등)을 숨긴 사본을 찍고, 아래쪽 빈 배경을 잘라낸다.
+# 창 높이로 자르면 노드 목록 윗부분이 걸쳐 잘린 채 남았다 (2026-11-03 #102 그림).
+set -eu
+in=${1:?usage: archify-png <in.html> <out.png> [width]}; out=${2:?usage: archify-png <in.html> <out.png> [width]}
+in=${in:A}   # file:// 에 넣으므로 절대 경로로 바꾼다
+width=${3:-1200}
+# 휴대폰에서 받아 저장한 원본을 확대해 읽으므로, 작은 글씨가 깨지지 않게 4배로 찍는다.
+scale=${ARCHIFY_PNG_SCALE:-4}
+chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+tmp=$(mktemp -d); trap '/bin/rm -rf "$tmp"' EXIT
+
+# 사본은 원본 옆에 둔다 — 상대 경로 자원이 있으면 그대로 읽히게.
+copy="${in:h}/.archify-png-$$.html"; trap '/bin/rm -rf "$tmp" "$copy"' EXIT
+sed 's|</head>|<style>.toolbar,.diagram-nav,.node-outline,.rail-controls,.route-journey-controls{display:none!important}</style></head>|' "$in" > "$copy"
+
+"$chrome" --headless=new --hide-scrollbars --force-device-scale-factor="$scale" \
+  --window-size="$width,2400" --virtual-time-budget=4000 \
+  --screenshot="$tmp/raw.png" "file://$copy" >/dev/null 2>&1
+
+# 왼쪽 위 픽셀이 페이지 배경색이다. 그 색으로 둘레를 잘라내고 여백을 다시 붙인다.
+bg=$(magick "$tmp/raw.png" -format '%[pixel:p{2,2}]' info:)
+magick "$tmp/raw.png" -bordercolor "$bg" -border 1 -fuzz 2% -trim +repage \
+  -bordercolor "$bg" -border $((24 * scale)) "$out"
+magick identify -format '%wx%h\n' "$out"
