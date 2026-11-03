@@ -9,6 +9,8 @@
 >
 > Emit `<promise>REVIEW_DONE</promise>` ONLY when the review file exists with every finding
 > dispositioned AND every `fix` commit is pushed. Never to escape the loop.
+> Never write the promise tag in any other message, not even to say you will not emit it —
+> the loop's stop hook can read an earlier message, so a mention ends the loop.
 > Before emitting it, stop every background shell you started (TaskStop tool). A shell left
 > running keeps the session in `bg` state, and orch never marks the step done.
 >

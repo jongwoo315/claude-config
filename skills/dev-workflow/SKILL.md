@@ -236,6 +236,8 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   > keep working. Do NOT use superpowers:executing-plans or subagent-driven-development.
   > Emit `<promise>RALPH_DONE</promise>` ONLY when every Done-criteria item and every Pre-PR check
   > is genuinely true AND the PR has been created — never to escape the loop.
+  > Never write the promise tag in any other message, not even to say you will not emit it —
+  > the loop's stop hook can read an earlier message, so a mention ends the loop.
   > RALPH_DONE means the work is finished, NOT that the result passed. If an honest measurement
   > lands in a below-pass band of the plan (re-measure or 미완), and the plan step for that band has
   > been carried out, write the band and the measured value verbatim in the report and at the top of
