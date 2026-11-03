@@ -1,25 +1,49 @@
-# $PLAB_REPO_SERVER — AWS Resource Analyzer Configuration
-# Updated: 2026-02-24
+# plabfootball 프로덕션 — AWS Resource Analyzer Configuration
+# Updated: 2026-11-03 (실제 리소스로 다시 맞춤)
 #
 # 이 파일은 /ops:aws-resource-analyzer 커맨드가 참조하는 리소스 설정입니다.
 # 리소스가 변경되면 이 파일을 업데이트하세요.
-
 #
-# 주의: project / path_match 값의 $PLAB_* 는 환경변수다. YAML은 스스로 확장하지
-# 않으므로, 이 파일을 읽는 쪽에서 반드시 확장한 뒤 pwd와 비교할 것.
-# 확장하지 않으면 리터럴 문자열과 비교하게 되어 매칭이 항상 실패한다.
+# path_match 값의 $HOME 은 환경변수다. YAML은 스스로 확장하지 않으므로, 이 파일을 읽는
+# 쪽에서 반드시 확장한 뒤 pwd와 비교할 것. 확장하지 않으면 매칭이 항상 실패한다.
 #   pm=$(grep '^path_match:' work-main.yaml | cut -d'"' -f2)
 #   eval "pm=\"$pm\""   # 대입 문맥. eval echo 는 zsh가 glob으로 해석해 실패한다.
-project: $PLAB_REPO_SERVER
-path_match: "*/$PLAB_REPO_SERVER*"
-aws_profile: default
+#
+# ~/plab 아래 어디서든(dispatch root 포함) 이 설정을 쓴다.
+# aws_profile 은 plab 이다. default 프로필은 다른 계정(339713137324)을 가리킨다.
+#
+# Redis role 은 2026-11-03 기준이다. failover 하면 primary 가 바뀐다 —
+# 리포트 때 describe-replication-groups 의 CurrentRole 을 따른다.
+project: plab-prod
+path_match: "$HOME/plab*"
+aws_profile: plab
 region: ap-northeast-2
 
 resources:
   - type: elasticbeanstalk
-    name: "웹 서버 환경"
+    name: "v1 웹 서버 (Django)"
     application: prod
     environment: Prod-env-1
+
+  - type: ecs
+    name: "BE 2.0 (FastAPI)"
+    cluster: social-prod-cluster
+    service: social-backend-prod-service
+
+  - type: ecs
+    name: "FE 2.0"
+    cluster: social-prod-cluster
+    service: social-frontend-prod-service
+
+  - type: ecs
+    name: "BE 2.0 스케줄러"
+    cluster: social-prod-cluster
+    service: social-scheduler-prod
+
+  - type: ecs
+    name: "v1 프론트"
+    cluster: plab-front-production-cluster
+    service: plab-front-production-service
 
   - type: rds
     name: "메인 DB (Primary)"
@@ -31,17 +55,27 @@ resources:
     instance_id: plab3-replica
     role: replica
 
-  - type: elasticache
-    name: "Redis Primary"
-    cluster_id: pf-production-redis-001
+  - type: rds
+    name: "구관사 DB (Postgres)"
+    instance_id: plab-product-prod
     role: primary
 
   - type: elasticache
-    name: "Redis Replica 1"
+    name: "Redis (pf-production)"
+    cluster_id: pf-production-redis-003
+    role: primary
+
+  - type: elasticache
+    name: "Redis (pf-production)"
     cluster_id: pf-production-redis-002
     role: replica
 
   - type: elasticache
-    name: "Redis Replica 2"
-    cluster_id: pf-production-redis-003
+    name: "Redis (구관사)"
+    cluster_id: plab-product-prod-redis-001
+    role: primary
+
+  - type: elasticache
+    name: "Redis (구관사)"
+    cluster_id: plab-product-prod-redis-002
     role: replica
