@@ -43,13 +43,49 @@ description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(�
 | `*.atlassian.net`, jira | `parse:jira` |
 | `notion.so`, `app.notion.com` | `parse:notion` |
 | `*.slack.com` | `parse:slack` |
-| 그 외 (블로그, 문서, GitHub, 유튜브 등) | **이 커맨드** |
+| 그 외 (블로그, 문서, GitHub, 유튜브 등) | **이 커맨드** — 유튜브는 Step 1에서 자막을 받는다 |
 
 수동 호출도 가능: `/utils:url-scrap <url>`
 
+## 무인 실행 — 인자에 `--auto`가 있거나 작업 디렉터리가 `/Users/jw/prv/jobs`일 때
+
+`saved-to-notion` 잡(`/Users/jw/prv/jobs/tasks/saved_to_notion.py`)이 저장한 콘텐츠마다
+`claude -p "/utils:url-scrap <URL> --auto"`로 이 커맨드를 부른다. 묻는 사람이 없으므로 아래만 바뀐다.
+**`--auto`가 보이면 디렉터리를 확인하지 말고 무인으로 처리한다** — 디렉터리만으로 판정하게 두었더니
+37번 중 1번은 미리보기를 띄우고 「저장할까?」를 물은 채 끝났다(2026-10-31).
+나머지 단계(본문 가져오기, 요약, 스키마 조회, 프로퍼티·아이콘·서식)는 그대로다.
+
+| 단계 | 대화형 | 무인 |
+| --- | --- | --- |
+| Step 1d 본문 없음 | 붙여넣기 / 건너뛰기를 묻는다 | 저장하지 않고 `SKIP 본문 없음` 한 줄을 출력하고 끝낸다 |
+| Step 3 미리보기 + 확인 | 묻는다 | **건너뛰고 바로 Step 4로 간다** |
+| 기술/비기술 판정이 애매 | 묻는다 | Dev Scraps로 저장한다 — 잡이 개발 콘텐츠만 골라서 넘긴다 |
+| Step 5 결과 보고 | 페이지 URL | `SAVED <DB 이름> <페이지 URL>` 한 줄 |
+
+잡은 출력을 믿지 않고, 끝난 뒤 그 URL이 Notion에 생겼는지 다시 조회해서 성공 여부를 정한다.
+
 ## Process
 
-### Step 1: 본문 가져오기 (폴백 사다리)
+### Step 1: 본문 가져오기 (폴백 사다리) <!-- style-exempt -->
+
+**YouTube URL이면 1a~1c 대신 자막을 받는다.** WebFetch와 헤드리스 Chrome은 YouTube에서
+화면 틀만 가져오고 영상 내용은 못 가져온다. 언어를 한꺼번에 요청하면 429가 나므로
+`ko-orig` → `ko` → `en-orig` → `en` 순서로 하나씩 시도하고, 받으면 멈춘다.
+
+```bash
+D=$(mktemp -d)
+for L in ko-orig ko en-orig en; do
+  yt-dlp --skip-download --write-auto-subs --write-subs --sub-langs "$L" --sub-format vtt \
+    -o "$D/%(id)s.%(ext)s" "<URL>" >/dev/null 2>&1
+  ls "$D"/*.vtt >/dev/null 2>&1 && break
+done
+cat "$D"/*.vtt 2>/dev/null | grep -v -e '-->' -e '^WEBVTT' -e '^Kind:' -e '^Language:' \
+  | sed 's/<[^>]*>//g' | awk 'NF && $0 != prev {print; prev = $0}'
+```
+
+자동 자막은 같은 줄이 겹쳐 나와서 바로 앞 줄과 같은 줄은 버린다. 자막이 하나도 없으면
+`yt-dlp --skip-download --print description "<URL>"`로 받은 영상 설명을 본문으로 쓴다.
+그것도 비어 있으면 1d로 간다. `제목`은 영상 제목이다(`--print title`).
 
 **1a. WebFetch 시도.**
 
