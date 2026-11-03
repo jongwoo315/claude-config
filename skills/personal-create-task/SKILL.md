@@ -125,6 +125,9 @@ if repo_url:
 payload = {
     # database_id + 옛 API 버전(2022-06-28)은 400이 난다 — 이 DB는 data source가 2개다 (2026-10-22 실측)
     'parent': {'type': 'data_source_id', 'data_source_id': '29241e61-65c0-80e4-aaf5-000bcafbb440'},
+    # 아이콘은 내장 회색 문서 아이콘으로 통일한다. 이모지 쓰지 말 것.
+    # 이 규칙이 ~/prv 루트 메모리에만 있을 때 하위 폴더 세션이 만든 #164·#170~#176이 빠졌다 (2026-11-03)
+    'icon': {'type': 'external', 'external': {'url': 'https://www.notion.so/icons/document_gray.svg'}},
     'properties': properties,
     'children': [
         {
