@@ -199,9 +199,23 @@ description·댓글 모두 ADF(Atlassian Document Format)다. 위 §Notion 페�
 **payload를 shell에서 조립하지 말 것.** 한글과 중첩 JSON이 섞인다. python으로
 파일을 만든 뒤 `--data-binary @file`로 보낸다.
 
+## 지표 조회 — Grafana와 CloudWatch 둘 다 본다
+
+**Datadog은 쓰지 않는다** (2026-11-03 jw). 지표는 아래 두 곳에 나뉘어 있어서 한쪽만 보면 빠진다.
+
+| 대상 | 어디서 보나 |
+| --- | --- |
+| BE 2.0 (`social-backend-prod`) 요청량·5xx·p99·엔드포인트별 지표, DB·Redis·외부 API 응답 | **Grafana** (AMP). 온콜 요약 대시보드 uid `plab20-oncall-summary` |
+| v1 Django (`Prod-env-1` EB) | **CloudWatch** — EB Health·이벤트, ALB `RequestCount`·5xx·`TargetResponseTime` |
+| RDS·ElastiCache·ECS 서비스 수·Lambda·알람 | **CloudWatch** |
+
+- **Grafana(AMP)에는 v1 Django 지표가 없다.** BE 2.0만 싣는다. v1 엔드포인트별 지표는 이제 어디에도 없다 —
+  v1은 ALB 단위(전체 요청·5xx·응답시간)까지만 본다
+- 상태 확인을 요청받으면 두 곳을 다 조회하고, 어느 쪽에서 본 값인지 같이 적는다
+
 ## Grafana (Amazon Managed Grafana)
 
-plabfootball 관측 대시보드. **Datadog에서 이관 중** — 신규 지표는 이쪽을 먼저 본다.
+plabfootball 관측 대시보드. BE 2.0 지표는 여기서 본다.
 
 자격증명은 `~/.zshenv`의 `PLAB_GRAFANA_*`. 저장소에 절대 쓰지 않는다.
 `PLAB_GRAFANA_URL` `PLAB_GRAFANA_WORKSPACE_ID` `PLAB_GRAFANA_SA_ID` `PLAB_GRAFANA_TOKEN`
