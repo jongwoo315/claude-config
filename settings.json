@@ -32,9 +32,6 @@
       "serverName": "playwright"
     },
     {
-      "serverName": "datadog"
-    },
-    {
       "serverName": "code-review-graph"
     }
   ],
