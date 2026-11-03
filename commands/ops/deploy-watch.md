@@ -14,9 +14,8 @@ description: Use when you want to watch production for issues after a specific P
 **모델이 하는 일은 신호 선정뿐이다.** 스크립트 골격은 동결된 템플릿을 복사한다 —
 직접 써내지 말 것. 이유는 아래 Step 4.
 
-`ops:deploy-perf-report` 와의 차이: 그건 배포 후 **1회** 레이턴시 리포트다.
 이건 N일간 **무인 감시**다. 대부분의 PR은 레이턴시가 아니라 예외로 실패하므로
-기본값으로 성능 리포트를 고르지 말 것 (Step 2의 계기 자격 검사).
+기본값으로 레이턴시 신호를 고르지 말 것 (Step 2의 계기 자격 검사).
 
 ## How to Invoke
 
@@ -88,16 +87,14 @@ gh api repos/$PLAB_GH_ORG/$PLAB_REPO_SERVER/pulls/{N}/files --paginate \
 
 레이턴시 기반 신호를 고르려 한다면, **먼저 영향 표면의 트래픽을 잰다.**
 
-diff 에서 엔드포인트를 추적한 뒤 (`ops:deploy-perf-report`의 Step 2 매핑 규칙 재사용):
+diff 에서 엔드포인트를 추적한 뒤 지난 24시간 요청 수를 잰다. 어디서 재는지는 백엔드에 따라 다르다.
 
-```bash
-NOW=$(date +%s); FROM=$((NOW-86400))
-curl -s -G "https://api.datadoghq.com/api/v1/query" \
-  --data-urlencode "api_key=$DD_API_KEY" --data-urlencode "application_key=$DD_APP_KEY" \
-  --data-urlencode "from=$FROM" --data-urlencode "to=$NOW" \
-  --data-urlencode "query=sum:trace.django.request.hits{*} by {resource_name}.rollup(sum,86400)" \
-  | jq -r '.series[]? | "\(.pointlist|map(.[1])|map(select(.!=null))|add // 0)\t\(.tag_set[0])"' | sort -rn
-```
+- **BE 2.0** — Grafana(AMP)에서 엔드포인트별로 잰다 (`rules/apis.md` §Grafana의 `ds/query`로 실행):
+  ```promql
+  sort_desc(sum by (http_route) (increase(http_server_request_duration_seconds_count{service_name="social-backend-prod"}[24h])))
+  ```
+- **v1 Django** — 엔드포인트별 지표가 없다(Datadog을 쓰지 않는다. AMP에는 v1 지표가 없다).
+  잴 수 없으므로 **레이턴시 신호는 실격**으로 보고 예외 기반 신호로 간다
 
 `일 요청 수 / 144 < 10` 이면 **레이턴시 신호 실격.** 예외 기반 신호로 갈 것.
 이 판정을 리포트에 수치와 함께 남긴다.

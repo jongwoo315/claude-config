@@ -83,7 +83,7 @@ the #1 time-sink (see Gotchas).
 | Class | Meaning | Examples | Use |
 |---|---|---|---|
 | **complete** | every event, no sampling | ALB access logs (S3, Athena), CloudWatch app logs, DB audit/**binlog**, `django_admin_log` | source of truth — consume first |
-| **sampled** | partial retention | Datadog APM traces/spans | strong but absence ≠ non-occurrence |
+| **sampled** | partial retention | OTel traces (BE 2.0 only) | strong but absence ≠ non-occurrence |
 | **lagged** | delayed + merge-collapsed | BigQuery CDC / Datastream, read-replica | direction only; never treat absence as proof |
 
 Rule: **prove or kill a hypothesis with a complete source before writing it down.** A finding from

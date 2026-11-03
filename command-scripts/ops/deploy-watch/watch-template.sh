@@ -87,7 +87,7 @@ SENTRY_EXCLUDE="${SENTRY_EXCLUDE:-}"
 
 # 신호 3 — 임의 체크. 위 메뉴로 안 되는 신호를 위한 확장점.
 # stdout 한 줄이 이벤트 하나가 된다. 출력이 없으면 정상으로 본다.
-# 예: 슬로우 쿼리 건수, row count 정합성, Datadog 임계 초과 여부.
+# 예: 슬로우 쿼리 건수, row count 정합성, Grafana·CloudWatch 지표 임계 초과 여부.
 # ⚠️ 출력은 안정적이어야 한다 — 매번 변하는 숫자를 뱉으면 매 틱 알림이 간다.
 #    "임계를 넘었다" 같은 판정만 내보낼 것. 건수를 그대로 흘리지 말 것.
 EXTRA_CHECK_CMD="${EXTRA_CHECK_CMD:-}"

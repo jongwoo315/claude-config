@@ -30,8 +30,7 @@
 10분 창의 요청 수 = (일 요청 수) / 144
 ```
 
-`deploy-perf-report`의 `--min-reqs` 기본값이 10이다. 일 1,440건 미만이면
-10분 창에서 통계가 성립하지 않는다.
+10분 창에 요청이 10건은 있어야 레이턴시 통계가 성립한다. 일 1,440건 미만이면 실격이다.
 
 DEV-7711 실측 (2026-08-12, Datadog 24h):
 
@@ -109,13 +108,13 @@ org는 `$PLAB_GH_ORG` (~/.zshenv). 자격증명은 `$SENTRY_AUTH_TOKEN`.
 `firstSeen:-Nm` 으로 좁히면 베이스라인이 **하루 약 1건**으로 떨어진다
 (14일간 8건, 2026-08-12 기준 최근 24h 0건).
 
-### APM (Datadog — $PLAB_REPO_SERVER 전용)
+### 요청 지표 — BE 2.0은 Grafana, v1은 CloudWatch ALB
 
-`trace.django.request{,.hits,.errors}` by `resource_name`. 보존 15일.
-
-⚠️ **Grafana/AMP 에는 Django 지표가 없다.** AMP는 `social-backend-prod` /
-`social-backend-staging`(BE 2.0)만 싣는다. Datadog→Grafana 이관 중이지만
-v1 백엔드는 당분간 Datadog 전용이다.
+- BE 2.0: Grafana(AMP) `http_server_request_duration_seconds_{count,bucket}` by `http_route`
+  (`service_name="social-backend-prod"`). 엔드포인트별 요청 수·5xx·지연을 볼 수 있다
+- v1 Django: **엔드포인트별 지표가 없다.** Datadog은 2026-11-03부터 쓰지 않고, AMP는 BE 2.0만 싣는다.
+  CloudWatch ALB 지표(`RequestCount`·`HTTPCode_Target_5XX_Count`·`TargetResponseTime`)로
+  환경 전체만 본다
 
 ### 배포 환경 상태
 

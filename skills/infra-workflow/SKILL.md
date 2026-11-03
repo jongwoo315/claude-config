@@ -169,9 +169,8 @@ diff <(jq -S . /tmp/before-state.json) <(jq -S . /tmp/after-state.json)
 ```
 
 추가 검증:
-- 의존 서비스 헬스 (Datadog/CloudWatch alarm)
+- 의존 서비스 헬스 (CloudWatch alarm, BE 2.0이면 Grafana `plab20-oncall-summary`)
 - 애플리케이션 레벨 smoke test (해당 시)
-- `ops:datadog-latency-watch` 활용 가능
 
 **완료 체크리스트 강제:**
 
@@ -214,7 +213,6 @@ diff <(jq -S . /tmp/before-state.json) <(jq -S . /tmp/after-state.json)
 - `ops:aws-debugger` — 에러/실패 근본 원인 추적 (이 스킬보다 우선)
 - `ops:aws-resource-analyzer` — 리소스 분석/리포트
 - `ops:production-safety-audit` — prod 변경 사전 감사
-- `ops:datadog-latency-watch` — Step 8 검증 보조
 - `infra-safety-gate` — destructive 명령 자동 게이트 (이 스킬 경량 버전)
 
 **Superpowers (스텝 보강):**
