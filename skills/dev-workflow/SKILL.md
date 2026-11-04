@@ -226,6 +226,13 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   - 행은 GATE 1 `go`에서 main이 plan과 같은 커밋으로 쓴다. 루프는 용어 행을 더하지 않는다 — jw가 못 본 말이 된다.
     루프가 새 이름이 필요하면 짓지 않고 풀어 쓴다
   - plan Done criteria에 넣는다: 「plan·리포트·PR 본문은 `docs/concepts.md` 용어 절의 말을 쓴다. 쓰지 말 말을 쓰지 않는다」
+  - 넣는 기준 셋(Matt Pocock `domain-modeling/GLOSSARY-FORMAT.md`):
+    - 그 프로젝트에만 있는 개념만 넣는다. timeout·오류 종류 같은 일반 프로그래밍 개념은 많이 써도 넣지 않는다
+    - 뜻은 한두 문장으로, 무엇을 하는지가 아니라 무엇인지를 쓴다. 구현 세부(파일·함수·처리 순서)는 개념 표나 plan에 둔다
+    - 줄이는 일도 늘리는 일만큼 한다. 안 쓰게 된 말은 지운다. 구현 세부가 섞여 3,000줄까지 불어난 사례가 있다
+  - **jw가 단어장과 다르게 말하면 그 자리에서 짚는다.** Kickoff·게이트·대화 어디서든 걸린다. 질문을 새로 하는 게 아니라
+    말이 어긋날 때만 묻는다. 예: 「단어장에서 짚은 줄은 리포트가 impacted·undetermined로 낸 줄인데, 지금은 실제 오류가 난 줄을
+    말하는 것 같다. 어느 쪽인가」. jw가 고른 쪽으로 단어장이나 그 말을 고친다
   - 2026-11-04 #182 판단 로그가 「짚은 줄」·「어긋난 곳」·「같은 문장 범위」를 매번 풀어 쓰느라 길어졌다. 이름을 쓰면
     jw가 모르고, 풀어 쓰면 길어지는 문제를 착수 때 jw가 이름을 보고 받아 두는 것으로 푼다(Matt Pocock의 프로젝트 단어장)
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/<ID>-MMDD-plan-<short-topic>.md`
