@@ -27,6 +27,9 @@ for a in "$@"; do [ "$a" = "--safe" ] && SAFE=true || _args+=("$a"); done
 set -- "${_args[@]:-}"
 _apply_safe() { [ "$SAFE" = true ] && task_set "$1" skip_perms false; }
 _valid_max() { case "$1" in ''|*[!0-9]*) return 1;; *) [ "$1" -ge 1 ];; esac; }
+# daemon은 완료를 부모 세션에 알리지 않는다. 디스패치한 세션이 wait를 안 걸면 다음 단계로 안 넘어간다.
+# stdout은 id만 내야 `$(orch add …)`가 안 깨지므로 stderr로 낸다.
+_hint_wait() { echo "next: orch wait $1   # Bash run_in_background: true — 안 걸면 완료 알림이 안 온다" >&2; }
 case "$cmd" in
   add)
     if [ "${1:-}" = "--each" ]; then
@@ -34,18 +37,18 @@ case "$cmd" in
       dirs=(); while [ $# -gt 1 ]; do dirs+=("$1"); shift; done
       prompt="$1"
       for d in "${dirs[@]}"; do
-        id=$(task_create "$d" single "$prompt"); _apply_safe "$id"; echo "$id"
+        id=$(task_create "$d" single "$prompt"); _apply_safe "$id"; echo "$id"; _hint_wait "$id"
       done
     else
       [ -n "${1:-}" ] || { echo "usage: orch add [dir] <prompt>" >&2; exit 1; }
       dir="$1"; prompt="${2:-}"
       # one arg → it's the prompt; target the current directory
       [ -n "$prompt" ] || { prompt="$dir"; dir="$PWD"; }
-      id=$(task_create "$dir" single "$prompt"); _apply_safe "$id"; echo "$id"
+      id=$(task_create "$dir" single "$prompt"); _apply_safe "$id"; echo "$id"; _hint_wait "$id"
     fi ;;
   pipe)
     dir="$1"; shift
-    id=$(task_create "$dir" pipeline "$@"); _apply_safe "$id"; echo "$id" ;;
+    id=$(task_create "$dir" pipeline "$@"); _apply_safe "$id"; echo "$id"; _hint_wait "$id" ;;
   ls)
     printf '%-16s %-10s %-9s %-7s %s\n' ID TARGET MODE STEP STATUS
     for f in "$ORCH_QUEUE"/task-*.json; do
