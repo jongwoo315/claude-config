@@ -217,6 +217,17 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   - `~/plab`·`~/work`에서는 커밋하지 않는다. `docs/plans/`처럼 `.git/info/exclude`에 넣는다
   - 2026-11-03 cheongyak-rag #81 착수 때 jw가 축 7개·특별공급 유형 6개·판정값 5개를 처음 알았다. #79부터 Kickoff와
     판단 로그가 「축」을 아는 말처럼 썼고, 무엇이 7개인지는 바탕 설계와 코드에만 있었다
+- **단어장 — `docs/concepts.md`의 `## 용어` 절.** 개념 표가 코드에 정의된 목록이라면, 단어장은 plan·리포트·판단 로그에서
+  쓸 말이다(측정값 이름, 비교 방법 이름, 단계 이름). plan을 쓰기 전에 이 티켓이 새로 쓰는 말을 고르고 GATE 1에 띄운다
+  - 열: `용어 · 뜻 한 줄 · 쓰지 말 말 · 제안자 · 만든 티켓`. 「쓰지 말 말」은 같은 개념을 가리키는 다른 이름이다
+    (예: 용어 「짚은 줄」, 쓰지 말 말 「플래그된 줄」·「지점」)
+  - 제안자는 그 말을 먼저 쓴 쪽이다. Claude가 지은 말은 `Claude`로 적는다 — 단어장에 올랐다고 jw가 고른 말이 되지 않는다
+    (`rules/korean-style.md` §규칙 파일에 있다고 사용자 어휘가 아니다)
+  - 행은 GATE 1 `go`에서 main이 plan과 같은 커밋으로 쓴다. 루프는 용어 행을 더하지 않는다 — jw가 못 본 말이 된다.
+    루프가 새 이름이 필요하면 짓지 않고 풀어 쓴다
+  - plan Done criteria에 넣는다: 「plan·리포트·PR 본문은 `docs/concepts.md` 용어 절의 말을 쓴다. 쓰지 말 말을 쓰지 않는다」
+  - 2026-11-04 #182 판단 로그가 「짚은 줄」·「어긋난 곳」·「같은 문장 범위」를 매번 풀어 쓰느라 길어졌다. 이름을 쓰면
+    jw가 모르고, 풀어 쓰면 길어지는 문제를 착수 때 jw가 이름을 보고 받아 두는 것으로 푼다(Matt Pocock의 프로젝트 단어장)
 - **Plan** — always `superpowers:writing-plans` → `docs/plans/<ID>-MMDD-plan-<short-topic>.md`
   (`<ID>` = `DEV-XXXX` 또는 `<NN>`. 날짜는 **`MMDD`**, **type이 topic보다 앞**.
   전체 규칙은 이 파일 아래 `## docs/plans 파일 규칙`). Because Phase B's ralph prompt is only a short pointer to
@@ -287,6 +298,8 @@ A4 「끝까지 도는 흐름」 판정이 plan의 Task 순서에 들어갔는�
 
 **새로 만드는 개념** <없다> 또는 <개념마다 표 한 장 — 이름 · 뜻 한 줄. 목록이면 항목 전부를 적는다(「축 7개」가 아니라 7개 각각)>
 
+**새로 쓰는 말** <없다> 또는 <용어마다 한 줄 — 용어: 뜻 한 줄. 쓰지 말 말: … (제안: jw 또는 Claude)>. `go`가 이 말들을 승인한다. 다른 말을 원하면 `adjust`
+
 **jw 기준**
 - 원문: 「<A0 원문>」
 - 잴 방법: <무엇을 무엇과 비교하나>
@@ -315,7 +328,8 @@ A4 「끝까지 도는 흐름」 판정이 plan의 Task 순서에 들어갔는�
 > - cancel — worktree 정리 후 중단
 
 - **go** → commit the plan (`~/prv`: 같은 커밋에 `docs/decisions.md` 행 추가 — 기준 칸만 채운다.
-  서식은 `rules/before-work.md` §레포에 남기는 판단 기록. 회사 repo: 커밋하지 않고
+  서식은 `rules/before-work.md` §레포에 남기는 판단 기록. 「새로 쓰는 말」이 있으면 `docs/concepts.md` 용어 절 행도
+  같은 커밋에 넣는다. 회사 repo: 커밋하지 않고
   `docs/plans/`를 `.git/info/exclude`에 넣는다), create ticket
   (A2 deferred creation if not yet made), **티켓을 작업 중 상태로 옮긴다**, proceed to Phase B.
 

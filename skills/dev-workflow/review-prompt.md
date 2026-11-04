@@ -53,6 +53,10 @@ calling it burns iterations looking for a skill that is not there.
 
 Weigh findings by the plan first, then by correctness, then by everything else.
 
+**단어장 검사.** repo에 `docs/concepts.md`의 `## 용어` 절이 있으면, 「쓰지 말 말」 칸의 말을 diff의 코드·주석·docstring·
+문서에서 찾는다. 나온 곳마다 지적 한 행(Suggestion)을 남기고 처리는 용어 절의 말로 바꾸는 `fix`다. 코드 식별자 이름까지
+바꿔야 하면 `defer`로 두고 이유를 적는다. 용어 절이 없으면 이 검사를 건너뛰고 리뷰 파일에 「단어장 없음」 한 줄을 적는다.
+
 ## 3. Write the review file
 
 `docs/plans/<ID>-MMDD-review-<short-topic>.md` — same naming rule as every other plans file
