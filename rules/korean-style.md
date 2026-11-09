@@ -393,6 +393,35 @@ cd ~/plab && for d in */; do n=$(grep -rn "<말>" "$d" 2>/dev/null | wc -l | tr 
 | 경보 *(alert — Dependabot·모니터링)* | **`alert`**, **알림** | `경보`는 사이렌·공습경보 쪽 말이다. **`오경보`(false alarm)는 사전어라 정상** — `~/.claude` 4곳 전부 이쪽. `upgrade-impact-rag` `bumpcheck/judge/run.py:89`(경보가 샌 것) 1곳은 전용 세션 repo라 세기만 했다. `korean-harvest` 10-24, jw 판정 10-25 |
 | 재잠금 · 다시 잠갔다 *(re-lock — lockfile)* | **lockfile 재생성**, **lockfile을 다시 만들었다** | 자물쇠 비유 직역. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
 | 위층 *(upper tier — 가설)* | **상위 단계**, **`hypothesis tier`** | 건물 비유 직역. **건물 뜻은 정상** — `cheongyak-rag` 법령 데이터 11곳(최하층 우선배정)이 이쪽. 파일 0건. `korean-harvest` 10-24, jw 판정 10-25 |
+| 거절률 *(refusal rate)* | **거절 비율**, **`refusal rate`** | `-률` 조립 — `파손률` 행과 같은 자리. 파일 0건(`~/plab`은 이 기기에 없어 못 셌다). `korean-harvest` 10-31, jw 판정 11-09 |
+| 예열 *(warmup)* | **`warmup`**, **미리 연결해 둔다** | 기계·요리 비유 직역. 파일 0건. `korean-harvest` 10-31, jw 판정 11-09 |
+| 키 순환 *(key rotation)* | **키 교체**, **`key rotation`** | 직역. **`순환 import`·`순환 참조`는 정상**이라 `키 순환` 꼴만 적는다. 파일 0건. `korean-harvest` 10-31, jw 판정 11-09 |
+| 문 *(statement — 컴파일된 문 캐시)* | **`statement`** 원어 그대로 | 한 글자로 옮겨 문장(文)인지 문(門)인지 안 갈린다. `준비문` 행과 같은 개념이다. 파일 0건(「골든 질문 캐시」 4곳은 다른 말). `korean-harvest` 10-31, jw 판정 11-09 |
+| 기본 예외 *(BaseException)* | **`BaseException`** 원어 그대로 | 클래스 이름을 번역하면 그 이름으로 검색할 수 없다 — §이름이 된 패턴은 번역하지 않는다와 같은 근거. 파일 0건. `korean-harvest` 10-31, jw 판정 11-09 |
+| 신뢰 게시 *(Trusted Publishing)* | **`Trusted Publishing`** 원어 그대로 | PyPI 기능 이름이라 번역하면 그 이름으로 검색할 수 없다. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 저장점 *(SAVEPOINT)* | **`SAVEPOINT`** 원어 그대로 | SQL 키워드 직역. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 재귀 가드 *(recursion guard)* | **`recursion guard`**, **재귀 방지 검사** | 음차 `가드`에 명사를 붙인 조립. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 지연 빌드 *(deferred build)* | **`defer_build`**, **처음 쓸 때 만든다** | pydantic 옵션 이름 직역. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 전방 주석 *(forward annotation)* | **`forward reference`**, **문자열로 쓴 타입 힌트** | 조립. **C의 `전방 선언`은 정착어라 정상.** 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 별칭 생성기 *(alias generator)* | **`alias_generator`** 원어 그대로 | pydantic 옵션 이름이고 `-기` 조립이다 — `검증기` 행과 같은 자리. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 부분 JSON *(partial JSON parsing)* | **`partial JSON`**, **덜 받은 JSON** | 「일부만 있는 JSON」인지 「JSON의 일부분」인지 안 갈린다. 파일 0건. `korean-harvest` 11-07, jw 판정 11-09 |
+| 핑퐁 *(ping-pong — 확인을 주고받는 것)* | **주고받기**, **확인을 주고받을 일** — 「핑퐁이 거의 없고」 → 「확인을 주고받을 일이 거의 없고」 | 탁구 비유 음차. `~/.claude`·`~/prv` 0건, `~/plab`은 이 기기에 없어 못 셌다. `korean-sweep-plab` 11-01, jw 판정 11-09 |
+| 단기분 · 중기분 | **단기 조치**, **중기 조치** | `-분` 조립이라 「몫」인지 「시간(分)」인지 안 갈린다. `korean-sweep-plab` 11-01, jw 판정 11-09 |
+| 앞뒤 방향 *(마이그레이션 upgrade/downgrade)* | **`upgrade`·`downgrade`**, **올리고 내리기** | 무엇의 앞뒤인지 안 잡힌다. alembic 이름을 쓰면 코드와 이름이 같아진다. `korean-sweep-plab` 11-01, jw 판정 11-09 |
+| 펼친 폴더 | **압축을 푼 폴더** | 펼친 것이 화면의 폴더 트리인지 압축 파일인지 안 갈린다. 압축을 풀었다는 뜻은 Claude 추정이다. `korean-sweep-plab` 11-01, jw 판정 11-09 |
+| 옮겨 붙다 · 옮겨 붙을 · 옮겨 붙는 *(AP 로밍)* | **다른 AP로 다시 연결된다**, **로밍** | 「불이 옮겨 붙다」로 먼저 읽힌다. **불이 옮겨 붙는 원뜻은 정상** — 검사기는 둘을 못 가려 둘 다 [검토]로 띄운다. `korean-sweep-plab` 11-01, jw 판정 11-09 |
+| 같은 모양으로 *(same pattern — 틀린 방식·반복)* | **같은 방식으로**, **같은 유형으로** | `pattern` 직역. **자료 구조가 같다는 뜻(shape)은 이 행이 다루지 않는다** — upgrade-impact-rag 코드 주석 12곳이 그쪽이다(전용 세션 repo라 세기만 했다). 검사기는 둘을 못 가린다. `korean-sweep` 11-01, jw 판정 11-09 |
+| 자리 채우기 *(placeholder)* | **`stub`**, **빈 값만 돌려주는 임시 구현** | CLAUDE.md와 dev-workflow가 같은 것을 이미 `stub`으로 부른다 — §옆에 이미 풀어 쓴 말이 있으면 그것을 쓴다. 파일 0건. `korean-sweep` 11-01, jw 판정 11-09 |
+| 반복 예산 *(iteration budget — 루프 최대 반복 수)* | **반복 횟수**, **`--max-iterations`** | 돈 비유 직역. **`skills/dev-workflow/SKILL.md`에 1곳 굳어 있었다**(「반복 예산을 통째로 태우는데」) — 같은 날 고쳤다. `korean-sweep` 11-01, jw 판정 11-09 |
+| 숨는다 *(화면 요소가)* | **안 보인다**, **나오지 않는다** | 사람 동작 비유. **「같은 숫자 뒤에 숨는다」(오류가 집계에 묻힌다)는 이 행이 다루지 않는다** — `~/prv` 5곳이 그쪽이다. 검사기는 둘을 못 가린다. `korean-sweep` 11-01, jw 판정 11-09 |
+| 재는 공고 · 재는 30건 | **`test` 공고**, **측정용 공고** | `재는`이 「재(灰)는」으로도 읽힌다 — `재기` 행과 같은 뿌리다. 코드 이름 `test`를 쓰면 글과 코드가 같은 이름을 쓴다. **cheongyak-extract에 이름처럼 굳어 있다** — `~/prv` 187곳(README 「뒤 30건이 재는 공고 `test`」, 결정 문서, 리포트, plan). 전용 세션 repo라 세기만 했다. `korean-sweep` 11-08, jw 판정 11-09 |
+| 센 값 · 센 스크립트 | **집계한 값**, **개수를 센 스크립트** | `센`이 「강한」으로 먼저 읽힌다 — `근거가 센` 행과 같은 글자다. `~/.claude` 1곳(`rules/after-pr.md`)은 같은 날 고쳤다. `~/prv` 92곳(upgrade-impact-rag·cheongyak-rag·cheongyak-extract)은 전용 세션 repo라 세기만 했다. `korean-sweep` 11-08, jw 판정 11-09 |
+| 실행기 *(jobs 실행 래퍼)* | **실행 래퍼**, **`run-job`** | `-기` 조립. jobs README가 이미 「실행 래퍼」로 부른다 — §옆에 이미 풀어 쓴 말이 있으면 그것을 쓴다. **다른 것을 실행하는 쪽(`executor`)은 이 행이 다루지 않는다** — `~/prv` 3곳이 그쪽이다. `korean-sweep` 11-08, jw 판정 11-09 |
+| 다듬는 공고 | **`tune` 공고**, **규칙을 다듬는 데 쓰는 공고** | 위 `재는 공고` 행의 짝. 코드 이름 `tune`과 맞춘다. cheongyak-extract `~/prv` 92곳, 세기만 했다. `korean-sweep` 11-08, jw 판정 11-09 |
+| 수용 조건 *(acceptance criteria)* | **완료 조건**, **`acceptance criteria`** | 직역. 같은 티켓 문장이 「수용 기준」으로도 불러서 한 개념에 이름이 둘이 된다. 파일 0건(`~/plab`은 이 기기에 없어 못 셌다). `korean-sweep-plab` 11-08, jw 판정 11-09 |
+| 초록 *(CI·테스트 통과)* | **통과**, **CI 통과** | CI 녹색 비유 직역 — `가짜 초록불` 행과 같은 뿌리다. **색 이름 뜻은 정상.** `~/prv` 3곳(upgrade-impact-rag 테스트 주석, cheongyak-extract 리뷰 파일)은 전용 세션 repo라 세기만 했다. `korean-sweep-plab` 11-08, jw 판정 11-09 |
+| 실격 *(신호를 판정에서 뺀다)* | **판정에서 뺀다**, **쓸 수 없는 신호로 본다** | 경기 용어 — `실격선` 행과 같은 뿌리다. 파일 0건. `korean-sweep-plab` 11-08, jw 판정 11-09 |
+| 노출 창 *(exposure window)* | **노출 시간**, **다른 사용자가 읽을 수 있는 틈** | `window` 직역 — `컨텍스트 창` 행과 같은 자리다. **`rules/databases.md`에 1곳 굳어 있었다** — 같은 날 고쳤다. `korean-sweep-plab` 11-08, jw 판정 11-09 |
 
 `회수`를 원뜻으로 쓰는 것은 정상 — *"위임을 회수했다"* ○ / *"문서가
 회수되면"* ✗.
