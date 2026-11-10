@@ -13,6 +13,10 @@
 > the loop's stop hook can read an earlier message, so a mention ends the loop.
 > Before emitting it, stop every background shell you started (TaskStop tool). A shell left
 > running keeps the session in `bg` state, and orch never marks the step done.
+> Also before emitting it, `git status --porcelain` must print nothing, including files the
+> implementation loop left behind. Commit what belongs in the PR; add generated files (run logs,
+> caches) to `.gitignore` in one commit, and list that commit in the review file. A leftover
+> untracked file keeps the dispatcher waiting, and the judgment log never comes up.
 >
 > On a HARD, retry-proof API error (401/403, `insufficient_quota`, exhausted billing), STOP —
 > do not emit the promise, do not spin. A TRANSIENT error that stops being transient counts as

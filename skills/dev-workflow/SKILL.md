@@ -270,6 +270,9 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   > Do not keep iterating to push a number over a threshold the plan's tasks no longer cover.
   > Before emitting it, stop every background shell you started (TaskStop tool). A shell left
   > running keeps the session in `bg` state, and orch never marks the step done.
+  > Also before emitting it, `git status --porcelain` must print nothing. Commit what belongs in
+  > the PR; add generated files (run logs, caches, scratch output) to `.gitignore`. A leftover
+  > untracked file keeps the dispatcher waiting, and the review never starts.
   > On a HARD, retry-proof API error (OpenAI insufficient_quota, 401/403, exhausted billing), STOP —
   > do NOT emit RALPH_DONE, do NOT create a PR, do NOT spin retrying. It surfaces via the orch
   > completion notification; a human fixes billing. (Transient TPM 429 is different — pace and retry.)
@@ -525,6 +528,13 @@ orch wait <id>      # Bash run_in_background: true
 | `BG_STUCK <id> <분>` | 턴은 끝났는데 백그라운드 shell이 남아 `running`에 묶였다 | C1 「남은 shell을 본다」 — 멈춘 것이면 죽이고 `orch wait`를 다시 건다 |
 | `FAILED <id>` | daemon이 session died·stuck·첫 줄 제출 실패로 판정 | jw에게 알린다. `orch logs <id>`의 마지막 화면을 같이 보여준다 |
 | `GONE <id>` | 태스크 파일이 없다 (`orch rm` 등) | jw에게 알린다 |
+| `DIRTY <id> <분>` | `done`인데 커밋 안 된 파일이 15분 넘게 그대로다. 위 줄들이 그 파일 목록이다 | 리뷰를 띄우지 않는다. 파일 목록을 jw에게 보여 주고 커밋·gitignore·삭제 중 무엇을 할지 묻는다. 정리되면 `orch wait`을 다시 건다 |
+
+**`DIRTY`가 왜 있나.** 2026-11-09 cheongyak-rag #72에서 구현 루프가 실행 로그 2개(`runs/72/run1.log`·
+`run2.log`)를 커밋도 gitignore도 하지 않고 끝냈다. `orch wait`은 깨끗해지기를 기다리느라 8시간 반 동안 <!-- style-exempt -->
+아무 신호도 내지 않았고, jw가 아침에 물어서야 리뷰가 떴다. 남은 파일과 그 수정 시각이 바뀌는 동안은
+루프가 아직 일하는 것으로 보고 계속 기다린다. 기다리는 시간은 `ORCH_WAIT_DIRTY_STALE`(초, 기본 900)이다. <!-- style-exempt -->
+루프 쪽에도 같은 요구를 넣었다 — A4 plan 머리말의 `git status --porcelain` 줄.
 
 깨어나는 신호는 task-notification이라 jw 입력이 아니다. 하지만 여기서 하는 일(C2 dispatch, G2a
 블록 띄우기)은 이 스킬이 원래 사람 확인 없이 하는 단계라 승인이 필요 없다.
