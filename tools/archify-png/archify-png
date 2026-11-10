@@ -2,8 +2,10 @@
 # archify HTML 을 판단 로그용 PNG 한 장으로 찍는다 — 휴대폰에서 보기 위해서다.
 #   archify-png <in.html> <out.png> [width]
 #
-# 화면용 조작 막대·노드 목록(.no-print 등)을 숨긴 사본을 찍고, 아래쪽 빈 배경을 잘라낸다.
-# 창 높이로 자르면 노드 목록 윗부분이 걸쳐 잘린 채 남았다 (2026-11-03 #102 그림).
+# 화면용 조작 막대·노드 목록(.no-print 등)을 숨긴 사본을 찍는다. 창 높이는 먼저 DOM 으로
+# 내용(.container) 아래 끝을 재서 그만큼만 잡는다.
+# 예전에는 2400px 창으로 찍고 배경색으로 잘라냈는데, 회사 Mac Chrome 이 4배(4800x9600)를
+# 빈 화면으로 찍어 잘라낼 게 없었다. 게이트 세션은 원본을 그대로 보냈다 (2026-11-10 DEV-11482).
 set -eu
 in=${1:?usage: archify-png <in.html> <out.png> [width]}; out=${2:?usage: archify-png <in.html> <out.png> [width]}
 in=${in:A}   # file:// 에 넣으므로 절대 경로로 바꾼다
@@ -11,18 +13,29 @@ width=${3:-1200}
 # 휴대폰에서 받아 저장한 원본을 확대해 읽으므로, 작은 글씨가 깨지지 않게 4배로 찍는다.
 scale=${ARCHIFY_PNG_SCALE:-4}
 chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-tmp=$(mktemp -d); trap '/bin/rm -rf "$tmp"' EXIT
+command -v magick >/dev/null || { echo "archify-png: imagemagick 필요 (brew install imagemagick)" >&2; exit 1; }
+tmp=$(mktemp -d)
 
 # 사본은 원본 옆에 둔다 — 상대 경로 자원이 있으면 그대로 읽히게.
 copy="${in:h}/.archify-png-$$.html"; trap '/bin/rm -rf "$tmp" "$copy"' EXIT
-sed 's|</head>|<style>.toolbar,.diagram-nav,.node-outline,.rail-controls,.route-journey-controls{display:none!important}</style></head>|' "$in" > "$copy"
+probe='<script>setTimeout(()=>{const c=document.querySelector(".container")||document.body;document.body.setAttribute("data-shot-h",Math.ceil(c.getBoundingClientRect().bottom+scrollY))},800)</script>'
+sed -e 's#</head>#<style>.toolbar,.diagram-nav,.node-outline,.rail-controls,.route-journey-controls{display:none!important}</style></head>#' \
+    -e "s#</body>#${probe}</body>#" "$in" > "$copy"
 
-"$chrome" --headless=new --hide-scrollbars --force-device-scale-factor="$scale" \
-  --window-size="$width,2400" --virtual-time-budget=4000 \
-  --screenshot="$tmp/raw.png" "file://$copy" >/dev/null 2>&1
+h=$("$chrome" --headless=new --window-size="$width,2400" --virtual-time-budget=4000 \
+  --dump-dom "file://$copy" 2>/dev/null | sed -n 's/.*data-shot-h="\([0-9]*\)".*/\1/p' | head -1)
+[ -n "$h" ] || { echo "archify-png: 내용 높이를 못 쟀다" >&2; exit 1; }
+h=$((h + 32))   # body 아래 여백(2rem)
 
-# 왼쪽 위 픽셀이 페이지 배경색이다. 그 색으로 둘레를 잘라내고 여백을 다시 붙인다.
-bg=$(magick "$tmp/raw.png" -format '%[pixel:p{2,2}]' info:)
-magick "$tmp/raw.png" -bordercolor "$bg" -border 1 -fuzz 2% -trim +repage \
-  -bordercolor "$bg" -border $((24 * scale)) "$out"
+# 큰 배율은 Chrome 이 빈 화면을 낼 수 있다. 픽셀이 전부 한 색이면 배율을 반으로 줄여 다시 찍는다.
+while :; do
+  "$chrome" --headless=new --hide-scrollbars --force-device-scale-factor="$scale" \
+    --window-size="$width,$h" --virtual-time-budget=4000 \
+    --screenshot="$tmp/raw.png" "file://$copy" >/dev/null 2>&1
+  [ "$(magick "$tmp/raw.png" -format '%[fx:standard_deviation>0]' info:)" = 1 ] && break
+  [ "$scale" -le 1 ] && { echo "archify-png: 빈 화면만 찍힌다" >&2; exit 1; }
+  echo "archify-png: ${scale}배가 빈 화면이라 $((scale / 2))배로 다시 찍는다" >&2
+  scale=$((scale / 2))
+done
+cp "$tmp/raw.png" "$out"
 magick identify -format '%wx%h\n' "$out"
