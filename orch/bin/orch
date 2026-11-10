@@ -117,17 +117,21 @@ case "$cmd" in
     #   GONE <id>             exit 3   (task 파일 없음 — orch rm 등)
     #   BG_STUCK <id> <분>     exit 4   (턴은 끝났는데 백그라운드 shell 이 남아 running 에
     #                                   묶였다. SKILL.md C1 의 남은 shell 확인으로 간다)
+    #   DIRTY <id> <분>        exit 5   (done 인데 남은 파일이 그대로다. 위 줄들에 파일 목록.
+    #                                   깨끗해질 일이 없어 신호 없이 영원히 돌던 경우 —
+    #                                   2026-11-09 cheongyak-rag #72, untracked 로그 2개로 8시간 반)
     [ -n "${1:-}" ] || { echo "usage: orch wait <id>" >&2; exit 1; }
     id="$1"; f="$ORCH_QUEUE/task-$id.json"
     iv="${ORCH_WAIT_INTERVAL:-60}"; bg_stale="${ORCH_WAIT_BG_STALE:-900}"
-    T="${ORCH_TMUX:-tmux}"; prev=''; bg_since=''
+    dirty_stale="${ORCH_WAIT_DIRTY_STALE:-900}"
+    T="${ORCH_TMUX:-tmux}"; prev=''; bg_since=''; dirty_since=''; dirty_snap=''
     while :; do
       [ -e "$f" ] || { echo "GONE $id"; exit 3; }
       st=$(jq -r .status "$f"); dir=$(jq -r .target "$f"); sess=$(jq -r '.session // empty' "$f")
       case "$st" in
         failed) echo "FAILED $id"; exit 2 ;;
         running)
-          prev=''
+          prev=''; dirty_since=''; dirty_snap=''
           # 백그라운드가 남은 시간은 이 wait 가 직접 잰다. @claude_state_at 은 상태가 바뀐
           # 시각이라 ralph 루프에서는 루프 시작 시각으로 남아 있다 — 그걸 쓰면 시작 15분 뒤
           # bg 가 생기는 순간 BG_STUCK 이 나고, 다시 건 wait 도 첫 확인에서 바로 끝난다
@@ -141,11 +145,26 @@ case "$cmd" in
           fi ;;
         done)
           head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
-          if [ -z "$(git -C "$dir" status --porcelain 2>/dev/null)" ] && [ -n "$head" ]; then
+          left=$(git -C "$dir" status --porcelain -uall 2>/dev/null)
+          if [ -z "$left" ] && [ -n "$head" ]; then
+            dirty_since=''
             [ "$head" = "$prev" ] && { echo "DONE $id $head"; exit 0; }
             prev="$head"
           else
             prev=''
+            # 남은 파일과 그 수정 시각까지 그대로여야 멈춘 것이다 — 루프가 done 뒤에도
+            # 파일을 고치는 중이면 이 값이 바뀌어 처음부터 다시 잰다.
+            # ponytail: stat -f 는 macOS 형식. 리눅스에서 돌리면 stat -c 로 바꾼다
+            snap="$head
+$left
+$(cd "$dir" 2>/dev/null && printf '%s\n' "$left" | cut -c4- | while IFS= read -r p; do
+  [ -e "$p" ] && stat -f '%m %N' "$p"; done)"
+            now=$(date +%s)
+            if [ "$snap" != "$dirty_snap" ]; then dirty_snap="$snap"; dirty_since="$now"; fi
+            age=$(( now - dirty_since ))
+            if [ "$age" -ge "$dirty_stale" ]; then
+              printf '%s\n' "$left"; echo "DIRTY $id $((age / 60))"; exit 5
+            fi
           fi ;;
       esac
       sleep "$iv"
