@@ -38,29 +38,28 @@ zip error: Invalid command arguments (stderr is not a tty)
 
 ## Process
 
-**Step 1 — Claude가 실행:** 파일 준비 + Finder/Notion 열기
+**Step 1 — Claude가 실행:** 평문 사본 준비
 
 ```bash
-rm -f /tmp/zshrc.zip /tmp/zshenv.zip /tmp/zshrc /tmp/zshenv
+/bin/rm -f /tmp/zshrc.zip /tmp/zshenv.zip /tmp/zshrc /tmp/zshenv
 
 cp ~/.zshrc  /tmp/zshrc
 cp ~/.zshenv /tmp/zshenv
 chmod 600 /tmp/zshrc /tmp/zshenv     # zip 만들기 전까지 평문이 /tmp에 있다
-
-open /tmp/
-sleep 0.5
-open "notion://www.notion.so/jongwoo315/iTerm2-ab4c5445dede4062ab1fcb0a98e6ece0"
 ```
+
+**`rm`은 전부 `/bin/rm`으로 쓴다.** 셸의 `rm`은 rm-safely 래퍼라 파일을 `~/.local/share/Trash`로
+옮길 뿐 지우지 않는다. `rm -f zshenv`로 쓰면 DB 비밀번호가 든 평문이 휴지통에 남는다.
 
 **Step 2 — 사용자가 실행:** 아래를 제시하고 **iTerm 새 탭(⌘T)에 붙여넣게** 한다.
 `!` 접두사를 붙이라고 하지 말 것 (위 "비밀번호 처리" 참조).
 
 ```bash
-cd /tmp && zip -e zshrc.zip zshrc && zip -e zshenv.zip zshenv && rm -f zshrc zshenv && ls -lh /tmp/*.zip
+cd /tmp && zip -e zshrc.zip zshrc && zip -e zshenv.zip zshenv && /bin/rm -f zshrc zshenv && /bin/ls -lh /tmp/*.zip
 ```
 
 `zip -e`가 파일마다 비밀번호를 두 번(입력·확인) 묻는다. 두 파일에 같은 비밀번호를 쓴다.
-`rm -f zshrc zshenv`가 평문 사본을 지운다 — 이 부분을 빠뜨리지 말 것.
+`/bin/rm -f zshrc zshenv`가 평문 사본을 지운다 — 이 부분을 빠뜨리지 말 것.
 
 **Step 3 — Claude가 검증:** 사용자가 끝났다고 하면 실행한다. "did it"을 그대로 믿지 않는다.
 
@@ -84,17 +83,26 @@ done
 `unzip -l`은 암호화 여부를 안 보여준다 — 목록만 보고 통과 처리하지 말 것.
 틀린 비밀번호로 `-t`를 걸어야 암호화가 실증된다. (`-t`는 테스트만 하고 파일을 안 푼다.)
 
-**Step 4 — 사용자가 수동:** Finder에서 Notion으로 드래그
+**Step 4 — Claude가 업로드:** Notion File Upload API로 올려 각 heading 바로 아래에 붙인다
 
-- `zshrc.zip` → **zshrc** 섹션
-- `zshenv.zip` → **zshenv** 섹션
+```bash
+N="$HOME/.claude/tools/notion-api/notion-api"; CAP=$(date +%y%m%d)
+for pair in zshrc:e0fad982-ba70-40da-88d2-9900f736c31e zshenv:31141e61-65c0-806b-ba1e-ee42c17efc68; do
+  name=${pair%%:*}; heading=${pair#*:}
+  id=$("$N" upload /tmp/$name.zip application/zip | cut -d' ' -f1)
+  python3 -c 'import json,sys; print(json.dumps({"children":[{"type":"file","file":{"type":"file_upload","file_upload":{"id":sys.argv[1]},"caption":[{"text":{"content":sys.argv[3]}}]}}],"position":{"type":"after_block","after_block":{"id":sys.argv[2]}}}))' "$id" "$heading" "$CAP" \
+    | "$N" PATCH /v1/blocks/ab4c5445dede4062ab1fcb0a98e6ece0/children - | jq -r '.results[0] | "\(.id) \(.file.name)"'
+done
+```
+
+- 캡션은 `YYMMDD`(옛 블록과 같은 형식). 옛 파일 블록은 지우지 않는다 — 지울지는 jw가 정한다
+- 올린 뒤 각 블록의 `file.file.url`을 내려받아 `/tmp/*.zip`과 `shasum -a 256`을 맞춰 본다. 응답의 `uploaded`만 보고 끝내지 않는다
 
 ## Output
 
 1. `/tmp/zshrc.zip`, `/tmp/zshenv.zip` (비밀번호 보호, Step 3에서 검증됨)
 2. `/tmp` 평문 사본 제거됨
-3. Finder + Notion 페이지 열림
-4. 사용자가 각 zip을 해당 섹션으로 드래그
+3. Notion iTerm2 페이지의 zshrc·zshenv heading 바로 아래에 새 파일 블록 (체크섬 확인됨)
 
 ## Notes
 
@@ -103,12 +111,14 @@ done
   Notion 계정이 안전한 한 실질 위험은 낮지만, 강화하려면 AES로 바꾼다:
   `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in zshenv -out zshenv.enc`
   (복호화: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in zshenv.enc -out zshenv`)
-- Notion의 기존 zshrc 파일 블록(`2fc41e61-65c0-80ed-aa8f-cb6b3f7051d1`)은 "zshrc" heading 아래에 있다
+- heading 블록 id: zshrc `e0fad982-ba70-40da-88d2-9900f736c31e`, zshenv `31141e61-65c0-806b-ba1e-ee42c17efc68`
 - **zshrc·zshenv heading_3 섹션은 둘 다 이미 존재한다** (2026-08-03 확인). 새로 만들 필요 없다.
-  드래그 전 확인하려면:
+  올리기 전 확인하려면:
 
   ```bash
   "$HOME/.claude/tools/notion-api/notion-api" GET "/v1/blocks/ab4c5445dede4062ab1fcb0a98e6ece0/children?page_size=100" \
     | jq -r '.results[] | select(.type|test("heading_3|file")) | .type'
   ```
-- Notion API는 파일 업로드를 지원하지 않아 드래그 앤 드롭이 필수다
+- 업로드는 `notion-api upload FILE [CONTENT_TYPE]`(file_upload 생성 + `/send`)가 한다. 2026-11-11 이전 문구는
+  「Notion API는 파일 업로드를 지원하지 않아 드래그가 필수」였다 — 그날 API로 올리고 체크섬으로 확인했다.
+  계기: jw가 회사 맥에서 리모트로 이 맥 미니를 쓰고 있어 Finder 드래그를 할 수 없었다
