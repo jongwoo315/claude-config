@@ -8,6 +8,7 @@
   },
   "includeCoAuthoredBy": false,
   "permissions": {
+    "additionalDirectories": ["/Users/jw/prv/.wt"],
     "allow": [
       "Bash(bq *)"
     ]
