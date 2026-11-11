@@ -28,6 +28,12 @@ description: Use when creating 2 or more tickets at once — an epic (프로젝�
   정상이라고 skeleton 티켓에 적는다 — 안 적으면 루프가 점수를 올리려고 stub을 채운다
 - 정답이 필요한 작업이면 정답이 어디서 오는지를 skeleton 전에 확인하고, 그중 몇 건을 직접 열어
   맞는지 보는 단계를 skeleton 티켓에 넣는다
+- `~/prv` repo에 `.github/workflows/`가 없으면 skeleton 티켓에 CI를 넣는다
+  - plan Task에 workflow 파일 하나를 넣는다. 런타임 설치 뒤 plan의 Pre-PR 테스트 명령을 그대로 돌린다.
+    main push와 PR 둘 다에서 실행한다. 런타임 설치 단계는 repo 설정 파일(pyproject.toml·package.json·go.mod 등)을 보고 고른다
+  - 통과 기준에 「GitHub Actions에서 같은 테스트가 통과한다(`gh pr checks`)」를 넣는다
+  - 테스트는 API 키 없이 돌아야 한다. LLM은 녹화한 응답으로 돌린다
+  - 회사 repo(`~/plab`·`~/work`)에서는 넣지 않는다
 
 **테스트는 두 종류로 나눈다.** 모든 티켓 plan에 이 구분을 적는다.
 
