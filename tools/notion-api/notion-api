@@ -17,6 +17,7 @@ BASE="https://api.notion.com"
 usage() {
   echo "usage: notion-api [--work] METHOD /v1/PATH [BODY|-]" >&2
   echo "       notion-api [--work] ds DATABASE_ID" >&2
+  echo "       notion-api [--work] upload FILE [CONTENT_TYPE]" >&2
   exit 2
 }
 
@@ -73,6 +74,26 @@ call() {
 }
 
 [ $# -ge 2 ] || usage
+
+# upload FILE [CONTENT_TYPE] — file_upload 객체를 만들고 파일을 보낸 뒤 그 id를 낸다.
+# 블록에 붙이는 것은 부르는 쪽 몫이다: {"type":"file","file":{"type":"file_upload","file_upload":{"id":"<id>"}}}
+if [ "$1" = upload ]; then
+  [ $# -ge 2 ] && [ $# -le 3 ] || usage
+  file=$2 ctype=${3:-application/octet-stream}
+  [ -f "$file" ] || { echo "notion-api: file not found: $file" >&2; exit 2; }
+  meta=$(newtmp)
+  python3 -c 'import json,sys,os; print(json.dumps({"filename": os.path.basename(sys.argv[1]), "content_type": sys.argv[2]}))' "$file" "$ctype" >"$meta"
+  id=$(call POST /v1/file_uploads "$meta" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+  [ "${NOTION_API_DRY_RUN:-}" = 1 ] && exit 0
+  out=$(newtmp)
+  resolve_key   # 위 call은 $( ) 안에서 돌아서 key가 이 셸에 안 남는다
+  # /send는 JSON이 아니라 multipart라 call을 쓰지 않는다. 키 넘기는 방식은 call과 같다
+  code=$(printf 'header = "Authorization: Bearer %s"\n' "$key" | curl -K - -sS -o "$out" -w '%{http_code}' \
+    -X POST -H "Notion-Version: $NOTION_VERSION" -F "file=@$file;type=$ctype" "$BASE/v1/file_uploads/$id/send")
+  if [ "$code" -ge 400 ]; then cat "$out" >&2; echo >&2; echo "notion-api: HTTP $code POST /v1/file_uploads/$id/send" >&2; exit 1; fi
+  python3 -c 'import sys,json; d=json.load(open(sys.argv[1])); print(d["id"], d.get("status"))' "$out"
+  exit 0
+fi
 
 if [ "$1" = ds ]; then
   [ $# -eq 2 ] || usage

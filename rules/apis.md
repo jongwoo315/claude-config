@@ -6,6 +6,7 @@
 ```bash
 notion-api [--work] METHOD /v1/PATH [BODY|-]   # BODY = JSON 파일 경로, - 는 stdin
 notion-api [--work] ds DATABASE_ID             # data source id 출력
+notion-api [--work] upload FILE [CONTENT_TYPE] # 파일 업로드 → file_upload id 출력 (블록에 붙이는 건 따로)
 ```
 
 - 키는 `~/plab`·`~/work` 아래면 회사 키, 그 외는 개인 키를 도구가 고른다. 다른 디렉터리에서
