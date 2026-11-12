@@ -404,14 +404,18 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 >
 > 커밋 전 `superpowers:requesting-code-review`는 그대로 둔다 — 그건 커밋하기 전 자기 점검이고, Phase C는 커밋된 diff 전체를 새 컨텍스트가 다시 보는 것이라 겹치지 않는다.
 
-**Dispatch (into the A3 worktree — session starts already on the branch, so no checkout needed):**
+**Dispatch (into the A3 worktree — session starts already on the branch, so no checkout needed) — 세 단계, 한 턴 안에:**
 ```bash
+# 1. dispatch
 ORCH_STUCK_SECS=7200 orch start --max <parallel>   # only if daemon not running; high stuck-timeout
 orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
-orch wait <id>   # 바로 이어서, Bash run_in_background: true — 빠뜨리면 Phase C로 안 넘어간다 (§자동 진행)
+# 2. 바로 이어서, Bash run_in_background: true — 빠뜨리면 Phase C로 안 넘어간다 (§자동 진행)
+orch wait <id>
+# 3. 도구 호출(Bash 아님): 부모 세션 폴더를 워크트리로 — §diff 보기
+#    mcp__ccd_directory__change_directory  path=<worktree-absolute-path>
+#    deferred 목록에 있으면 먼저 ToolSearch "select:mcp__ccd_directory__change_directory"로 불러온다.
+#    deferred 목록에도 없을 때만(터미널 claude) 건너뛴다.
 ```
-
-데스크탑 앱이면 이어서 `change_directory`로 부모 세션 폴더를 그 워크트리로 옮긴다 — 아래 §diff 보기.
 
 ⚠️ **orch daemon은 스크립트를 메모리에 물고 돈다 — 코드 수정이 재시작 없이는 반영되지 않는다.**
 `~/.claude`를 sync했거나 `orch/lib/*.sh`가 바뀐 뒤 첫 dispatch 전에는 반드시:
@@ -559,11 +563,16 @@ cheongyak-rag #80에서 지켜지지 않았다. 구현 루프가 23:30에 끝났
 
 데스크탑 앱의 Changes 창은 **세션 폴더 하나**의 git diff만 보여 준다. orch 루프는 tmux에서 실행되므로
 앱이 모른다. 그래서 dispatch 직후 부모 세션 폴더를 그 워크트리로 옮겨, 루프가 쓰는 변경을 부모
-세션 Changes 창에서 본다. `mcp__ccd_directory__change_directory` 도구가 없으면(터미널 claude) 건너뛴다.
+세션 Changes 창에서 본다. 도구는 `mcp__ccd_directory__change_directory`다. 처음에는 deferred 목록에만 있어서
+`ToolSearch "select:mcp__ccd_directory__change_directory"`로 불러온 뒤 부른다. **deferred 목록에 있는 것은 「없음」이 아니다.**
+deferred 목록에도 없을 때만(터미널 claude) 건너뛴다.
+
+2026-11-12 #189(subway-route-agent)에서 빠졌다. 스킬을 새로 읽은 세션이 dispatch까지 했는데 폴더를 옮기지 않았다.
+그때 이 줄은 짧은 이름 `change_directory`로 dispatch 코드 블록 바깥에 있었고, 「도구가 없으면 건너뛴다」만 적혀 있었다.
 
 | 시점 | 할 일 |
 | --- | --- |
-| Phase B dispatch 직후 | `change_directory <워크트리 절대경로>`. 턴이 끝날 때 옮겨진다. Changes 창이 `main → <브랜치>`로 커밋한 것과 커밋 안 한 것을 같이 보여 준다 |
+| Phase B dispatch 직후 | `mcp__ccd_directory__change_directory` path=<워크트리 절대경로>. 턴이 끝날 때 옮겨진다. Changes 창이 `main → <브랜치>`로 커밋한 것과 커밋 안 한 것을 같이 보여 준다 |
 | Phase C 리뷰 dispatch | 옮기지 않는다. 리뷰도 같은 워크트리에서 실행된다 |
 | 루프가 끝난 뒤 | 그대로 둔다. 판단 로그·PR 리뷰 동안 diff를 계속 본다 |
 | 여러 티켓이 동시에 돌 때 | 한 번에 하나만 보인다. jw가 「<ID> diff」라고 하면 그 워크트리로 옮긴다 |
@@ -876,7 +885,7 @@ tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이�
 jq -r 'select(.status=="running") | .target' ~/.claude/orch/queue/task-*.json 2>/dev/null \
   | grep -qx "<worktree>" && { echo "멈춤 — running 태스크가 이 워크트리를 쓰는 중"; exit 1; }
 
-# 부모 세션 폴더가 이 워크트리면(§diff 보기) 먼저 빠져나온다: Bash `cd <REPO_ROOT>` + change_directory <REPO_ROOT>
+# 부모 세션 폴더가 이 워크트리면(§diff 보기) 먼저 빠져나온다: Bash `cd <REPO_ROOT>` + mcp__ccd_directory__change_directory path=<REPO_ROOT>
 git -C <worktree> status --porcelain                    # 비어야 한다
 git -C <worktree> log --oneline @{u}..HEAD              # 안 올라간 커밋 0이어야 한다
 git worktree remove --force <worktree>                  # --force: docs/plans·venv 심볼릭 링크가 untracked
