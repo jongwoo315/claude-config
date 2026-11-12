@@ -140,8 +140,10 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   work `~/plab/.wt/DEV-XXXX-<subject>` · **personal `~/prv/.wt/<NN>-<subject>`**.
   The dir name is the branch suffix VERBATIM — no repo prefix. e.g. branch
   `feature/DEV-7032-hybrid-search` → `~/plab/.wt/DEV-7032-hybrid-search`.
+  `REPO_ROOT`는 `--show-toplevel`이 아니라 공통 git 디렉터리에서 구한다. 부모 세션 폴더가 앞 티켓의
+  워크트리에 가 있으면(§diff 보기) `--show-toplevel`은 그 워크트리를 repo로 잡는다.
   ```bash
-  REPO_ROOT=$(git rev-parse --show-toplevel)
+  REPO_ROOT=$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
   # 모드에 맞는 주차장 — ~/prv 프로젝트를 ~/plab/.wt/ 에 두면 계정 규칙이 kimwoz로
   # 해석돼 개인 레포 접근이 404로 실패한다 (실제 발생함).
   case "$PWD" in "$HOME/prv/"*) PARK="$HOME/prv/.wt" ;; *) PARK="$HOME/plab/.wt" ;; esac
@@ -162,7 +164,7 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   Detect the env flavor per `~/.claude/rules/python-env.md` — symlink whichever of
   `venv/.venv/env` exists; pyenv (`.python-version`) is git-tracked so needs no symlink:
   ```bash
-  REPO_ROOT=$(git rev-parse --show-toplevel)
+  REPO_ROOT=$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
   for v in venv .venv env; do
     [ -d "$REPO_ROOT/$v" ] && ln -s "$REPO_ROOT/$v" "<worktree>/$v" && break
   done
@@ -172,7 +174,7 @@ From the kickoff input, auto-detect URLs — no "source?" question:
   않은 폴더에서 「이 폴더를 신뢰하나」 화면을 띄우고 **기본 선택이 `No, exit`**이다. orch가
   보낸 시드의 첫 Enter가 그걸 눌러 claude가 즉시 종료되고, 남은 키는 shell로 떨어진다.
   ```bash
-  REPO_ROOT=$(git rev-parse --show-toplevel)
+  REPO_ROOT=$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
   python3 -c "import json,os,sys
 d=json.load(open(os.path.expanduser('~/.claude.json')))
 print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
@@ -409,6 +411,8 @@ orch add <worktree-absolute-path> "<the single quote-safe ralph line above>"
 orch wait <id>   # 바로 이어서, Bash run_in_background: true — 빠뜨리면 Phase C로 안 넘어간다 (§자동 진행)
 ```
 
+데스크탑 앱이면 이어서 `change_directory`로 부모 세션 폴더를 그 워크트리로 옮긴다 — 아래 §diff 보기.
+
 ⚠️ **orch daemon은 스크립트를 메모리에 물고 돈다 — 코드 수정이 재시작 없이는 반영되지 않는다.**
 `~/.claude`를 sync했거나 `orch/lib/*.sh`가 바뀐 뒤 첫 dispatch 전에는 반드시:
 ```bash
@@ -550,6 +554,32 @@ cheongyak-rag #80에서 지켜지지 않았다. 구현 루프가 23:30에 끝났
 물을 때까지 아무도 리뷰를 띄우지 않았다. 그 세션은 compact 뒤 이 스킬을 잘린 채로 받아서 dispatch
 블록(Phase B)까지만 봤고, 90줄 아래에 있는 이 절은 못 봤다. 규칙이 실행할 명령과 떨어져 있으면
 문서가 잘릴 때 같이 사라진다.
+
+### diff 보기 — 부모 세션 폴더를 워크트리로 옮긴다 (데스크탑 앱)
+
+데스크탑 앱의 Changes 창은 **세션 폴더 하나**의 git diff만 보여 준다. orch 루프는 tmux에서 실행되므로
+앱이 모른다. 그래서 dispatch 직후 부모 세션 폴더를 그 워크트리로 옮겨, 루프가 쓰는 변경을 부모
+세션 Changes 창에서 본다. `mcp__ccd_directory__change_directory` 도구가 없으면(터미널 claude) 건너뛴다.
+
+| 시점 | 할 일 |
+| --- | --- |
+| Phase B dispatch 직후 | `change_directory <워크트리 절대경로>`. 턴이 끝날 때 옮겨진다. Changes 창이 `main → <브랜치>`로 커밋한 것과 커밋 안 한 것을 같이 보여 준다 |
+| Phase C 리뷰 dispatch | 옮기지 않는다. 리뷰도 같은 워크트리에서 실행된다 |
+| 루프가 끝난 뒤 | 그대로 둔다. 판단 로그·PR 리뷰 동안 diff를 계속 본다 |
+| 여러 티켓이 동시에 돌 때 | 한 번에 하나만 보인다. jw가 「<ID> diff」라고 하면 그 워크트리로 옮긴다 |
+| Phase D에서 워크트리를 지우기 전 | 부모 폴더가 그 워크트리면 먼저 메인 repo(`REPO_ROOT`)로 옮긴다. D3 참고 |
+
+**부모 폴더가 워크트리에 가 있는 동안 지킬 것:**
+
+- 부모 세션은 그 워크트리 파일을 고치지 않고 커밋하지 않는다. 루프가 쓰는 곳이다. 읽기와 `git -C`로 상태 보기만 한다
+- `orch add`에는 워크트리 절대경로를 꼭 적는다. 빼면 부모 폴더(=앞 티켓 워크트리)로 들어간다
+- 새 티켓의 A3는 공통 git 디렉터리로 `REPO_ROOT`를 구한다(A3 코드 그대로). `--show-toplevel`을 쓰면 워크트리를 repo로 잡는다
+- Bash에서 `cd`로 다른 워크트리에 들어가지 않는다. 메인 세션의 `cd`는 다음 명령까지 남아 부모 cwd가 조용히 바뀐다. `git -C <경로>`를 쓴다
+
+**왜 이 방식인가 (2026-11-12 시험).** 두 방식을 wt-sandbox repo로 돌려 봤다.
+
+- 이 방식(orch 그대로 + 부모 폴더 이동): 구현 커밋 3개, `ORCH_TASK_ID=<ID>-review` 리뷰 커밋 1개가 다 나왔다. `orch ls`에 두 행이 따로 남았다. jw가 Changes 창에서 루프 진행을 확인했다
+- 데스크탑 side session으로 루프를 띄우는 방식: 세션마다 Changes 창이 따로 생겨 보기는 더 좋다. 하지만 ralph 루프가 1회차에서 멈췄고(Stop hook이 다음 반복을 안 걸었다), 세션 메시지로 시작한 턴에서는 앱이 카드를 눌러야 세션을 띄운다. 기록은 메모리 `desktop-side-session-loop-option.md`
 
 ---
 
@@ -846,6 +876,7 @@ tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이�
 jq -r 'select(.status=="running") | .target' ~/.claude/orch/queue/task-*.json 2>/dev/null \
   | grep -qx "<worktree>" && { echo "멈춤 — running 태스크가 이 워크트리를 쓰는 중"; exit 1; }
 
+# 부모 세션 폴더가 이 워크트리면(§diff 보기) 먼저 빠져나온다: Bash `cd <REPO_ROOT>` + change_directory <REPO_ROOT>
 git -C <worktree> status --porcelain                    # 비어야 한다
 git -C <worktree> log --oneline @{u}..HEAD              # 안 올라간 커밋 0이어야 한다
 git worktree remove --force <worktree>                  # --force: docs/plans·venv 심볼릭 링크가 untracked
