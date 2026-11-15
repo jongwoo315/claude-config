@@ -576,7 +576,7 @@ deferred 목록에도 없을 때만(터미널 claude) 건너뛴다.
 | Phase C 리뷰 dispatch | 옮기지 않는다. 리뷰도 같은 워크트리에서 실행된다 |
 | 루프가 끝난 뒤 | 그대로 둔다. 판단 로그·PR 리뷰 동안 diff를 계속 본다 |
 | 여러 티켓이 동시에 돌 때 | 한 번에 하나만 보인다. jw가 「<ID> diff」라고 하면 그 워크트리로 옮긴다 |
-| Phase D에서 워크트리를 지우기 전 | 부모 폴더가 그 워크트리면 먼저 메인 repo(`REPO_ROOT`)로 옮긴다. D3 참고 |
+| Phase D에서 워크트리를 지우기 전 | 부모 폴더가 그 워크트리면 먼저 메인 repo(`REPO_ROOT`)로 옮기고 **그 턴을 끝낸다.** 워크트리는 다음 턴에 지운다. D3 참고 |
 
 **부모 폴더가 워크트리에 가 있는 동안 지킬 것:**
 
@@ -885,7 +885,7 @@ tmux 는 orch 의 id 와 **따로** 이름 충돌을 처리해 `-1` 을 붙이�
 jq -r 'select(.status=="running") | .target' ~/.claude/orch/queue/task-*.json 2>/dev/null \
   | grep -qx "<worktree>" && { echo "멈춤 — running 태스크가 이 워크트리를 쓰는 중"; exit 1; }
 
-# 부모 세션 폴더가 이 워크트리면(§diff 보기) 먼저 빠져나온다: Bash `cd <REPO_ROOT>` + mcp__ccd_directory__change_directory path=<REPO_ROOT>
+# 부모 세션 폴더가 이 워크트리면(§diff 보기) 아래 「폴더를 옮기는 턴과 지우는 턴을 나눈다」를 먼저 따른다
 git -C <worktree> status --porcelain                    # 비어야 한다
 git -C <worktree> log --oneline @{u}..HEAD              # 안 올라간 커밋 0이어야 한다
 git worktree remove --force <worktree>                  # --force: docs/plans·venv 심볼릭 링크가 untracked
@@ -895,6 +895,16 @@ git worktree prune
 
 **둘 중 하나라도 비어 있지 않으면 멈추고 그 사실을 보고한다.** 지우지 말 것 — 커밋 안 된
 변경이나 안 올라간 커밋은 머지된 PR에 없는 것이고, 워크트리가 유일한 사본이다.
+
+**폴더를 옮기는 턴과 지우는 턴을 나눈다.** 부모 세션 폴더가 이 워크트리일 때만 해당한다.
+
+1. 이번 턴: Bash `cd <REPO_ROOT>` + `mcp__ccd_directory__change_directory` path=<REPO_ROOT>. D3의 나머지(위 확인 두 줄, `worktree remove`)는 하지 않는다. 장부 확인·D4 티켓 정리처럼 워크트리 경로를 안 쓰는 일은 해도 된다
+2. 「폴더를 옮겼고 워크트리는 다음 턴에 지운다」고 보고하고 턴을 끝낸다
+3. 다음 턴 첫머리: 작업 폴더가 `<REPO_ROOT>`로 바뀌었다는 알림을 확인한 뒤 위 확인 두 줄과 `worktree remove`를 돌린다. 다음 턴은 wrap_up 버튼(「워크트리 지워」)으로 연다
+
+**왜.** 폴더 이동은 요청한 턴이 끝날 때 적용된다(§diff 보기 표). 같은 턴에 워크트리를 지우면 턴이 끝날 때까지
+세션 폴더가 없는 경로를 가리킨다. 2026-11-15 #198(trading-agent)에서 그렇게 했다. 앱이 「Working folder no longer exists」를
+띄웠고 명령 하나가 실패했다. 턴이 끝나 이동이 적용되자 저절로 풀렸다.
 
 **`status --porcelain` 이 빈 것은 「아무도 안 쓴다」의 근거가 아니다.** 도는 에이전트도
 커밋 직후에는 clean 이다. 그래서 위 `running` 확인이 따로 있다.
