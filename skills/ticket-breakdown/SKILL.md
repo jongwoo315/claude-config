@@ -28,6 +28,9 @@ description: Use when creating 2 or more tickets at once — an epic (프로젝�
   정상이라고 skeleton 티켓에 적는다 — 안 적으면 루프가 점수를 올리려고 stub을 채운다
 - 정답이 필요한 작업이면 정답이 어디서 오는지를 skeleton 전에 확인하고, 그중 몇 건을 직접 열어
   맞는지 보는 단계를 skeleton 티켓에 넣는다
+- `~/prv` repo면 skeleton 티켓 완료 조건에 README `## 사용 방법` 절을 넣는다. 설치 · 필요한 환경변수 ·
+  끝까지 도는 명령 하나 · 테스트 명령. 끝까지 도는 흐름이 생기는 티켓이 사용법이 처음 생기는 티켓이다.
+  이후 티켓은 dev-workflow A4 Done criteria가 이 절을 고쳐 간다
 - `~/prv` repo에 `.github/workflows/`가 없으면 skeleton 티켓에 CI를 넣는다
   - plan Task에 workflow 파일 하나를 넣는다. 런타임 설치 뒤 plan의 Pre-PR 테스트 명령을 그대로 돌린다.
     main push와 PR 둘 다에서 실행한다. 런타임 설치 단계는 repo 설정 파일(pyproject.toml·package.json·go.mod 등)을 보고 고른다

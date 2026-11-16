@@ -252,7 +252,12 @@ print(d.get('projects',{}).get('$REPO_ROOT',{}).get('hasTrustDialogAccepted'))"
   9번 다시 돌려졌고, orch는 `running`에 머물렀다.
   Done criteria에 모드별 한 줄을 넣는다 — 루프는 rules가 아니라 plan을 따른다:
   - `~/prv`: 「PR 본문 맨 위에 `## 착수 전 기준 (jw)` 절 — plan의 `## jw 기준` 원문 + 그 기준으로 잰 결과」
+  - `~/prv`: 「README `## 사용 방법` 절(설치 · 필요한 환경변수 · 실행 예 · 테스트 명령)이 이 브랜치 코드로
+    그대로 실행된다. 이 티켓이 설치·실행 방법을 바꿨으면 고치고, 절이 없으면 만든다」
   - `~/plab`·`~/work`: 「`docs/plans/`는 커밋하지 않는다. 파일을 지정해 add한다」
+  - README 줄이 `~/prv`에만 있는 이유: 회사 README는 공용 문서라 티켓마다 고치면 PR diff가 늘어난다(2026-11-16 jw).
+    `~/prv`는 포트폴리오라 처음 본 사람이 README만 보고 돌려 볼 수 있어야 한다. subway-route-agent는 skeleton(#185)부터
+    #223까지 이 절 없이 갔다
   Plan header
   directive MUST be:
   ```markdown
@@ -402,6 +407,7 @@ Line rules: no quotes, no apostrophes, no `; & | $ ( ) < >`, no newlines. The pl
 > 3. Full test suite green (show pass/fail). If no runner: state `no tests — skipped`, do not silently pass.
 >    - **macOS에서 Django 4.1 미만이면 `--parallel`을 붙이지 않는다.** CI 명령에 있어도 뺀다. macOS Python은 워커를 `spawn`으로 띄우는데, 4.1 미만 Django는 그 워커에서 앱을 불러오지 않는다. 워커가 `AppRegistryNotReady`로 바로 죽고, 부모 프로세스는 끝나지 않는다. CI는 Linux(`fork`)라 통과한다.
 >    - **백그라운드로 돌린 테스트는 멈췄는지 확인하며 기다린다.** 출력 파일 크기가 10분 동안 그대로이고 테스트 프로세스가 전부 CPU 0%면 멈춘 것이다. 남은 프로세스를 `pkill -f "manage.py test"`(러너에 맞게)로 끄고 병렬 없이 다시 돌린다. 같은 명령으로 더 기다리지 않는다.
+> 4. (`~/prv` repo only) README `## 사용 방법`의 실행 예 하나를 README에 적힌 그대로 복사해 돌리고 exit code를 보인다. 0이 아니면 README나 코드를 고친다. API 키가 필요한 예만 있으면 키 없이 도는 예(stub·녹화 응답)를 README에 하나 더하고 그걸 돌린다. 절이 없으면 이 항목은 실패다.
 > Then: completeness via `sc:reflect` vs plan; code review via `superpowers:requesting-code-review` (fix all Critical/Important); commit (`~/prv` repo면 `docs/plans/`도 포함. `~/plab`·`~/work` repo는 `docs/plans/`를 커밋하지 않는다 — `rules/github.md` §회사 repo에 커밋하지 않는 것); PR via `gh pr create --assignee @me` (work title `[DEV-XXXX] type: 설명` + Summary/Changes/Test Plan/Jira; personal title + Summary/Changes/Notes, then update the Notion PR property). **PR을 만들면 이 루프는 끝난다** — 여기서 `pr-review-toolkit:review-pr`을 돌리지 말 것. 그 리뷰는 Phase C의 별도 세션이 맡는다. 여기서 돌리면 (a) 자기가 쓴 코드를 같은 컨텍스트가 리뷰하고 (b) PR 생성 후에도 커밋이 계속 얹혀 `orch ls`의 `done`이 완료를 뜻하지 않게 된다 (실측: PR 후 8분 이상 지속).
 >
 > 내장 `/code-review`를 여기 쓰지 말 것. 품질은 더 낫지만(다각도 finder + 후보별 독립 검증 CONFIRMED/PLAUSIBLE/REFUTED + failure_scenario 강제) **사람이 직접 치는 커맨드라 available-skills에 없다** — 헤드리스 세션에서 확인함. ralph가 호출하면 없는 스킬을 찾다 끝난다.
