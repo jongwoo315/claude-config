@@ -19,7 +19,7 @@ description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(�
 
 | DB | ID | 용도 | 주제 옵션(예시) | `본문 길이` |
 | --- | --- | --- | --- | --- |
-| **Dev Scraps** | `76e9673e-d91b-41b2-9779-c0940040f542` | 기술 | Python, AWS, Architecture, LLM Engineering, RAG … (36개) | **있음** |
+| **Dev Scraps** | `76e9673e-d91b-41b2-9779-c0940040f542` | 기술 | Python, AWS, Application, LLM Engineering, 커리어 메모 … (36개) | **있음** |
 | **Liv Scraps** | `1cf41e61-65c0-80be-abfe-dcdf7012740d` | 비기술 | 돈 관리, 부동산, 애플리케이션, Etc | **없음** |
 
 **두 DB는 스키마가 다르다.** `본문 길이`가 Liv Scraps에는 아예 없어서, Dev Scraps
@@ -29,6 +29,26 @@ description: URL 하나를 받아 요약하고, 승인 시 Notion 스크랩 DB(�
 판정 기준: 개발·인프라·데이터·AI 등 **기술 내용이면 Dev Scraps**, 투자·부동산·생활·
 커리어 등 **그 외는 Liv Scraps**. 애매하면 사용자에게 묻는다 — 잘못 넣으면 DB 성격이
 흐려지고 나중에 검색·분류가 헝클어진다.
+
+### 채용공고는 두 DB 어디에도 넣지 않는다 — `관심기업 채용공고` DB로
+
+회사가 특정 직무 사람을 뽑는 **공고 페이지**면 Dev/Liv Scraps 대신 이 DB에 만든다(2026-11-17 jw).
+채용 시장 기사·이력서 팁처럼 채용을 다룬 글은 공고가 아니다 — Dev Scraps `커리어 메모`다.
+
+- database `2db41e61-65c0-80d4-8514-d8a54ecb0bfa` · data source `2db41e61-65c0-803e-9dd0-000b151240f4`
+- 아이콘: `{"type": "icon", "icon": {"name": "clipping", "color": "lightgray"}}` — 기존 페이지와 맞춘다
+- 본문: 주요 업무 · 자격 요건 · 우대 사항을 h2 + 불릿으로 요약한다. 서식은 아래 Step 2와 같다
+
+| 속성 | 타입 | 값 |
+| --- | --- | --- |
+| `채용공고` | title | `회사 - 직무명` (예: `토스 - Python Developer (Internal Product)`) |
+| `URL` | url | 공고 URL. 추적 파라미터는 뗀다 |
+| `생성일` | date | 오늘 |
+| `직무` | select | 기존 옵션(BE·DE·DW·FDE·기획자) 중 하나. 맞는 게 없으면 넣지 않는다 |
+| `기술 스택` | multi_select | 공고에 적힌 것 중 기존 옵션에 있는 것만. 새 옵션을 만들지 않는다 |
+
+Step 3 미리보기 헤더의 DB 자리에 `관심기업 채용공고`를 적는다. 무인 실행 결과 줄은
+`SAVED 관심기업 채용공고 <페이지 URL>`이다.
 
 ## 발동 조건
 
@@ -183,7 +203,8 @@ DS_ID=$("$NOTION_API" ds "$DB_ID" | head -1)   # 4c의 parent에도 쓴다
 "$NOTION_API" GET "/v1/data_sources/$DS_ID" \
   | jq '{주제: .properties["주제"].select.options | map(.name),
          has_길이: (.properties | has("본문 길이")),
-         관련: .properties["관련"].multi_select.options | map(.name)}'
+         관련: .properties["관련"].multi_select.options | map(.name),
+         상위카테고리: .properties["상위카테고리"].select.options | map(.name)}'
 ```
 
 - `주제`는 select라 임의 값을 넣으면 **새 옵션이 생긴다.** 반드시 기존 목록에서 고르고,
@@ -205,7 +226,36 @@ DS_ID=$("$NOTION_API" ds "$DB_ID" | head -1)   # 4c의 parent에도 쓴다
 | `작성일` | date | 오늘 (`date +%Y-%m-%d`) |
 | `URL` | url | 입력받은 URL. 트래킹 파라미터(`?cds=`, `utm_*`)는 떼고 저장 |
 
-`상위카테고리`는 축이 명확할 때만 채운다 (예: `🟣 판단의 몫`). 애매하면 비운다.
+**Dev Scraps `주제` — 헷갈리는 셋은 이 기준으로 고른다 (2026-11-17 jw):**
+
+| 주제 | 넣는 것 |
+| --- | --- |
+| `Application` | 도구·스킬·앱 소개. 무엇이 있고 어떻게 쓰는지 — Claude Code 플러그인·스킬, CLI 도구, 앱 |
+| `LLM Engineering` | 현업에서 LLM 시스템을 만들 때 필요한 지식 — 평가, 검색, 에이전트 설계, 비용. RAG도 여기다 |
+| `커리어 메모` | 생각할 거리 — 판단, 어떻게 일하나 |
+
+- 도구를 보여 주는 글이면 LLM 이야기가 섞여도 `Application`이다
+- `AI/ML`은 고르지 않는다. 그 자리는 `Application`에 합쳤다
+- `RAG`는 고르지 않는다. 옵션은 남아 있지만 RAG 글은 `LLM Engineering`으로 간다
+
+**`주제`가 `LLM Engineering`·`Application`이면 `상위카테고리`를 꼭 채운다 (2026-11-17 jw).**
+옵션 이름 앞의 색 원이 주제를 나타낸다. 4a에서 조회한 `상위카테고리` 옵션 중 그 주제 색 원으로 시작하는 것만 본다.
+
+| 주제 | 색 원 | 무엇으로 고르나 | 지금 있는 옵션 |
+| --- | --- | --- | --- |
+| `LLM Engineering` | 🔵 | 무엇에 관한 글인가 | `🔵 RAG·검색` 청킹·임베딩·벡터 검색·rerank / `🔵 에이전트·컨텍스트` 에이전트 구조·도구 호출·컨텍스트 설계 / `🔵 평가·운영` eval·LLMOps·비용·모니터링 / `🔵 로드맵·도입기` 직무 로드맵·회사의 AI 도입 회고 |
+| `Application` | 🟢 | 어느 도구에 관한 글인가 | `🟢 Claude Code` · `🟢 GitHub` · `🟢 Cursor` · `🟢 AI 트레이딩` · `🟢 기타 AI 도구` 등 — 4a 조회 결과가 기준이다 |
+
+1. 맞는 기존 옵션이 있으면 그것을 쓴다
+   - Claude Code 플러그인·스킬·설정·사용법 → `🟢 Claude Code`
+   - AI로 매매·투자하는 도구와 실측 → `🟢 AI 트레이딩` (Claude 스킬이어도 여기다)
+2. 맞는 옵션이 없으면 **같은 색 원**을 앞에 붙인 새 옵션을 만들어 붙인다 — `🟢 <도구 이름>`, `🔵 <영역 이름>`.
+   select라 없는 이름을 보내면 Notion이 옵션을 새로 만든다. 색 원 없이 만들거나 다른 주제의 색 원을 쓰지 않는다
+3. Application인데 도구 이름을 본문에서 알 수 없으면 `🟢 기타 AI 도구`를 쓴다
+4. 새 옵션을 만들었으면 결과 보고에 그 이름을 적는다
+
+`카테고리`가 글의 종류(Concept·In Action 등)를 나누므로, 상위카테고리는 글의 종류가 아니라 대상으로 고른다.
+그 외 주제는 축이 명확할 때만 채우고(예: `🟣 판단의 몫`) 애매하면 비운다.
 `하위카테고리`는 건드리지 않는다.
 
 **본문 길이 기준:** `하` = 요약이 짧고 단일 개념 / `중` = 섹션 2~3개 / `상` = 섹션 4개 이상
@@ -215,9 +265,9 @@ DS_ID=$("$NOTION_API" ds "$DB_ID" | head -1)   # 4c의 parent에도 쓴다
 
 | 주제 | 아이콘 | 주제 | 아이콘 |
 | --- | --- | --- | --- |
-| AI/ML | 🤖 | Linux | 🐧 |
+| Linux | 🐧 | | |
 | LLM Engineering | 🧠 | Operating System | 💻 |
-| RAG | 🔎 | HTTP & API | 🌐 |
+| | | HTTP & API | 🌐 |
 | Data Engineering | 🔀 | Architecture | 🏛️ |
 | Spark | ⚡ | Design Pattern | 🧩 |
 | Airflow | 🌬️ | Git | 🌿 |
@@ -249,6 +299,7 @@ DS_ID=$("$NOTION_API" ds "$DB_ID" | head -1)   # 4c의 parent에도 쓴다
   "properties": {
     "제목":      { "title": [{ "text": { "content": "<원문 제목>" } }] },
     "주제":      { "select": { "name": "<기존 옵션>" } },
+    "상위카테고리": { "select": { "name": "<LLM Engineering·Application이면 위 규칙대로 꼭 채운다. 그 외는 축이 명확할 때만, 아니면 이 줄을 뺀다>" } },
     "관련":      { "multi_select": [{ "name": "Claude" }] },
     "본문 길이": { "select": { "name": "<상|중|하>" } },
     "완료":      { "checkbox": true },
