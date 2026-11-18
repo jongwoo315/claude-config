@@ -50,6 +50,11 @@
             "type": "command",
             "command": "/Users/jw/.claude/hooks/sql-guard.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "/Users/jw/.claude/hooks/worktree-guard.sh",
+            "timeout": 5
           }
         ]
       },
