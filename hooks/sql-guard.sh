@@ -13,7 +13,9 @@
 trap 'exit 0' ERR
 
 PROD='mysql.*(-P[[:space:]]*13035|:13035|rds-prod[^-]).*-D[[:space:]]*plab'
-CLIENT='(mysql|psql)'
+# 명령어 자리의 mysql·psql만 본다. 경로·브랜치 이름 안의 mysql(예: .wt/DEV-11825-managerapi-mysql-tls)은
+# 앞이 하이픈이라 안 걸린다. 2026-11-18 이 오탐이 orch 루프의 gh pr create·docker network create를 막았다.
+CLIENT='(^|[[:space:];&|(/`])(mysql|psql)([[:space:]]|$)'
 WRITE='(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE)[[:space:]]'
 
 # 걸리면 사유(영문)를 찍는다. 안 걸리면 아무것도 안 찍는다.
@@ -34,7 +36,9 @@ if [ "${1:-}" = --test ]; then
     [ -n "$(match "$c")" ] || { echo "MISS: $c"; fail=1; }
   done
   for c in 'psql -c "select * from t"' 'mysql -e "SHOW TABLES;"' 'echo DROP TABLE t' \
-           'git commit -m "update docs"'; do
+           'git commit -m "update docs"' \
+           'cd /Users/jw/plab/.wt/DEV-11825-managerapi-mysql-tls && gh pr create --title x' \
+           'docker network create t2-net # managerapi-mysql-tls'; do
     [ -n "$(match "$c")" ] && { echo "FALSE HIT: $c"; fail=1; }
   done
   [ "$fail" = 0 ] && echo ok
