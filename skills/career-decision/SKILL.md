@@ -59,6 +59,20 @@ disable-model-invocation: true
 
 ## §C 진행
 
+### 코드 위치 보여 주기 — 모든 단계
+
+코드 위치를 가리킬 때는 「로컬 파일 | GitHub」 두 칸 표로 쓴다. 코드 스니펫은 붙이지 않는다.
+
+| 무엇 | 로컬 파일 | GitHub |
+| --- | --- | --- |
+| grade | [/Users/jw/prv/subway-route-agent/src/subway_route_agent/grade.py:87](/Users/jw/prv/subway-route-agent/src/subway_route_agent/grade.py:87) | [grade](https://github.com/jongwoo315/subway-route-agent/blob/ceee712290a0cf39bd0a58910f586957e77287d8/src/subway_route_agent/grade.py#L87-L120) |
+
+- 로컬 칸: 링크 글자와 대상 모두 절대 경로 + 시작 줄. 데스크탑 파일 창에서 그 줄로 열린다
+- GitHub 칸: `https://github.com/jongwoo315/<repo>/blob/<커밋 해시>/<경로>#L<시작>-L<끝>`, 링크 글자는 함수 이름. 휴대폰에서 쓴다
+  - 브랜치 대신 커밋 해시를 넣어 줄 번호가 밀리지 않게 한다
+  - 로컬 main이 origin/main과 같은지 먼저 본다. 다르면 GitHub 줄 번호가 로컬과 어긋난다는 사실을 표 위에 적는다
+- 왜: jw는 데스크탑과 휴대폰을 오간다. 로컬 경로만 주면 휴대폰에서 py 파일을 읽기 힘들고, GitHub 링크만 주면 데스크탑에서는 앱 안 브라우저 탭 하나에서 열려 보기 힘들다(2026-11-19 #196)
+
 ### 1단계 — 판단 기록 표
 
 - 용어 지도(`/Users/jw/prv/rag-tutor/00-terminology-map.md`)에서 이 프로젝트 Level의 용어를 뽑아 표 초안을 만든다
